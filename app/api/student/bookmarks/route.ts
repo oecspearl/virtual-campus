@@ -71,9 +71,9 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Index results by ID for O(1) lookup
-    const lessonsMap = new Map((lessonsResult.data || []).map((l: any) => [l.id, l]));
-    const coursesMap = new Map((coursesResult.data || []).map((c: any) => [c.id, c]));
-    const resourcesMap = new Map((resourcesResult.data || []).map((r: any) => [r.id, r]));
+    const lessonsMap = new Map<string, any>((lessonsResult.data || []).map((l: any) => [l.id, l]));
+    const coursesMap = new Map<string, any>((coursesResult.data || []).map((c: any) => [c.id, c]));
+    const resourcesMap = new Map<string, any>((resourcesResult.data || []).map((r: any) => [r.id, r]));
 
     // Enrich bookmarks from the pre-fetched maps
     const enrichedBookmarks = allBookmarks.map((bookmark) => {

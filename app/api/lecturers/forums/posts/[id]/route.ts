@@ -25,7 +25,7 @@ export async function GET(
     }
 
     // Get post details
-    const { data: post, error: postError } = await supabase
+    const { data: post, error: postError } = await tq
       .from("lecturer_forum_posts")
       .select(`
         *,
@@ -40,13 +40,13 @@ export async function GET(
     }
 
     // Increment view count
-    await supabase
+    await tq
       .from("lecturer_forum_posts")
       .update({ view_count: (post.view_count || 0) + 1 })
       .eq("id", postId);
 
     // Get replies
-    const { data: replies, error: repliesError } = await supabase
+    const { data: replies, error: repliesError } = await tq
       .from("lecturer_forum_replies")
       .select(`
         *,
@@ -65,7 +65,7 @@ export async function GET(
     // Get nested replies for each top-level reply
     const repliesWithNested = await Promise.all(
       (replies || []).map(async (reply) => {
-        const { data: nestedReplies } = await supabase
+        const { data: nestedReplies } = await tq
           .from("lecturer_forum_replies")
           .select(`
             *,
@@ -117,7 +117,7 @@ export async function PUT(
     const tq = createTenantQuery(tenantId);
 
     // Check if user is the author or admin
-    const { data: post } = await supabase
+    const { data: post } = await tq
       .from("lecturer_forum_posts")
       .select("author_id")
       .eq("id", postId)
@@ -144,7 +144,7 @@ export async function PUT(
     if (is_pinned !== undefined) updateData.is_pinned = is_pinned;
     if (is_locked !== undefined) updateData.is_locked = is_locked;
 
-    const { data: updatedPost, error } = await supabase
+    const { data: updatedPost, error } = await tq
       .from("lecturer_forum_posts")
       .update(updateData)
       .eq("id", postId)
@@ -188,7 +188,7 @@ export async function DELETE(
     const tq = createTenantQuery(tenantId);
 
     // Check if user is the author or admin
-    const { data: post } = await supabase
+    const { data: post } = await tq
       .from("lecturer_forum_posts")
       .select("author_id")
       .eq("id", postId)
@@ -203,7 +203,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const { error } = await supabase
+    const { error } = await tq
       .from("lecturer_forum_posts")
       .delete()
       .eq("id", postId);

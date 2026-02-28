@@ -66,8 +66,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .eq('student_id', user.id)
       .in('course_id', courseIds);
 
-    const courseProgressMap = new Map(
-      courseEnrollments?.map(e => [e.course_id, e]) || []
+    const courseProgressMap = new Map<string, { course_id: string; enrolled_at: string; progress: number; completed_at: string | null }>(
+      courseEnrollments?.map((e: any) => [e.course_id, e]) || []
     );
 
     // Sort courses by order

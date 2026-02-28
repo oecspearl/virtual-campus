@@ -17,10 +17,11 @@ export async function GET(
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Check if user is a member
-    const { data: membership } = await serviceSupabase
+    const { data: membership } = await tq
       .from("student_chat_members")
       .select("id")
       .eq("room_id", roomId)
@@ -35,7 +36,7 @@ export async function GET(
     }
 
     // Get all members
-    const { data: members, error } = await serviceSupabase
+    const { data: members, error } = await tq
       .from("student_chat_members")
       .select(
         `
@@ -83,10 +84,11 @@ export async function POST(
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Check if user is admin/owner
-    const { data: membership } = await serviceSupabase
+    const { data: membership } = await tq
       .from("student_chat_members")
       .select("member_role")
       .eq("room_id", roomId)
@@ -101,7 +103,7 @@ export async function POST(
     }
 
     // Check room type - can't add to direct messages
-    const { data: room } = await serviceSupabase
+    const { data: room } = await tq
       .from("student_chat_rooms")
       .select("room_type")
       .eq("id", roomId)
@@ -125,7 +127,7 @@ export async function POST(
     }
 
     // Get existing members to avoid duplicates
-    const { data: existingMembers } = await serviceSupabase
+    const { data: existingMembers } = await tq
       .from("student_chat_members")
       .select("user_id")
       .eq("room_id", roomId);
@@ -149,7 +151,7 @@ export async function POST(
       member_role: "member",
     }));
 
-    const { data: addedMembers, error } = await serviceSupabase
+    const { data: addedMembers, error } = await tq
       .from("student_chat_members")
       .insert(membersToAdd)
       .select(
@@ -175,7 +177,7 @@ export async function POST(
       .map((m) => (m.user as any)?.name || "Unknown")
       .join(", ");
 
-    await serviceSupabase.from("student_chat_messages").insert([
+    await tq.from("student_chat_messages").insert([
       {
         room_id: roomId,
         sender_id: user.id,
@@ -214,7 +216,8 @@ export async function DELETE(
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // If no target user specified, user is leaving
     const userIdToRemove = targetUserId || user.id;
@@ -222,7 +225,7 @@ export async function DELETE(
 
     if (!isLeaving) {
       // Check if user has permission to remove others
-      const { data: membership } = await serviceSupabase
+      const { data: membership } = await tq
         .from("student_chat_members")
         .select("member_role")
         .eq("room_id", roomId)
@@ -237,7 +240,7 @@ export async function DELETE(
       }
 
       // Can't remove the owner
-      const { data: targetMembership } = await serviceSupabase
+      const { data: targetMembership } = await tq
         .from("student_chat_members")
         .select("member_role")
         .eq("room_id", roomId)
@@ -253,7 +256,7 @@ export async function DELETE(
     }
 
     // Remove the member
-    const { error } = await serviceSupabase
+    const { error } = await tq
       .from("student_chat_members")
       .delete()
       .eq("room_id", roomId)
@@ -268,7 +271,7 @@ export async function DELETE(
     }
 
     // Get user name for system message
-    const { data: removedUser } = await serviceSupabase
+    const { data: removedUser } = await tq
       .from("users")
       .select("name")
       .eq("id", userIdToRemove)
@@ -276,7 +279,7 @@ export async function DELETE(
 
     // Create system message
     const action = isLeaving ? "left" : "was removed from";
-    await serviceSupabase.from("student_chat_messages").insert([
+    await tq.from("student_chat_messages").insert([
       {
         room_id: roomId,
         sender_id: user.id,

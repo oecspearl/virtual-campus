@@ -25,10 +25,11 @@ export async function GET(
       );
     }
 
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Check if other user exists
-    const { data: otherUser, error: userError } = await serviceSupabase
+    const { data: otherUser, error: userError } = await tq
       .from("users")
       .select("id, name, email")
       .eq("id", otherUserId)
@@ -39,7 +40,7 @@ export async function GET(
     }
 
     // Check if user has blocked the other user or vice versa
-    const { data: blocked } = await serviceSupabase
+    const { data: blocked } = await tq
       .from("student_chat_blocked_users")
       .select("id")
       .or(
@@ -54,7 +55,7 @@ export async function GET(
     }
 
     // Look for existing direct message room
-    const { data: existingRooms } = await serviceSupabase
+    const { data: existingRooms } = await tq
       .from("student_chat_rooms")
       .select(
         `
@@ -81,7 +82,7 @@ export async function GET(
 
     if (existingRoom) {
       // Return existing room with details
-      const { data: roomDetails } = await serviceSupabase
+      const { data: roomDetails } = await tq
         .from("student_chat_rooms")
         .select("*")
         .eq("id", existingRoom.id)
@@ -98,7 +99,7 @@ export async function GET(
     }
 
     // Create new direct message room
-    const { data: newRoom, error: roomError } = await serviceSupabase
+    const { data: newRoom, error: roomError } = await tq
       .from("student_chat_rooms")
       .insert([
         {
@@ -118,7 +119,7 @@ export async function GET(
     }
 
     // Add both users as members
-    const { error: membersError } = await serviceSupabase
+    const { error: membersError } = await tq
       .from("student_chat_members")
       .insert([
         {
@@ -136,7 +137,7 @@ export async function GET(
     if (membersError) {
       console.error("Error adding DM members:", membersError);
       // Clean up the room
-      await serviceSupabase.from("student_chat_rooms").delete().eq("id", newRoom.id);
+      await tq.from("student_chat_rooms").delete().eq("id", newRoom.id);
       return NextResponse.json(
         { error: "Failed to create conversation" },
         { status: 500 }

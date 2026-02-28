@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Get blocked users
-    const { data: blockedUsers } = await serviceSupabase
+    const { data: blockedUsers } = await tq
       .from("student_chat_blocked_users")
       .select("blocked_id")
       .eq("blocker_id", user.id);
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     blockedIds.push(user.id); // Exclude self
 
     // Build search query
-    let usersQuery = serviceSupabase
+    let usersQuery = tq
       .from("users")
       .select("id, name, email, role")
       .not("id", "in", `(${blockedIds.join(",")})`)
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     // If filtering by course, get enrolled students and instructors
     if (courseId) {
       // Get students enrolled in the course
-      const { data: enrollments } = await serviceSupabase
+      const { data: enrollments } = await tq
         .from("enrollments")
         .select("student_id")
         .eq("course_id", courseId)
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       const enrolledIds = (enrollments || []).map((e) => e.student_id);
 
       // Get course instructor
-      const { data: course } = await serviceSupabase
+      const { data: course } = await tq
         .from("courses")
         .select("instructor_id")
         .eq("id", courseId)
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get additional instructors
-      const { data: courseInstructors } = await serviceSupabase
+      const { data: courseInstructors } = await tq
         .from("course_instructors")
         .select("instructor_id")
         .eq("course_id", courseId);

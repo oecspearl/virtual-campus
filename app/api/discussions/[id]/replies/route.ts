@@ -138,7 +138,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         if (otherReplies) {
           // Get unique participant IDs, excluding those already notified
           const uniqueParticipants = [...new Set(
-            otherReplies
+            (otherReplies as { author_id: string }[])
               .map(r => r.author_id)
               .filter(id => !notifiedUserIds.has(id))
           )];

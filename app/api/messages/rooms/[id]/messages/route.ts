@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { notifyRoomMembers } from "@/lib/notifications";
 
 // Maximum file size for attachments (50MB)
@@ -25,10 +26,11 @@ export async function GET(
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Check if user is a member
-    const { data: membership } = await serviceSupabase
+    const { data: membership } = await tq
       .from("student_chat_members")
       .select("id")
       .eq("room_id", roomId)
@@ -43,7 +45,7 @@ export async function GET(
     }
 
     // Get blocked users to filter messages
-    const { data: blockedUsers } = await serviceSupabase
+    const { data: blockedUsers } = await tq
       .from("student_chat_blocked_users")
       .select("blocked_id")
       .eq("blocker_id", user.id);
@@ -51,7 +53,7 @@ export async function GET(
     const blockedIds = (blockedUsers || []).map((b) => b.blocked_id);
 
     // Build messages query (without self-referential join for reply_to)
-    let query = serviceSupabase
+    let query = tq
       .from("student_chat_messages")
       .select(
         `
@@ -94,7 +96,7 @@ export async function GET(
 
     let replyMap: Record<string, any> = {};
     if (replyIds.length > 0) {
-      const { data: replies } = await serviceSupabase
+      const { data: replies } = await tq
         .from("student_chat_messages")
         .select("id, content, sender:users!student_chat_messages_sender_id_fkey(id, name)")
         .in("id", replyIds);
@@ -141,10 +143,11 @@ export async function POST(
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Check if user is a member
-    const { data: membership } = await serviceSupabase
+    const { data: membership } = await tq
       .from("student_chat_members")
       .select("id")
       .eq("room_id", roomId)
@@ -242,7 +245,7 @@ export async function POST(
     }
 
     // Create message
-    const { data: message, error: messageError } = await serviceSupabase
+    const { data: message, error: messageError } = await tq
       .from("student_chat_messages")
       .insert([
         {
@@ -276,7 +279,7 @@ export async function POST(
     // Fetch reply_to data separately if exists
     const messageWithReply = { ...message, reply_to: null as any };
     if (reply_to_id) {
-      const { data: replyData } = await serviceSupabase
+      const { data: replyData } = await tq
         .from("student_chat_messages")
         .select("id, content, sender:users!student_chat_messages_sender_id_fkey(id, name)")
         .eq("id", reply_to_id)
@@ -289,7 +292,7 @@ export async function POST(
 
     // Send notifications to other room members (async, don't block response)
     // Get room info for notification context
-    const { data: room } = await serviceSupabase
+    const { data: room } = await tq
       .from("student_chat_rooms")
       .select("name, room_type")
       .eq("id", roomId)

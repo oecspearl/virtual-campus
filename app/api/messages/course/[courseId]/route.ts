@@ -17,10 +17,11 @@ export async function GET(
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Verify course exists and user has access
-    const { data: course, error: courseError } = await serviceSupabase
+    const { data: course, error: courseError } = await tq
       .from("courses")
       .select("id, title, instructor_id")
       .eq("id", courseId)
@@ -33,7 +34,7 @@ export async function GET(
     // Check if user is enrolled or is the instructor
     const isInstructor = course.instructor_id === user.id;
 
-    const { data: enrollment } = await serviceSupabase
+    const { data: enrollment } = await tq
       .from("enrollments")
       .select("id")
       .eq("course_id", courseId)
@@ -42,7 +43,7 @@ export async function GET(
       .single();
 
     // Also check course_instructors table
-    const { data: courseInstructor } = await serviceSupabase
+    const { data: courseInstructor } = await tq
       .from("course_instructors")
       .select("id")
       .eq("course_id", courseId)
@@ -57,7 +58,7 @@ export async function GET(
     }
 
     // Look for existing course chat room
-    const { data: existingRoom } = await serviceSupabase
+    const { data: existingRoom } = await tq
       .from("student_chat_rooms")
       .select("*")
       .eq("course_id", courseId)
@@ -67,7 +68,7 @@ export async function GET(
 
     if (existingRoom) {
       // Check if user is already a member
-      const { data: membership } = await serviceSupabase
+      const { data: membership } = await tq
         .from("student_chat_members")
         .select("id")
         .eq("room_id", existingRoom.id)
@@ -76,7 +77,7 @@ export async function GET(
 
       // If not a member, add them
       if (!membership) {
-        await serviceSupabase.from("student_chat_members").insert([
+        await tq.from("student_chat_members").insert([
           {
             room_id: existingRoom.id,
             user_id: user.id,
@@ -86,7 +87,7 @@ export async function GET(
       }
 
       // Get member count
-      const { data: members } = await serviceSupabase
+      const { data: members } = await tq
         .from("student_chat_members")
         .select("id")
         .eq("room_id", existingRoom.id);
@@ -102,7 +103,7 @@ export async function GET(
     }
 
     // Create new course chat room
-    const { data: newRoom, error: roomError } = await serviceSupabase
+    const { data: newRoom, error: roomError } = await tq
       .from("student_chat_rooms")
       .insert([
         {
@@ -125,7 +126,7 @@ export async function GET(
     }
 
     // Add the instructor as owner
-    await serviceSupabase.from("student_chat_members").insert([
+    await tq.from("student_chat_members").insert([
       {
         room_id: newRoom.id,
         user_id: course.instructor_id,
@@ -134,7 +135,7 @@ export async function GET(
     ]);
 
     // Add all enrolled students
-    const { data: enrollments } = await serviceSupabase
+    const { data: enrollments } = await tq
       .from("enrollments")
       .select("student_id")
       .eq("course_id", courseId)
@@ -150,12 +151,12 @@ export async function GET(
         }));
 
       if (studentMembers.length > 0) {
-        await serviceSupabase.from("student_chat_members").insert(studentMembers);
+        await tq.from("student_chat_members").insert(studentMembers);
       }
     }
 
     // Add additional instructors
-    const { data: additionalInstructors } = await serviceSupabase
+    const { data: additionalInstructors } = await tq
       .from("course_instructors")
       .select("instructor_id")
       .eq("course_id", courseId);
@@ -170,7 +171,7 @@ export async function GET(
         }));
 
       if (instructorMembers.length > 0) {
-        await serviceSupabase
+        await tq
           .from("student_chat_members")
           .insert(instructorMembers);
       }

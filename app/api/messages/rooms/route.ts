@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Create membership map for quick lookup
-    const membershipMap = new Map(
-      memberships.map((m) => [m.room_id, m])
+    const membershipMap = new Map<string, { room_id: string; member_role: string; is_muted: boolean; unread_count: number; last_read_at: string | null }>(
+      memberships.map((m: any) => [m.room_id, m])
     );
 
     // Combine room data with members and user's membership info

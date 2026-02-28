@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user email for session creation
-    const { data: user } = await supabase
+    const { data: user } = await tq
       .from('users')
       .select('email')
       .eq('id', launch.user_id)

@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
         .select('learning_path_id, enrolled_at, completed_at, status, progress_percentage')
         .eq('student_id', user.id);
 
-      const enrollmentMap = new Map(
-        enrollments?.map(e => [e.learning_path_id, e]) || []
+      const enrollmentMap = new Map<string, { learning_path_id: string; enrolled_at: string; completed_at: string | null; status: string; progress_percentage: number }>(
+        enrollments?.map((e: any) => [e.learning_path_id, e]) || []
       );
 
       // Calculate progress for each path

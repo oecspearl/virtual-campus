@@ -84,8 +84,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           .eq('student_id', user.id)
           .in('course_id', courseIds);
 
-        const courseProgressMap = new Map(
-          enrolledCourses?.map(e => [e.course_id, e]) || []
+        const courseProgressMap = new Map<string, { course_id: string; progress: number; completed_at: string | null }>(
+          enrolledCourses?.map((e: any) => [e.course_id, e]) || []
         );
 
         // Add progress to each course

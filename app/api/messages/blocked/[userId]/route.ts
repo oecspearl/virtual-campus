@@ -17,10 +17,11 @@ export async function DELETE(
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Find and delete the block
-    const { error } = await serviceSupabase
+    const { error } = await tq
       .from("student_chat_blocked_users")
       .delete()
       .eq("blocker_id", user.id)

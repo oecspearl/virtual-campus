@@ -12,9 +12,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { user } = authResult;
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
-    const { data: blockedUsers, error } = await serviceSupabase
+    const { data: blockedUsers, error } = await tq
       .from("student_chat_blocked_users")
       .select(
         `
@@ -74,10 +75,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Check if user exists
-    const { data: targetUser, error: userError } = await serviceSupabase
+    const { data: targetUser, error: userError } = await tq
       .from("users")
       .select("id, name")
       .eq("id", user_id)
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if already blocked
-    const { data: existing } = await serviceSupabase
+    const { data: existing } = await tq
       .from("student_chat_blocked_users")
       .select("id")
       .eq("blocker_id", user.id)
@@ -103,7 +105,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Block the user
-    const { data: blocked, error: blockError } = await serviceSupabase
+    const { data: blocked, error: blockError } = await tq
       .from("student_chat_blocked_users")
       .insert([
         {

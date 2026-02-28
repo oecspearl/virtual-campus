@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/database-helpers";
 import { hasRole } from "@/lib/rbac";
+import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {

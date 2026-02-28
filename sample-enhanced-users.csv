@@ -1,0 +1,5 @@
+email,name,role,gender,password,course_ids,grade_level,subject_areas,learning_style,difficulty_preference,bio,parent_email
+john.doe@example.com,John Doe,student,male,MyPassword123,,Grade 10,"Math,Science",visual,intermediate,"Student interested in STEM",parent@example.com
+jane.smith@example.com,Jane Smith,student,female,,,Grade 9,"English,History",auditory,beginner,"Loves reading and writing",
+admin@school.com,Admin User,admin,other,AdminPass456,,,,"",advanced,"School administrator",
+instructor@school.com,Instructor Name,instructor,female,TeachPass789,,,"Math,Physics",kinesthetic,advanced,"Experienced math teacher",

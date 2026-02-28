@@ -1,0 +1,4 @@
+email,name,role,gender,password,bio,grade_level,subject_areas,learning_style,difficulty_preference
+john.doe@example.com,John Doe Updated,student,male,NewPassword123,"Updated biography for John",Grade 11,"Math,Physics",visual,advanced
+jane.smith@example.com,Jane Smith Updated,instructor,female,SecurePass456,"Experienced math teacher",,"Math,Science",auditory,intermediate
+alex.jones@example.com,Alex Jones,student,other,TempPass789,"Interested in computer science",Grade 10,"Computer Science,Math",kinesthetic,beginner

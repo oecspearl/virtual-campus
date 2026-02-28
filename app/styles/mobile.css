@@ -1,0 +1,175 @@
+/* Mobile-First Styles for OECS MyPD */
+
+/* Safe area insets for devices with notches/home indicators */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
+/* Touch-friendly button sizes (minimum 44x44px) */
+@media (max-width: 1023px) {
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"],
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Optimized tap targets */
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Gesture-friendly spacing */
+  .mobile-spacing {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  /* Mobile-optimized cards */
+  .mobile-card {
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  /* Bottom navigation safe area */
+  .bottom-nav-container {
+    padding-bottom: calc(16px + var(--safe-area-inset-bottom));
+  }
+
+  /* Mobile header safe area */
+  .mobile-header-container {
+    padding-top: calc(16px + var(--safe-area-inset-top));
+  }
+
+  /* Prevent text selection on buttons during tap */
+  button,
+  a[role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  /* Optimize scrolling */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mobile-optimized form inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Mobile-optimized tables */
+  table {
+    font-size: 14px;
+  }
+
+  /* Hide scrollbars on mobile for cleaner look */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Swipe gesture indicators */
+  .swipeable {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Pull-to-refresh indicator */
+  .pull-to-refresh {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    pointer-events: none;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 1023px) and (orientation: landscape) {
+  .mobile-header-container {
+    padding-top: calc(8px + var(--safe-area-inset-top));
+  }
+
+  .bottom-nav-container {
+    padding-bottom: calc(8px + var(--safe-area-inset-bottom));
+  }
+}
+
+/* Small screens (phones) */
+@media (max-width: 640px) {
+  .mobile-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .mobile-spacing {
+    padding: 12px;
+    gap: 12px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 375px) {
+  .mobile-card {
+    padding: 8px;
+  }
+
+  .mobile-spacing {
+    padding: 8px;
+    gap: 8px;
+  }
+}
+
+/* Safe area utility classes */
+.safe-area-top {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: var(--safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: var(--safe-area-inset-right);
+}
+
+.h-safe-area-inset-bottom {
+  height: var(--safe-area-inset-bottom);
+}
+
+.h-safe-area-inset-top {
+  height: var(--safe-area-inset-top);
+}
+
+

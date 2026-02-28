@@ -1,0 +1,289 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface Feature {
+  icon: string;
+  title: string;
+  description: string;
+  color: string;
+}
+
+interface Testimonial {
+  quote: string;
+  author: string;
+  role: string;
+  location: string;
+  avatar: string;
+  rating: number;
+}
+
+interface FooterLink {
+  label: string;
+  url: string;
+  enabled: boolean;
+}
+
+interface SocialLink {
+  platform: string;
+  url: string;
+  enabled: boolean;
+}
+
+interface BrandingSettings {
+  site_name?: { value: string };
+  site_short_name?: { value: string };
+  logo_url?: { value: string };
+  logo_header_url?: { value: string };
+  homepage_header_background?: { value: string };
+  homepage_hero_title?: { value: string };
+  homepage_hero_subtitle?: { value: string };
+  homepage_hero_description?: { value: string };
+  homepage_hero_cta_primary_text?: { value: string };
+  homepage_hero_cta_secondary_text?: { value: string };
+  homepage_hero_stat_students?: { value: string };
+  homepage_hero_stat_educators?: { value: string };
+  homepage_hero_stat_countries?: { value: string };
+  homepage_features_badge?: { value: string };
+  homepage_features_title?: { value: string };
+  homepage_features_title_highlight?: { value: string };
+  homepage_features_description?: { value: string };
+  homepage_features?: { value: string };
+  homepage_courses_badge?: { value: string };
+  homepage_courses_title?: { value: string };
+  homepage_courses_title_highlight?: { value: string };
+  homepage_courses_description?: { value: string };
+  homepage_courses_cta_text?: { value: string };
+  homepage_testimonials_badge?: { value: string };
+  homepage_testimonials_title?: { value: string };
+  homepage_testimonials_title_highlight?: { value: string };
+  homepage_testimonials_description?: { value: string };
+  homepage_testimonials?: { value: string };
+  homepage_cta_title?: { value: string };
+  homepage_cta_title_highlight?: { value: string };
+  homepage_cta_description?: { value: string };
+  homepage_cta_primary_text?: { value: string };
+  homepage_cta_secondary_text?: { value: string };
+  homepage_hero_enabled?: { value: string };
+  homepage_features_enabled?: { value: string };
+  homepage_courses_enabled?: { value: string };
+  homepage_testimonials_enabled?: { value: string };
+  homepage_cta_enabled?: { value: string };
+  logo_header_enabled?: { value: string };
+  logo_size?: { value: string };
+  color_theme?: { value: string };
+  color_themes?: { value: string };
+  theme_primary_color?: { value: string };
+  theme_secondary_color?: { value: string };
+  footer_brand_title?: { value: string };
+  footer_brand_subtitle?: { value: string };
+  footer_brand_description?: { value: string };
+  footer_copyright?: { value: string };
+  footer_newsletter_title?: { value: string };
+  footer_newsletter_description?: { value: string };
+  footer_newsletter_button_text?: { value: string };
+  footer_member_states_title?: { value: string };
+  footer_member_states_subtitle?: { value: string };
+  footer_social_links?: { value: string };
+  footer_platforms?: { value: string };
+  footer_resources?: { value: string };
+  footer_bottom_links?: { value: string };
+  footer_member_states?: { value: string };
+  footer_brand_enabled?: { value: string };
+  footer_platforms_enabled?: { value: string };
+  footer_resources_enabled?: { value: string };
+  footer_newsletter_enabled?: { value: string };
+  footer_member_states_enabled?: { value: string };
+  homepage_featured_course_ids?: { value: string };
+}
+
+interface ColorTheme {
+  name: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  description: string;
+}
+
+// Cache for branding settings
+let brandingCache: { settings: BrandingSettings; timestamp: number } | null = null;
+const CACHE_DURATION = 300000; // 5 minutes
+
+export function useBranding() {
+  const [settings, setSettings] = useState<BrandingSettings>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBranding = async () => {
+      // Check cache first
+      const now = Date.now();
+      if (brandingCache && (now - brandingCache.timestamp) < CACHE_DURATION) {
+        setSettings(brandingCache.settings);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/settings/branding', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          const fetchedSettings = data.settings || {};
+          setSettings(fetchedSettings);
+          // Update cache
+          brandingCache = { settings: fetchedSettings, timestamp: now };
+        } else {
+          // Use defaults on error
+          setSettings({
+            site_name: { value: 'OECS MyPD' },
+            site_short_name: { value: 'MyPD' },
+            logo_url: { value: '/mypdlogo.png' },
+            logo_header_url: { value: '/Logo.png' },
+            homepage_header_background: { value: '/oecsmypd.png' }
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching branding:', error);
+        // Use defaults on error
+        setSettings({
+          site_name: { value: 'OECS MyPD' },
+          site_short_name: { value: 'MyPD' },
+          logo_url: { value: '/mypdlogo.png' },
+          logo_header_url: { value: '/Logo.png' },
+          homepage_header_background: { value: '/oecsmypd.png' }
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranding();
+
+    // Listen for cache invalidation events
+    const handleCacheInvalidation = () => {
+      brandingCache = null;
+      fetchBranding();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('branding-settings-updated', handleCacheInvalidation);
+      return () => {
+        window.removeEventListener('branding-settings-updated', handleCacheInvalidation);
+      };
+    }
+  }, []);
+
+  // Helper function to get a setting value with fallback
+  const getSetting = (key: keyof BrandingSettings, fallback: string = ''): string => {
+    return settings[key]?.value || fallback;
+  };
+
+  // Helper function to get a boolean setting value with fallback
+  const getBooleanSetting = (key: keyof BrandingSettings, fallback: boolean = true): boolean => {
+    const value = settings[key]?.value;
+    if (!value) return fallback;
+    return value.toLowerCase() === 'true';
+  };
+
+  // Helper function to parse JSON settings
+  const getJsonSetting = <T>(key: keyof BrandingSettings, fallback: T): T => {
+    const value = settings[key]?.value;
+    if (!value) return fallback;
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
+  return {
+    settings,
+    loading,
+    siteName: getSetting('site_name', 'OECS MyPD'),
+    siteShortName: getSetting('site_short_name', 'MyPD'),
+    logoUrl: getSetting('logo_url', '/mypdlogo.png'),
+    logoHeaderUrl: getSetting('logo_header_url', '/Logo.png'),
+    homepageHeaderBackground: getSetting('homepage_header_background', '/oecsmypd.png'),
+    homepageHeroTitle: getSetting('homepage_hero_title', 'The OECS Professional Development Platform'),
+    homepageHeroSubtitle: getSetting('homepage_hero_subtitle', 'Trusted by OECS Professionals'),
+    homepageHeroDescription: getSetting('homepage_hero_description', 'Join the Caribbean\'s premier digital learning platform. Access world-class courses, connect with expert instructors, and advance your career with our comprehensive educational ecosystem.'),
+    homepageHeroCtaPrimaryText: getSetting('homepage_hero_cta_primary_text', 'Start Learning Free'),
+    homepageHeroCtaSecondaryText: getSetting('homepage_hero_cta_secondary_text', 'Explore Courses'),
+    homepageHeroStatStudents: getSetting('homepage_hero_stat_students', '60K+'),
+    homepageHeroStatEducators: getSetting('homepage_hero_stat_educators', '4,000+'),
+    homepageHeroStatCountries: getSetting('homepage_hero_stat_countries', '15'),
+    homepageFeaturesBadge: getSetting('homepage_features_badge', 'Why Choose LearnBoard?'),
+    homepageFeaturesTitle: getSetting('homepage_features_title', 'Everything You Need to'),
+    homepageFeaturesTitleHighlight: getSetting('homepage_features_title_highlight', 'Succeed in Learning'),
+    homepageFeaturesDescription: getSetting('homepage_features_description', 'Our comprehensive platform provides all the tools and resources you need for effective online learning, teaching, and collaboration across the Caribbean region.'),
+    homepageFeatures: getJsonSetting<Feature[]>('homepage_features', []),
+    homepageCoursesBadge: getSetting('homepage_courses_badge', 'Featured Courses'),
+    homepageCoursesTitle: getSetting('homepage_courses_title', 'Discover Our'),
+    homepageCoursesTitleHighlight: getSetting('homepage_courses_title_highlight', 'Most Popular Courses'),
+    homepageCoursesDescription: getSetting('homepage_courses_description', 'Hand-picked courses designed specifically for Caribbean students and professionals, covering everything from academic subjects to professional development.'),
+    homepageCoursesCtaText: getSetting('homepage_courses_cta_text', 'View All Courses'),
+    homepageTestimonialsBadge: getSetting('homepage_testimonials_badge', 'What Our Community Says'),
+    homepageTestimonialsTitle: getSetting('homepage_testimonials_title', 'Trusted by'),
+    homepageTestimonialsTitleHighlight: getSetting('homepage_testimonials_title_highlight', 'Thousands of Learners'),
+    homepageTestimonialsDescription: getSetting('homepage_testimonials_description', 'Hear from students, instructors, and administrators across the Caribbean region who are transforming education with LearnBoard.'),
+    homepageTestimonials: getJsonSetting<Testimonial[]>('homepage_testimonials', []),
+    homepageCtaTitle: getSetting('homepage_cta_title', 'Ready to Transform Your'),
+    homepageCtaTitleHighlight: getSetting('homepage_cta_title_highlight', 'Learning Experience?'),
+    homepageCtaDescription: getSetting('homepage_cta_description', 'Join thousands of Caribbean students and professionals who are already advancing their careers with LearnBoard. Start your journey today!'),
+    homepageCtaPrimaryText: getSetting('homepage_cta_primary_text', 'Start Learning Free'),
+    homepageCtaSecondaryText: getSetting('homepage_cta_secondary_text', 'Browse Courses'),
+    homepageHeroEnabled: getBooleanSetting('homepage_hero_enabled', true),
+    homepageFeaturesEnabled: getBooleanSetting('homepage_features_enabled', true),
+    homepageCoursesEnabled: getBooleanSetting('homepage_courses_enabled', true),
+    homepageTestimonialsEnabled: getBooleanSetting('homepage_testimonials_enabled', true),
+    homepageCtaEnabled: getBooleanSetting('homepage_cta_enabled', true),
+    logoHeaderEnabled: getBooleanSetting('logo_header_enabled', true),
+    logoSize: getSetting('logo_size', '48'),
+    colorTheme: getSetting('color_theme', 'ocean-blue'),
+    colorThemes: getJsonSetting<Record<string, ColorTheme>>('color_themes', {}),
+    themePrimaryColor: getSetting('theme_primary_color', '#3B82F6'),
+    themeSecondaryColor: getSetting('theme_secondary_color', '#6366F1'),
+    // Get current theme colors based on selected theme
+    getThemeColors: () => {
+      const themeKey = getSetting('color_theme', 'ocean-blue');
+      const themes = getJsonSetting<Record<string, ColorTheme>>('color_themes', {});
+      const currentTheme = themes[themeKey] || themes['ocean-blue'] || {
+        name: 'Ocean Blue',
+        primary: '#3B82F6',
+        secondary: '#6366F1',
+        accent: '#60A5FA',
+        description: 'Professional blue theme'
+      };
+      return {
+        primary: currentTheme.primary,
+        secondary: currentTheme.secondary,
+        accent: currentTheme.accent,
+        name: currentTheme.name
+      };
+    },
+    // Footer settings
+    footerBrandTitle: getSetting('footer_brand_title', 'OECS Digital Learning'),
+    footerBrandSubtitle: getSetting('footer_brand_subtitle', 'Ecosystem'),
+    footerBrandDescription: getSetting('footer_brand_description', 'Transforming Caribbean education through digital innovation and regional collaboration.'),
+    footerCopyright: getSetting('footer_copyright', '© 2025 OECS Commission. All rights reserved.'),
+    footerNewsletterTitle: getSetting('footer_newsletter_title', 'Stay Updated'),
+    footerNewsletterDescription: getSetting('footer_newsletter_description', 'Subscribe to our newsletter for the latest updates, insights, and educational resources.'),
+    footerNewsletterButtonText: getSetting('footer_newsletter_button_text', 'Subscribe'),
+    footerMemberStatesTitle: getSetting('footer_member_states_title', 'OECS Member States'),
+    footerMemberStatesSubtitle: getSetting('footer_member_states_subtitle', 'United in digital education transformation'),
+    footerSocialLinks: getJsonSetting<SocialLink[]>('footer_social_links', []),
+    footerPlatforms: getJsonSetting<FooterLink[]>('footer_platforms', []),
+    footerResources: getJsonSetting<FooterLink[]>('footer_resources', []),
+    footerBottomLinks: getJsonSetting<FooterLink[]>('footer_bottom_links', []),
+    footerMemberStates: getJsonSetting<string[]>('footer_member_states', []),
+    footerBrandEnabled: getBooleanSetting('footer_brand_enabled', true),
+    footerPlatformsEnabled: getBooleanSetting('footer_platforms_enabled', true),
+    footerResourcesEnabled: getBooleanSetting('footer_resources_enabled', true),
+    footerNewsletterEnabled: getBooleanSetting('footer_newsletter_enabled', true),
+    footerMemberStatesEnabled: getBooleanSetting('footer_member_states_enabled', true),
+    homepageFeaturedCourseIds: getJsonSetting<string[]>('homepage_featured_course_ids', []),
+    invalidateCache: () => {
+      brandingCache = null;
+    }
+  };
+}
+

@@ -1,0 +1,559 @@
+/* OECS LearnBoard Custom Styles */
+
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Dynamic Theme Colors - Updated by ThemeProvider */
+  --theme-primary: #3B82F6;
+  --theme-secondary: #6366F1;
+  --theme-accent: #60A5FA;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply mx-auto w-full px-6 sm:px-8 lg:px-12 xl:px-16 2xl:px-20;
+    max-width: 1600px;
+  }
+
+  /* Extended max-width class for wider layouts */
+  .max-w-8xl {
+    max-width: 1600px;
+  }
+  
+  /* Ensure proper list styling in prose content */
+  .prose ul {
+    @apply list-disc list-inside space-y-2;
+  }
+  
+  .prose ol {
+    @apply list-decimal list-inside space-y-2;
+  }
+  
+  .prose li {
+    @apply text-gray-700 leading-relaxed;
+  }
+  
+  .prose ul ul,
+  .prose ol ol,
+  .prose ul ol,
+  .prose ol ul {
+    @apply mt-2 ml-4;
+  }
+  
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    @apply text-gray-900 font-semibold;
+  }
+  
+  .prose p {
+    @apply text-gray-700 leading-relaxed;
+  }
+  
+  .prose strong {
+    @apply font-semibold text-gray-900;
+  }
+  
+  .prose em {
+    @apply italic;
+  }
+}
+
+/* OECS Brand Color Variables - Exact Logo Colors */
+:root {
+  /* Primary OECS Logo Colors */
+  --oecs-lime-green: #76C74C;     /* Primary lime green from logo */
+  --oecs-lime-green-dark: #66B03A; /* Darker lime green for hover states */
+  --oecs-orange-yellow: #FBC02D;  /* Central sun/starburst orange-yellow */
+  --oecs-orange-yellow-dark: #F9A825; /* Darker orange-yellow for hover */
+  --oecs-navy-blue: #1A237E;      /* Navy blue orbital bands */
+  --oecs-navy-blue-light: #283593; /* Lighter navy blue */
+  --oecs-black: #000000;           /* Black triangular elements */
+  --oecs-white: #FFFFFF;           /* White outline */
+  
+  /* Derived Colors for UI */
+  --oecs-primary: var(--oecs-lime-green);        /* Primary brand color */
+  --oecs-secondary: var(--oecs-navy-blue);       /* Secondary color */
+  --oecs-accent: var(--oecs-orange-yellow);      /* Accent color */
+  --oecs-accent-dark: var(--oecs-orange-yellow-dark);
+  --oecs-success: var(--oecs-lime-green);        /* Success state */
+  --oecs-warning: var(--oecs-orange-yellow);     /* Warning state */
+  --oecs-info: var(--oecs-navy-blue);            /* Info state */
+  
+  /* Neutral Colors */
+  --oecs-light: #f8fff8;          /* Very light green tint */
+  --oecs-light-green: #f1f8e9;    /* Light green background */
+  --oecs-text: #1a1a1a;           /* Dark text */
+  --oecs-text-light: #4a4a4a;     /* Medium text */
+  --oecs-text-muted: #757575;     /* Muted text */
+  --oecs-border: #e8f5e8;         /* Light green border */
+  --oecs-shadow: rgba(118, 199, 76, 0.15);
+  --oecs-shadow-lg: rgba(118, 199, 76, 0.25);
+}
+
+/* Typography */
+.font-display {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.font-body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* OECS Navigation - Lime Green Theme */
+.nav-dark {
+  background: linear-gradient(135deg, var(--oecs-lime-green) 0%, var(--oecs-lime-green-dark) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px var(--oecs-shadow);
+}
+
+.nav-dark .nav-link {
+  color: var(--oecs-white);
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.nav-dark .nav-link:hover {
+  color: var(--oecs-accent);
+}
+
+.nav-dark .nav-brand {
+  color: var(--oecs-white);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+/* OECS Hero Section - Logo Color Theme */
+.hero-section {
+  background: linear-gradient(135deg, var(--oecs-lime-green) 0%, var(--oecs-navy-blue) 50%, var(--oecs-orange-yellow) 100%);
+  min-height: 80vh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.hero-bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/lboard.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.1;
+  z-index: 1;
+}
+
+/* OECS Buttons - Logo Color Theme */
+.btn-primary {
+  background: linear-gradient(135deg, var(--oecs-orange-yellow) 0%, var(--oecs-orange-yellow-dark) 100%);
+  color: var(--oecs-black);
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 4px var(--oecs-shadow);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--oecs-orange-yellow-dark) 0%, #F57F17 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(251, 192, 45, 0.4);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--oecs-orange-yellow);
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 2px solid var(--oecs-orange-yellow);
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: var(--oecs-orange-yellow);
+  color: var(--oecs-black);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(251, 192, 45, 0.3);
+}
+
+/* OECS Cards */
+.card {
+  background: var(--oecs-white);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 6px var(--oecs-shadow);
+  border: 1px solid var(--oecs-border);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 25px var(--oecs-shadow-lg);
+  border-color: var(--oecs-primary);
+}
+
+/* Grid Layout */
+.grid-section {
+  display: grid;
+  gap: 2rem;
+  margin: 4rem 0;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.grid-4 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Typography Scale */
+.text-hero {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--oecs-white);
+}
+
+.text-section-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--oecs-text);
+  margin-bottom: 1rem;
+}
+
+.text-card-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--oecs-text);
+  margin-bottom: 0.5rem;
+}
+
+.text-body {
+  font-size: 1.125rem;
+  color: var(--oecs-text-light);
+  line-height: 1.6;
+}
+
+/* Spacing */
+.section-padding {
+  padding: 5rem 0;
+}
+
+
+/* OECS Features Section - Light Green Theme */
+.features-section {
+  background: var(--oecs-light-green);
+  padding: 5rem 0;
+}
+
+.feature-card {
+  text-align: center;
+  padding: 2rem;
+  background: var(--oecs-white);
+  border-radius: 1rem;
+  border: 1px solid var(--oecs-border);
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px var(--oecs-shadow-lg);
+  border-color: var(--oecs-primary);
+}
+
+.feature-icon {
+  width: 4rem;
+  height: 4rem;
+  background: linear-gradient(135deg, var(--oecs-navy-blue) 0%, var(--oecs-navy-blue-light) 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: var(--oecs-white);
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px var(--oecs-shadow);
+}
+
+/* OECS Course Cards */
+.course-card {
+  background: var(--oecs-white);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px var(--oecs-shadow);
+  border: 1px solid var(--oecs-border);
+  transition: all 0.3s ease;
+}
+
+.course-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 25px var(--oecs-shadow-lg);
+  border-color: var(--oecs-primary);
+}
+
+.course-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.course-content {
+  padding: 1.5rem;
+}
+
+/* OECS Testimonials - Navy Blue Theme */
+.testimonials-section {
+  background: linear-gradient(135deg, var(--oecs-navy-blue) 0%, var(--oecs-navy-blue-light) 100%);
+  color: var(--oecs-white);
+  padding: 5rem 0;
+}
+
+.testimonial-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 2rem;
+  border-radius: 1rem;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.testimonial-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .text-hero {
+    font-size: 2.5rem;
+  }
+  
+  .text-section-title {
+    font-size: 2rem;
+  }
+  
+  .section-padding {
+    padding: 3rem 0;
+  }
+  
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* OECS Brand Color Classes - Exact Logo Colors */
+.oecs-lime-green { color: var(--oecs-lime-green); }
+.oecs-orange-yellow { color: var(--oecs-orange-yellow); }
+.oecs-navy-blue { color: var(--oecs-navy-blue); }
+.oecs-black { color: var(--oecs-black); }
+.oecs-white { color: var(--oecs-white); }
+
+.bg-oecs-lime-green { background-color: var(--oecs-lime-green); }
+.bg-oecs-orange-yellow { background-color: var(--oecs-orange-yellow); }
+.bg-oecs-navy-blue { background-color: var(--oecs-navy-blue); }
+.bg-oecs-black { background-color: var(--oecs-black); }
+.bg-oecs-white { background-color: var(--oecs-white); }
+
+.bg-oecs-gradient {
+  background: linear-gradient(135deg, var(--oecs-lime-green) 0%, var(--oecs-navy-blue) 100%);
+}
+
+.bg-oecs-gradient-accent {
+  background: linear-gradient(135deg, var(--oecs-orange-yellow) 0%, var(--oecs-orange-yellow-dark) 100%);
+}
+
+.bg-oecs-gradient-logo {
+  background: linear-gradient(135deg, var(--oecs-lime-green) 0%, var(--oecs-navy-blue) 50%, var(--oecs-orange-yellow) 100%);
+}
+
+/* Additional OECS Components */
+.oecs-badge {
+  background: var(--oecs-orange-yellow);
+  color: var(--oecs-black);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.oecs-highlight {
+  background: linear-gradient(120deg, var(--oecs-light-green) 0%, transparent 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid var(--oecs-lime-green);
+}
+
+
+
+

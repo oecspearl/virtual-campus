@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Quiz 317c486e-3ece-42fe-a8ff-c9f539b1a683</title>
+</head>
+<body>
+    <h1>Test Quiz Attempt Creation</h1>
+    <button onclick="testQuizAttempt()">Test Quiz Attempt</button>
+    <div id="result"></div>
+
+    <script>
+        async function testQuizAttempt() {
+            const quizId = '317c486e-3ece-42fe-a8ff-c9f539b1a683';
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testing quiz attempt creation for:', quizId);
+                
+                const response = await fetch(`/api/quizzes/${quizId}/attempts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<p style="color: green;">Success! Attempt ID: ${data.id}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: red;">Error ${response.status}: ${data.error}</p>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `<p style="color: red;">Network Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

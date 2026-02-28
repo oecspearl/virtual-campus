@@ -1,0 +1,130 @@
+import { createServiceSupabaseClient } from './supabase-server';
+
+/**
+ * Creates a tenant-scoped query builder that automatically applies
+ * tenant_id filtering on all operations. This is the primary mechanism
+ * for tenant isolation since most API routes use the service client
+ * which bypasses RLS policies.
+ *
+ * Usage in API routes:
+ *   const tenantId = getTenantIdFromRequest(request);
+ *   const tq = createTenantQuery(tenantId);
+ *   const { data } = await tq.from('courses').select('*');
+ *   // Automatically filtered to tenant
+ */
+export function createTenantQuery(tenantId: string) {
+  if (!tenantId) {
+    throw new Error('tenant_id is required for tenant-scoped queries');
+  }
+
+  const serviceSupabase = createServiceSupabaseClient();
+
+  return {
+    /**
+     * Returns a tenant-filtered query builder for the given table.
+     * All select/insert/update/delete/upsert operations are automatically
+     * scoped to the tenant.
+     */
+    from(table: string) {
+      return new TenantFilteredQuery(serviceSupabase, table, tenantId);
+    },
+
+    /**
+     * Raw service client for operations that don't need tenant scoping
+     * (e.g., auth.admin.createUser, cross-tenant lookups by super_admin).
+     */
+    raw: serviceSupabase,
+
+    /** The resolved tenant ID */
+    tenantId,
+  };
+}
+
+class TenantFilteredQuery {
+  private supabase: any;
+  private table: string;
+  private tenantId: string;
+
+  constructor(supabase: any, table: string, tenantId: string) {
+    this.supabase = supabase;
+    this.table = table;
+    this.tenantId = tenantId;
+  }
+
+  /**
+   * SELECT with automatic tenant_id filter.
+   * Returns a Supabase query builder with .eq('tenant_id', tenantId) applied.
+   */
+  select(columns: string = '*', options?: { count?: 'exact' | 'planned' | 'estimated'; head?: boolean }) {
+    return this.supabase.from(this.table).select(columns, options).eq('tenant_id', this.tenantId);
+  }
+
+  /**
+   * INSERT with automatic tenant_id injection into each row.
+   */
+  insert(values: Record<string, any> | Record<string, any>[]) {
+    const rows = Array.isArray(values) ? values : [values];
+    const withTenant = rows.map(row => ({ ...row, tenant_id: this.tenantId }));
+    return this.supabase.from(this.table).insert(withTenant.length === 1 ? withTenant[0] : withTenant);
+  }
+
+  /**
+   * UPDATE with automatic tenant_id filter.
+   * Returns a query builder — you still chain .eq(), .match(), etc.
+   */
+  update(values: Record<string, any>) {
+    return this.supabase.from(this.table).update(values).eq('tenant_id', this.tenantId);
+  }
+
+  /**
+   * DELETE with automatic tenant_id filter.
+   * Returns a query builder — chain .eq() to specify which rows.
+   */
+  delete() {
+    return this.supabase.from(this.table).delete().eq('tenant_id', this.tenantId);
+  }
+
+  /**
+   * UPSERT with automatic tenant_id injection into each row.
+   */
+  upsert(values: Record<string, any> | Record<string, any>[], options?: { onConflict?: string; ignoreDuplicates?: boolean }) {
+    const rows = Array.isArray(values) ? values : [values];
+    const withTenant = rows.map(row => ({ ...row, tenant_id: this.tenantId }));
+    return this.supabase.from(this.table).upsert(
+      withTenant.length === 1 ? withTenant[0] : withTenant,
+      options
+    );
+  }
+}
+
+/**
+ * Extracts the tenant_id from request headers (set by middleware).
+ * Supports x-tenant-override header for super_admin users to switch tenant context.
+ * Throws if the header is missing — this prevents accidental cross-tenant queries.
+ */
+export function getTenantIdFromRequest(request: Request): string {
+  // Check for super_admin tenant override
+  const override = request.headers.get('x-tenant-override');
+  if (override) {
+    // Only super_admin can use the override — verified by checking x-user-role header
+    const userRole = request.headers.get('x-user-role');
+    if (userRole === 'super_admin') {
+      return override;
+    }
+    // Silently ignore override for non-super_admin users
+  }
+
+  const tenantId = request.headers.get('x-tenant-id');
+  if (!tenantId) {
+    throw new Error('Missing x-tenant-id header. Tenant resolution failed in middleware.');
+  }
+  return tenantId;
+}
+
+/**
+ * Non-throwing version that returns null if header is missing.
+ * Useful for public endpoints where tenant context is optional.
+ */
+export function getTenantIdFromRequestOptional(request: Request): string | null {
+  return request.headers.get('x-tenant-id');
+}

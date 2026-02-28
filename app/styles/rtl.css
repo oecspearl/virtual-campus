@@ -1,0 +1,361 @@
+/* RTL (Right-to-Left) Language Support
+ * Applied when html[dir="rtl"]
+ * Supports Arabic, Hebrew, Persian, Urdu, and other RTL languages
+ */
+
+/* ============================================================================
+ * DIRECTIONAL OVERRIDES
+ * ============================================================================ */
+
+[dir="rtl"] {
+  /* Text alignment */
+  text-align: right;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+/* ============================================================================
+ * MARGIN FLIPPING
+ * ============================================================================ */
+
+/* Margin left -> right */
+[dir="rtl"] .ml-1 { margin-left: 0; margin-right: 0.25rem; }
+[dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
+[dir="rtl"] .ml-3 { margin-left: 0; margin-right: 0.75rem; }
+[dir="rtl"] .ml-4 { margin-left: 0; margin-right: 1rem; }
+[dir="rtl"] .ml-5 { margin-left: 0; margin-right: 1.25rem; }
+[dir="rtl"] .ml-6 { margin-left: 0; margin-right: 1.5rem; }
+[dir="rtl"] .ml-8 { margin-left: 0; margin-right: 2rem; }
+[dir="rtl"] .ml-auto { margin-left: 0; margin-right: auto; }
+
+/* Margin right -> left */
+[dir="rtl"] .mr-1 { margin-right: 0; margin-left: 0.25rem; }
+[dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
+[dir="rtl"] .mr-3 { margin-right: 0; margin-left: 0.75rem; }
+[dir="rtl"] .mr-4 { margin-right: 0; margin-left: 1rem; }
+[dir="rtl"] .mr-5 { margin-right: 0; margin-left: 1.25rem; }
+[dir="rtl"] .mr-6 { margin-right: 0; margin-left: 1.5rem; }
+[dir="rtl"] .mr-8 { margin-right: 0; margin-left: 2rem; }
+[dir="rtl"] .mr-auto { margin-right: 0; margin-left: auto; }
+
+/* ============================================================================
+ * PADDING FLIPPING
+ * ============================================================================ */
+
+/* Padding left -> right */
+[dir="rtl"] .pl-1 { padding-left: 0; padding-right: 0.25rem; }
+[dir="rtl"] .pl-2 { padding-left: 0; padding-right: 0.5rem; }
+[dir="rtl"] .pl-3 { padding-left: 0; padding-right: 0.75rem; }
+[dir="rtl"] .pl-4 { padding-left: 0; padding-right: 1rem; }
+[dir="rtl"] .pl-5 { padding-left: 0; padding-right: 1.25rem; }
+[dir="rtl"] .pl-6 { padding-left: 0; padding-right: 1.5rem; }
+[dir="rtl"] .pl-8 { padding-left: 0; padding-right: 2rem; }
+
+/* Padding right -> left */
+[dir="rtl"] .pr-1 { padding-right: 0; padding-left: 0.25rem; }
+[dir="rtl"] .pr-2 { padding-right: 0; padding-left: 0.5rem; }
+[dir="rtl"] .pr-3 { padding-right: 0; padding-left: 0.75rem; }
+[dir="rtl"] .pr-4 { padding-right: 0; padding-left: 1rem; }
+[dir="rtl"] .pr-5 { padding-right: 0; padding-left: 1.25rem; }
+[dir="rtl"] .pr-6 { padding-right: 0; padding-left: 1.5rem; }
+[dir="rtl"] .pr-8 { padding-right: 0; padding-left: 2rem; }
+
+/* ============================================================================
+ * FLEXBOX DIRECTION
+ * ============================================================================ */
+
+[dir="rtl"] .flex-row {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .flex-row-reverse {
+  flex-direction: row;
+}
+
+/* Keep natural flow for explicit RTL classes */
+[dir="rtl"] .rtl\:flex-row {
+  flex-direction: row;
+}
+
+[dir="rtl"] .rtl\:flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+/* ============================================================================
+ * POSITIONING
+ * ============================================================================ */
+
+/* Left -> Right */
+[dir="rtl"] .left-0 { left: auto; right: 0; }
+[dir="rtl"] .left-1 { left: auto; right: 0.25rem; }
+[dir="rtl"] .left-2 { left: auto; right: 0.5rem; }
+[dir="rtl"] .left-4 { left: auto; right: 1rem; }
+[dir="rtl"] .left-auto { left: auto; right: auto; }
+
+/* Right -> Left */
+[dir="rtl"] .right-0 { right: auto; left: 0; }
+[dir="rtl"] .right-1 { right: auto; left: 0.25rem; }
+[dir="rtl"] .right-2 { right: auto; left: 0.5rem; }
+[dir="rtl"] .right-4 { right: auto; left: 1rem; }
+[dir="rtl"] .right-auto { right: auto; left: auto; }
+
+/* ============================================================================
+ * BORDERS
+ * ============================================================================ */
+
+/* Border left -> right */
+[dir="rtl"] .border-l { border-left: 0; border-right-width: 1px; }
+[dir="rtl"] .border-l-2 { border-left: 0; border-right-width: 2px; }
+[dir="rtl"] .border-l-4 { border-left: 0; border-right-width: 4px; }
+
+/* Border right -> left */
+[dir="rtl"] .border-r { border-right: 0; border-left-width: 1px; }
+[dir="rtl"] .border-r-2 { border-right: 0; border-left-width: 2px; }
+[dir="rtl"] .border-r-4 { border-right: 0; border-left-width: 4px; }
+
+/* Rounded corners */
+[dir="rtl"] .rounded-l { border-radius: 0 0.25rem 0.25rem 0; }
+[dir="rtl"] .rounded-r { border-radius: 0.25rem 0 0 0.25rem; }
+[dir="rtl"] .rounded-l-lg { border-radius: 0 0.5rem 0.5rem 0; }
+[dir="rtl"] .rounded-r-lg { border-radius: 0.5rem 0 0 0.5rem; }
+
+/* ============================================================================
+ * ICONS AND TRANSFORMS
+ * ============================================================================ */
+
+/* Flip directional icons (arrows, chevrons, etc.) */
+[dir="rtl"] .icon-directional,
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Common icon classes that should be flipped */
+[dir="rtl"] .lucide-chevron-right,
+[dir="rtl"] .lucide-chevron-left,
+[dir="rtl"] .lucide-arrow-right,
+[dir="rtl"] .lucide-arrow-left,
+[dir="rtl"] [data-icon="chevron-right"],
+[dir="rtl"] [data-icon="chevron-left"],
+[dir="rtl"] [data-icon="arrow-right"],
+[dir="rtl"] [data-icon="arrow-left"] {
+  transform: scaleX(-1);
+}
+
+/* ============================================================================
+ * FORM ELEMENTS
+ * ============================================================================ */
+
+[dir="rtl"] input,
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
+}
+
+[dir="rtl"] input[type="checkbox"],
+[dir="rtl"] input[type="radio"] {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* Placeholder alignment */
+[dir="rtl"] input::placeholder,
+[dir="rtl"] textarea::placeholder {
+  text-align: right;
+}
+
+/* ============================================================================
+ * TABLE ELEMENTS
+ * ============================================================================ */
+
+[dir="rtl"] table {
+  direction: rtl;
+}
+
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: right;
+}
+
+/* ============================================================================
+ * LISTS
+ * ============================================================================ */
+
+[dir="rtl"] ul,
+[dir="rtl"] ol {
+  padding-right: 1.5rem;
+  padding-left: 0;
+}
+
+[dir="rtl"] li {
+  text-align: right;
+}
+
+/* ============================================================================
+ * NAVIGATION
+ * ============================================================================ */
+
+[dir="rtl"] .nav-menu {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .breadcrumb {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .breadcrumb-separator {
+  transform: scaleX(-1);
+}
+
+/* ============================================================================
+ * SIDEBAR
+ * ============================================================================ */
+
+[dir="rtl"] .sidebar-left {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: 1px solid var(--border-color, #e5e7eb);
+}
+
+[dir="rtl"] .sidebar-right {
+  right: auto;
+  left: 0;
+  border-left: none;
+  border-right: 1px solid var(--border-color, #e5e7eb);
+}
+
+/* ============================================================================
+ * PROGRESS BARS
+ * ============================================================================ */
+
+[dir="rtl"] .progress-bar {
+  direction: rtl;
+}
+
+[dir="rtl"] .progress-fill {
+  transform-origin: right center;
+}
+
+/* ============================================================================
+ * DROPDOWNS AND MENUS
+ * ============================================================================ */
+
+[dir="rtl"] .dropdown-menu {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .dropdown-menu-right {
+  right: auto;
+  left: 0;
+}
+
+/* ============================================================================
+ * TOOLTIPS AND POPOVERS
+ * ============================================================================ */
+
+[dir="rtl"] .tooltip-left {
+  left: auto;
+  right: 100%;
+}
+
+[dir="rtl"] .tooltip-right {
+  right: auto;
+  left: 100%;
+}
+
+/* ============================================================================
+ * ANIMATIONS
+ * ============================================================================ */
+
+[dir="rtl"] .slide-in-left {
+  animation-name: slide-in-right-rtl;
+}
+
+[dir="rtl"] .slide-in-right {
+  animation-name: slide-in-left-rtl;
+}
+
+@keyframes slide-in-right-rtl {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left-rtl {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+ * UTILITY CLASSES FOR RTL-AWARE COMPONENTS
+ * ============================================================================ */
+
+/* Force LTR for specific content (numbers, code, etc.) */
+.ltr-force,
+[dir="rtl"] .ltr-force {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Force RTL */
+.rtl-force {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Keep natural direction (for mixed content) */
+.dir-auto {
+  direction: auto;
+}
+
+/* Numbers and code should remain LTR */
+[dir="rtl"] code,
+[dir="rtl"] pre,
+[dir="rtl"] .code-block,
+[dir="rtl"] .phone-number,
+[dir="rtl"] .numeric {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Email addresses */
+[dir="rtl"] .email,
+[dir="rtl"] a[href^="mailto:"] {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* URLs */
+[dir="rtl"] .url,
+[dir="rtl"] a[href^="http"] {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* ============================================================================
+ * PRINT STYLES
+ * ============================================================================ */
+
+@media print {
+  [dir="rtl"] {
+    direction: rtl;
+  }
+}

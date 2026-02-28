@@ -1,0 +1,6 @@
+Email,Name,Role,Gender,Created Date,Grade Level,Subject Areas,Learning Style,Difficulty Preference,Total Enrollments,Active Enrollments,Enrolled Courses
+john.doe@example.com,John Doe,student,male,01/15/2024,Grade 10,"Math,Science",visual,intermediate,3,2,"Introduction to Algebra; Biology Basics"
+jane.smith@example.com,Jane Smith,instructor,female,12/01/2023,,,auditory,advanced,5,3,"Advanced Mathematics; Chemistry; Physics"
+alex.jones@example.com,Alex Jones,student,other,02/20/2024,Grade 11,"Computer Science,Math",kinesthetic,beginner,2,1,"Programming Fundamentals"
+maria.garcia@example.com,Maria Garcia,admin,female,11/15/2023,,,,,0,0,
+david.wilson@example.com,David Wilson,student,male,03/10/2024,Grade 9,"English,History",reading/writing,intermediate,1,1,"World History"

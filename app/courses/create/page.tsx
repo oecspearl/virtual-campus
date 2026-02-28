@@ -126,7 +126,7 @@ export default function CreateCoursePage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h1 className="text-section-title">Create New Course</h1>
-                  <p className="text-body mt-2">Design and publish a new course for OECS LearnBoard</p>
+                  <p className="text-body mt-2">Design and publish a new course for OECS Virtual Campus</p>
                 </div>
                 <MoodleImportButton 
                   onImportComplete={(courseId) => {

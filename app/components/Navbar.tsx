@@ -115,11 +115,11 @@ export default function Navbar() {
               />
             </div>
             <div className="flex flex-col">
-        <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-          {siteShortName}
+        <span className="text-lg font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent leading-tight">
+          OECS Virtual Campus
         </span>
               <div className="text-[10px] text-gray-500 font-medium leading-tight tracking-wide">
-                Developed By The OECS
+                Powered by Learnboard
               </div>
             </div>
           </Link>

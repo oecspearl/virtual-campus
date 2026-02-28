@@ -1,4 +1,4 @@
-// Simple favicon using OECS logo
+// OECS Virtual Campus favicon
 import { ImageResponse } from 'next/og';
 
 export const size = {
@@ -18,19 +18,19 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#e74c3c', // OECS red
+          backgroundColor: '#2563eb',
           borderRadius: '6px'
         }}
       >
         <div
           style={{
             color: 'white',
-            fontSize: '18px',
+            fontSize: '14px',
             fontWeight: 'bold',
             fontFamily: 'Inter, sans-serif'
           }}
         >
-          OECS
+          VC
         </div>
       </div>
     ),

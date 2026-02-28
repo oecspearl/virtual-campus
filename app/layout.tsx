@@ -38,25 +38,20 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-// OECS MyPD - Learning Management System
+// OECS Virtual Campus - Learning Management System
 export const metadata: Metadata = {
-  title: "OECS MyPD",
-  description: "OECS Learning Management System - Empowering education across the Caribbean",
+  title: "OECS Virtual Campus",
+  description: "OECS Virtual Campus - Empowering education across the Caribbean. Powered by Learnboard.",
   icons: {
     icon: [
       {
-        url: '/favicon-32x32.png',
-        sizes: '32x32',
-        type: 'image/png',
-      },
-      {
-        url: '/favicon-16x16.png',
-        sizes: '16x16',
+        url: '/oecs-logo.png',
+        sizes: '192x192',
         type: 'image/png',
       },
     ],
-    shortcut: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    shortcut: '/oecs-logo.png',
+    apple: '/oecs-logo.png',
   },
 };
 
@@ -73,18 +68,15 @@ export default async function RootLayout({
   return (
     <html data-editor-id="app/layout.tsx:27:5" lang={locale} dir={dir} className={primaryFont.className}>
       <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="shortcut icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
+        <link rel="icon" type="image/png" href="/oecs-logo.png" />
+        <link rel="shortcut icon" href="/oecs-logo.png" />
+        <link rel="apple-touch-icon" href="/oecs-logo.png" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#2563eb" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="OECS MyPD" />
+        <meta name="apple-mobile-web-app-title" content="OECS Virtual Campus" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body data-editor-id="app/layout.tsx:31:7" className="antialiased" suppressHydrationWarning={true}>

@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare email content
-    const emailSubject = subject || "Test Email from OECS LearnBoard";
+    const emailSubject = subject || "Test Email from OECS Virtual Campus";
     const emailMessage = message || `
       <h2>Test Email</h2>
-      <p>This is a test email from OECS LearnBoard to verify email configuration.</p>
+      <p>This is a test email from OECS Virtual Campus to verify email configuration.</p>
       <p><strong>Sent by:</strong> ${user.name} (${user.email})</p>
       <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
       <p>If you received this email, your email notification system is working correctly! ✅</p>

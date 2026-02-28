@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
       // Return defaults if database query fails
       return NextResponse.json({
         settings: {
-          site_name: { value: 'OECS MyPD' },
-          site_short_name: { value: 'MyPD' },
-          logo_url: { value: '/mypdlogo.png' },
-          logo_header_url: { value: '/Logo.png' },
+          site_name: { value: 'OECS Virtual Campus' },
+          site_short_name: { value: 'OECS Virtual Campus' },
+          logo_url: { value: '/oecs-logo.png' },
+          logo_header_url: { value: '/oecs-logo.png' },
           homepage_header_background: { value: '/oecsmypd.png' }
         }
       });

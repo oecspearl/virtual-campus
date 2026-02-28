@@ -252,11 +252,11 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.1 }}
             className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 leading-tight"
           >
-            {homepageHeroTitle.includes('OECS Professional') ? (
+            {homepageHeroTitle.includes('Virtual Campus') ? (
               <>
-                The OECS Professional
+                OECS Virtual
                 <span className="block bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
-                  Development Platform
+                  Campus
                 </span>
               </>
             ) : (
@@ -690,7 +690,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {(homepageTestimonials.length > 0 ? homepageTestimonials : [
               {
-                quote: "LearnBoard has completely transformed how I teach mathematics. The interactive tools and real-time collaboration features have made my students more engaged than ever before.",
+                quote: "OECS Virtual Campus has completely transformed how I teach mathematics. The interactive tools and real-time collaboration features have made my students more engaged than ever before.",
                 author: "Mathematics Instructor",
                 role: "Instructor",
                 location: "Antigua and Barbuda",
@@ -698,7 +698,7 @@ export default function Home() {
                 rating: 5
               },
               {
-                quote: "As a working professional, I needed flexible learning options. LearnBoard's mobile-first design and offline capabilities allow me to study anywhere, anytime.",
+                quote: "As a working professional, I needed flexible learning options. The platform's mobile-first design and offline capabilities allow me to study anywhere, anytime.",
                 author: "Business Student",
                 role: "Student",
                 location: "St. Lucia",
@@ -730,7 +730,7 @@ export default function Home() {
                 rating: 5
               },
               {
-                quote: "LearnBoard has made it possible for our small island to offer world-class education. The collaborative features connect our students with peers across the region.",
+                quote: "OECS Virtual Campus has made it possible for our small island to offer world-class education. The collaborative features connect our students with peers across the region.",
                 author: "School Principal",
                 role: "Administrator",
                 location: "St. Vincent",

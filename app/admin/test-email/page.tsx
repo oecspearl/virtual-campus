@@ -5,7 +5,7 @@ import Button from "@/app/components/Button";
 
 export default function TestEmailPage() {
   const [email, setEmail] = useState("");
-  const [subject, setSubject] = useState("Test Email from OECS LearnBoard");
+  const [subject, setSubject] = useState("Test Email from OECS Virtual Campus");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message?: string; error?: string; suggestion?: string } | null>(null);
@@ -39,7 +39,7 @@ export default function TestEmailPage() {
         });
         // Clear form on success
         setEmail("");
-        setSubject("Test Email from OECS LearnBoard");
+        setSubject("Test Email from OECS Virtual Campus");
         setMessage("");
       } else {
         setResult({

@@ -1,7 +1,7 @@
 export default function TestSimplePage() {
   return (
     <div className="mx-auto max-w-4xl p-4">
-      <h1 className="text-2xl font-bold mb-6">OECS LearnBoard - Simple Test Page</h1>
+      <h1 className="text-2xl font-bold mb-6">OECS Virtual Campus - Simple Test Page</h1>
       
       <div className="space-y-4">
         <div className="p-4 border rounded-lg">

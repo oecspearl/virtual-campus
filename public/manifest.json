@@ -1,7 +1,7 @@
 {
-  "name": "OECS MyPD - Learning Management System",
-  "short_name": "OECS MyPD",
-  "description": "OECS Professional Development Platform - Empowering education across the Caribbean",
+  "name": "OECS Virtual Campus",
+  "short_name": "OECS Virtual Campus",
+  "description": "OECS Virtual Campus - Empowering education across the Caribbean. Powered by Learnboard.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,21 +10,16 @@
   "background_color": "#ffffff",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "/oecs-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "/oecs-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
     }
   ],
   "categories": ["education", "productivity"]

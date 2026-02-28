@@ -11,24 +11,28 @@ export const contentType = 'image/png';
 // Image generation
 export default function Icon() {
   return new ImageResponse(
-
-    <div data-editor-id="app/apple-icon.tsx:15:7"
-    style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex'
-    }}>
-
-        <img data-editor-id="app/apple-icon.tsx:22:9"
-      src="https://storage.googleapis.com/cosmic-project-image-assets/images/c14a2256-a303-4bac-a5fb-bb9e62cd4f1a/favicon.png"
+    <div
       style={{
         width: '100%',
         height: '100%',
-        objectFit: 'contain'
-      }} />
-
-      </div>,
-
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#2563eb',
+        borderRadius: '24px'
+      }}
+    >
+      <div
+        style={{
+          color: 'white',
+          fontSize: '48px',
+          fontWeight: 'bold',
+          fontFamily: 'Inter, sans-serif'
+        }}
+      >
+        VC
+      </div>
+    </div>,
     {
       ...size
     }

@@ -49,7 +49,7 @@ export default function AboutPage() {
             className="text-center"
           >
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
-              About <span className="text-yellow-300">OECS LearnBoard</span>
+              About <span className="text-yellow-300">OECS Virtual Campus</span>
             </h1>
             <p className="text-xl md:text-2xl text-blue-100 max-w-4xl mx-auto mb-8">
               Empowering education across the Caribbean through innovative technology and regional collaboration.
@@ -90,7 +90,7 @@ export default function AboutPage() {
                 Our <span className="text-blue-600">Mission</span>
               </h2>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                OECS LearnBoard is the official Learning Management System of the Organisation of Eastern Caribbean States. We aim to make quality education accessible across the Caribbean through a modern, secure platform that empowers students, instructors, and administrators throughout the region.
+                OECS Virtual Campus is the official Learning Management System of the Organisation of Eastern Caribbean States. We aim to make quality education accessible across the Caribbean through a modern, secure platform that empowers students, instructors, and administrators throughout the region.
               </p>
               <p className="text-lg text-gray-600 mb-8 leading-relaxed">
                 Our mission is to bridge educational gaps across the Caribbean by providing a unified platform that supports diverse learning needs, promotes regional collaboration, and ensures equitable access to quality education for all member states.
@@ -202,7 +202,7 @@ export default function AboutPage() {
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Get in Touch</h2>
             <p className="text-blue-100 text-lg max-w-2xl mx-auto">
-              Ready to join our mission? Contact us to learn more about OECS LearnBoard and how we can support your educational goals.
+              Ready to join our mission? Contact us to learn more about OECS Virtual Campus and how we can support your educational goals.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

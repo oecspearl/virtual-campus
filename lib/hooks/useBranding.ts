@@ -134,10 +134,10 @@ export function useBranding() {
         } else {
           // Use defaults on error
           setSettings({
-            site_name: { value: 'OECS MyPD' },
-            site_short_name: { value: 'MyPD' },
-            logo_url: { value: '/mypdlogo.png' },
-            logo_header_url: { value: '/Logo.png' },
+            site_name: { value: 'OECS Virtual Campus' },
+            site_short_name: { value: 'OECS Virtual Campus' },
+            logo_url: { value: '/oecs-logo.png' },
+            logo_header_url: { value: '/oecs-logo.png' },
             homepage_header_background: { value: '/oecsmypd.png' }
           });
         }
@@ -198,20 +198,20 @@ export function useBranding() {
   return {
     settings,
     loading,
-    siteName: getSetting('site_name', 'OECS MyPD'),
-    siteShortName: getSetting('site_short_name', 'MyPD'),
-    logoUrl: getSetting('logo_url', '/mypdlogo.png'),
-    logoHeaderUrl: getSetting('logo_header_url', '/Logo.png'),
+    siteName: getSetting('site_name', 'OECS Virtual Campus'),
+    siteShortName: getSetting('site_short_name', 'OECS Virtual Campus'),
+    logoUrl: getSetting('logo_url', '/oecs-logo.png'),
+    logoHeaderUrl: getSetting('logo_header_url', '/oecs-logo.png'),
     homepageHeaderBackground: getSetting('homepage_header_background', '/oecsmypd.png'),
-    homepageHeroTitle: getSetting('homepage_hero_title', 'The OECS Professional Development Platform'),
-    homepageHeroSubtitle: getSetting('homepage_hero_subtitle', 'Trusted by OECS Professionals'),
+    homepageHeroTitle: getSetting('homepage_hero_title', 'OECS Virtual Campus'),
+    homepageHeroSubtitle: getSetting('homepage_hero_subtitle', 'Powered by Learnboard'),
     homepageHeroDescription: getSetting('homepage_hero_description', 'Join the Caribbean\'s premier digital learning platform. Access world-class courses, connect with expert instructors, and advance your career with our comprehensive educational ecosystem.'),
     homepageHeroCtaPrimaryText: getSetting('homepage_hero_cta_primary_text', 'Start Learning Free'),
     homepageHeroCtaSecondaryText: getSetting('homepage_hero_cta_secondary_text', 'Explore Courses'),
     homepageHeroStatStudents: getSetting('homepage_hero_stat_students', '60K+'),
     homepageHeroStatEducators: getSetting('homepage_hero_stat_educators', '4,000+'),
     homepageHeroStatCountries: getSetting('homepage_hero_stat_countries', '15'),
-    homepageFeaturesBadge: getSetting('homepage_features_badge', 'Why Choose LearnBoard?'),
+    homepageFeaturesBadge: getSetting('homepage_features_badge', 'Why Choose OECS Virtual Campus?'),
     homepageFeaturesTitle: getSetting('homepage_features_title', 'Everything You Need to'),
     homepageFeaturesTitleHighlight: getSetting('homepage_features_title_highlight', 'Succeed in Learning'),
     homepageFeaturesDescription: getSetting('homepage_features_description', 'Our comprehensive platform provides all the tools and resources you need for effective online learning, teaching, and collaboration across the Caribbean region.'),

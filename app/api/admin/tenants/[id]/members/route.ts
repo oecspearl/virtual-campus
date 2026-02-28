@@ -30,7 +30,7 @@ export async function GET(
         created_at,
         users (id, name, email, role)
       `)
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', targetTenantId)
       .order('created_at', { ascending: false });
 
     if (error) {

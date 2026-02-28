@@ -499,6 +499,12 @@ export default function Navbar() {
                           LTI Platforms
                         </div>
                       </Link>
+                      <Link href="/admin/sonisweb" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Icon icon="material-symbols:sync" className="w-5 h-5 text-violet-500" />
+                          SonisWeb SIS
+                        </div>
+                      </Link>
                       <Link href="/admin/question-banks" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-3">
                           <Icon icon="material-symbols:quiz" className="w-5 h-5 text-indigo-500" />

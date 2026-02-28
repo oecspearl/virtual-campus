@@ -104,7 +104,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         studentStats[post.author_id].words += post.content?.split(/\s+/).length || 0;
       });
 
-      const enrolledUsersMap = new Map(enrolledUsers?.map(u => [u.id, u]) || []);
+      const enrolledUsersMap = new Map<string, { id: string; name: string; email: string }>(enrolledUsers?.map((u: { id: string; name: string; email: string }) => [u.id, u]) || []);
 
       const studentsWithStats = enrolledStudentIds.map(studentId => {
         const studentUser = enrolledUsersMap.get(studentId);

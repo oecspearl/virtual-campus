@@ -66,13 +66,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         .select('id, name, email')
         .in('id', Array.from(userIds));
 
-      const usersMap = new Map(users?.map(u => [u.id, u]) || []);
+      const usersMap = new Map<string, { id: string; name: string; email: string }>(users?.map((u: { id: string; name: string; email: string }) => [u.id, u]) || []);
 
       // Enrich grades with user info
       const enrichedGrades = grades?.map(g => ({
         ...g,
         student: usersMap.get(g.student_id) || null,
-        grader: usersMap.get(g.graded_by) ? { id: g.graded_by, name: usersMap.get(g.graded_by)?.name } : null
+        grader: usersMap.get(g.graded_by) ? { id: g.graded_by, name: usersMap.get(g.graded_by)!.name } : null
       })) || [];
 
       // Get participation stats for all enrolled students

@@ -34,11 +34,6 @@ export default function MobileHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  // Don't show on desktop
-  if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-    return null;
-  }
-
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-lg lg:hidden">
       <div className="flex items-center justify-between px-4 py-3">

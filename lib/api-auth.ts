@@ -141,6 +141,21 @@ export function createAuthResponse(error: string, status: number) {
   return NextResponse.json({ error }, { status });
 }
 
+/**
+ * Verifies that a user has a membership in the target tenant.
+ * Used to ensure tenant_admin can only access their own tenant.
+ */
+export async function verifyTenantOwnership(userId: string, targetTenantId: string): Promise<boolean> {
+  const serviceSupabase = createServiceSupabaseClient();
+  const { data } = await serviceSupabase
+    .from('tenant_memberships')
+    .select('tenant_id')
+    .eq('user_id', userId)
+    .eq('tenant_id', targetTenantId)
+    .single();
+  return !!data;
+}
+
 // Rate limiting (improved for serverless environments)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 

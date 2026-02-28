@@ -16,8 +16,17 @@
     },
     "app/api/courses/import/moodle/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/cron/sonisweb-sync/route.ts": {
+      "maxDuration": 300
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/sonisweb-sync",
+      "schedule": "0 2 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

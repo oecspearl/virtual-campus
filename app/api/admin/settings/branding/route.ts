@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const tenantId = getTenantIdFromRequest(request);
+    const tenantId = getTenantIdFromRequest(request, authResult.userProfile.role);
     const tq = createTenantQuery(tenantId);
 
     // Fetch all branding settings
@@ -68,7 +68,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const tenantId = getTenantIdFromRequest(request);
+    const tenantId = getTenantIdFromRequest(request, authResult.userProfile.role);
     const tq = createTenantQuery(tenantId);
 
     // Update each setting

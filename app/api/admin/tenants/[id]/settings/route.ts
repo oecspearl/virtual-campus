@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
-import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
+import { authenticateUser, createAuthResponse, verifyTenantOwnership } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 
 // GET - Fetch tenant-specific settings (site_settings scoped to this tenant)
@@ -17,6 +17,13 @@ export async function GET(
     }
 
     const { id: tenantId } = await params;
+
+    // Tenant admin can only access their own tenant's settings
+    if (authResult.userProfile.role === 'tenant_admin') {
+      const isOwner = await verifyTenantOwnership(authResult.user.id, tenantId);
+      if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
+    }
+
     const serviceSupabase = createServiceSupabaseClient();
 
     // Verify tenant exists
@@ -71,6 +78,13 @@ export async function PUT(
     }
 
     const { id: tenantId } = await params;
+
+    // Tenant admin can only modify their own tenant's settings
+    if (authResult.userProfile.role === 'tenant_admin') {
+      const isOwner = await verifyTenantOwnership(authResult.user.id, tenantId);
+      if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
+    }
+
     const body = await request.json();
     const { settings } = body;
 

@@ -11,7 +11,7 @@ export default function LogoHeader() {
   }
   
   return (
-    <div className="w-full bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200/30">
+    <div className="hidden lg:block w-full bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200/30">
       <div className="mx-auto max-w-7xl px-4 py-2 flex items-center justify-center">
         <div className="relative h-16 w-auto">
           <Image

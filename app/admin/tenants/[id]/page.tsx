@@ -53,10 +53,16 @@ function TenantDetailInner({ tenantId }: { tenantId: string }) {
     max_users: "",
   });
 
+  const [forbidden, setForbidden] = useState(false);
+
   async function load() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/tenants/${tenantId}`, { cache: "no-store" });
+      if (res.status === 403) {
+        setForbidden(true);
+        return;
+      }
       if (!res.ok) throw new Error("Not found");
       const data = await res.json();
       const t = data.tenant;
@@ -134,6 +140,19 @@ function TenantDetailInner({ tenantId }: { tenantId: string }) {
 
   if (loading) {
     return <div className="mx-auto max-w-4xl px-4 py-8 text-gray-500">Loading tenant...</div>;
+  }
+
+  if (forbidden) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="rounded-lg bg-red-50 border border-red-200 p-6 text-center">
+          <p className="text-red-700 font-medium">You do not have permission to access this tenant.</p>
+          <Link href="/dashboard" className="text-sm mt-2 inline-block underline" style={{ color: "var(--theme-primary)" }}>
+            Return to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (!tenant) {

@@ -11,11 +11,6 @@ export default function BottomNavigation() {
   const { user } = useSupabase();
   const isAuthenticated = !!user;
 
-  // Don't show on desktop
-  if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
-    return null;
-  }
-
   // Don't show on certain pages
   const hideOnPages = ['/auth/signin', '/auth/signup', '/offline'];
   if (hideOnPages.some(page => pathname.startsWith(page))) {

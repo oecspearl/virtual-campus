@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
-import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
+import { authenticateUser, createAuthResponse, verifyTenantOwnership } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 import { invalidateTenantCache } from '@/lib/tenant-cache';
 
 // GET - Fetch a single tenant
+// Note: Uses service client directly because the tenants table does NOT have a tenant_id column
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,10 +19,16 @@ export async function GET(
     }
 
     const { id } = await params;
-    const tenantId = getTenantIdFromRequest(request);
-    const tq = createTenantQuery(tenantId);
 
-    const { data: tenant, error } = await tq
+    // Tenant admin can only access their own tenant
+    if (authResult.userProfile.role === 'tenant_admin') {
+      const isOwner = await verifyTenantOwnership(authResult.user.id, id);
+      if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
+    }
+
+    const serviceSupabase = createServiceSupabaseClient();
+
+    const { data: tenant, error } = await serviceSupabase
       .from('tenants')
       .select('*')
       .eq('id', id)
@@ -33,7 +39,7 @@ export async function GET(
     }
 
     // Get member count
-    const { count } = await tq
+    const { count } = await serviceSupabase
       .from('tenant_memberships')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', id);
@@ -59,14 +65,20 @@ export async function PUT(
     }
 
     const { id } = await params;
+
+    // Tenant admin can only modify their own tenant
+    if (authResult.userProfile.role === 'tenant_admin') {
+      const isOwner = await verifyTenantOwnership(authResult.user.id, id);
+      if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
+    }
+
     const body = await request.json();
     const { name, slug, custom_domain, status, plan, max_users, settings } = body;
 
-    const tenantId = getTenantIdFromRequest(request);
-    const tq = createTenantQuery(tenantId);
+    const serviceSupabase = createServiceSupabaseClient();
 
     // Get current tenant to invalidate cache
-    const { data: currentTenant } = await tq
+    const { data: currentTenant } = await serviceSupabase
       .from('tenants')
       .select('slug')
       .eq('id', id)
@@ -81,7 +93,7 @@ export async function PUT(
     if (max_users !== undefined) updateData.max_users = max_users;
     if (settings !== undefined) updateData.settings = settings;
 
-    const { data: tenant, error } = await tq
+    const { data: tenant, error } = await serviceSupabase
       .from('tenants')
       .update(updateData)
       .eq('id', id)
@@ -89,6 +101,7 @@ export async function PUT(
       .single();
 
     if (error) {
+      console.error('Tenant update error:', error);
       return NextResponse.json({ error: 'Failed to update tenant' }, { status: 500 });
     }
 
@@ -122,21 +135,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot delete the default tenant' }, { status: 400 });
     }
 
-    const tenantId = getTenantIdFromRequest(request);
-    const tq = createTenantQuery(tenantId);
+    const serviceSupabase = createServiceSupabaseClient();
 
-    const { data: tenant } = await tq
+    const { data: tenant } = await serviceSupabase
       .from('tenants')
       .select('slug')
       .eq('id', id)
       .single();
 
-    const { error } = await tq
+    const { error } = await serviceSupabase
       .from('tenants')
       .delete()
       .eq('id', id);
 
     if (error) {
+      console.error('Tenant delete error:', error);
       return NextResponse.json({ error: 'Failed to delete tenant' }, { status: 500 });
     }
 

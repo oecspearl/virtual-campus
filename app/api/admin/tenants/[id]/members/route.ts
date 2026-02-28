@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
+import { authenticateUser, createAuthResponse, verifyTenantOwnership } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 
 // GET - List tenant members
@@ -18,6 +18,13 @@ export async function GET(
     }
 
     const { id: targetTenantId } = await params;
+
+    // Tenant admin can only access their own tenant's members
+    if (authResult.userProfile.role === 'tenant_admin') {
+      const isOwner = await verifyTenantOwnership(authResult.user.id, targetTenantId);
+      if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
+    }
+
     const reqTenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(reqTenantId);
 
@@ -58,6 +65,13 @@ export async function POST(
     }
 
     const { id: tenantId } = await params;
+
+    // Tenant admin can only add members to their own tenant
+    if (authResult.userProfile.role === 'tenant_admin') {
+      const isOwner = await verifyTenantOwnership(authResult.user.id, tenantId);
+      if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
+    }
+
     const body = await request.json();
     const { user_id, email, role } = body;
 
@@ -131,6 +145,13 @@ export async function DELETE(
     }
 
     const { id: tenantId } = await params;
+
+    // Tenant admin can only remove members from their own tenant
+    if (authResult.userProfile.role === 'tenant_admin') {
+      const isOwner = await verifyTenantOwnership(authResult.user.id, tenantId);
+      if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
+    }
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
 

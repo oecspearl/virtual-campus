@@ -64,7 +64,7 @@ export default async function DashboardPage() {
         <div className="space-y-8">
       {role === 'student' && await StudentView()}
       {role === 'instructor' && await InstructorView()}
-      {(role === 'admin' || role === 'super_admin') && await AdminView()}
+      {(role === 'admin' || role === 'super_admin' || role === 'tenant_admin') && await AdminView(role!)}
       {role === 'curriculum_designer' && await DesignerView()}
       {role === 'parent' && await ParentView()}
 
@@ -1022,7 +1022,7 @@ async function InstructorView() {
   );
 }
 
-async function AdminView() {
+async function AdminView(role: string) {
   const supabase = await createServerSupabaseClient();
   const serviceSupabase = createServiceSupabaseClient();
   
@@ -1047,10 +1047,25 @@ async function AdminView() {
     .from('certificates')
     .select('*', { count: 'exact', head: true });
 
+  // Tenant stats for super_admin only
+  let tenantCount: number | null = null;
+  let activeTenantCount: number | null = null;
+  if (role === 'super_admin') {
+    const { count: tc } = await serviceSupabase
+      .from('tenants')
+      .select('*', { count: 'exact', head: true });
+    const { count: atc } = await serviceSupabase
+      .from('tenants')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active');
+    tenantCount = tc;
+    activeTenantCount = atc;
+  }
+
   return (
     <div className="space-y-8">
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className={`grid grid-cols-2 md:grid-cols-4 ${role === 'super_admin' ? 'lg:grid-cols-7' : 'lg:grid-cols-5'} gap-4`}>
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -1120,10 +1135,93 @@ async function AdminView() {
             </div>
           </div>
         </div>
+
+        {role === 'super_admin' && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <Icon icon="material-symbols:domain" className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-2xl font-bold text-gray-900">{tenantCount || 0}</p>
+                <p className="text-sm text-gray-600">Tenants</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {role === 'super_admin' && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center">
+                <Icon icon="material-symbols:verified" className="w-6 h-6 text-cyan-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-2xl font-bold text-gray-900">{activeTenantCount || 0}</p>
+                <p className="text-sm text-gray-600">Active Tenants</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Admin Tools - Organized by Category */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Tenant Management - Super Admin Only */}
+        {role === 'super_admin' && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4">
+              <h3 className="text-lg font-bold text-white flex items-center">
+                <Icon icon="material-symbols:domain" className="w-5 h-5 mr-2" />
+                Tenant Management
+              </h3>
+              <p className="text-emerald-100 text-sm">Multi-tenant administration</p>
+            </div>
+            <div className="p-6">
+              <div className="space-y-3">
+                <Link
+                  href="/admin/system"
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-50 transition-colors group"
+                >
+                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                    <Icon icon="material-symbols:monitoring" className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">System Dashboard</div>
+                    <div className="text-sm text-gray-600">Cross-tenant overview and stats</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/admin/tenants"
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-teal-50 transition-colors group"
+                >
+                  <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center group-hover:bg-teal-200 transition-colors">
+                    <Icon icon="material-symbols:apartment" className="w-4 h-4 text-teal-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">Manage Tenants</div>
+                    <div className="text-sm text-gray-600">View, edit, and manage all tenants</div>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/admin/tenants/create"
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-cyan-50 transition-colors group"
+                >
+                  <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center group-hover:bg-cyan-200 transition-colors">
+                    <Icon icon="material-symbols:add-business" className="w-4 h-4 text-cyan-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">Create Tenant</div>
+                    <div className="text-sm text-gray-600">Add a new tenant organization</div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* User Management */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4">

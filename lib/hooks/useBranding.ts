@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { DEFAULT_COLOR_THEMES, getThemeColors as resolveThemeColors, type ColorTheme } from '@/lib/color-themes';
 
 interface Feature {
   icon: string;
@@ -97,17 +98,25 @@ interface BrandingSettings {
   homepage_featured_course_ids?: { value: string };
 }
 
-interface ColorTheme {
-  name: string;
-  primary: string;
-  secondary: string;
-  accent: string;
-  description: string;
-}
+// ColorTheme imported from @/lib/color-themes
 
-// Cache for branding settings
-let brandingCache: { settings: BrandingSettings; timestamp: number } | null = null;
+// Tenant-aware cache for branding settings (keyed by tenant context)
+const brandingCacheMap: Map<string, { settings: BrandingSettings; timestamp: number }> = new Map();
 const CACHE_DURATION = 300000; // 5 minutes
+
+function getTenantCacheKey(): string {
+  if (typeof window === 'undefined') return 'default';
+  // Check for tenant override (super_admin switching context)
+  try {
+    const stored = localStorage.getItem('tenant_override');
+    if (stored) {
+      const { tenantId } = JSON.parse(stored);
+      if (tenantId) return tenantId;
+    }
+  } catch { /* ignore */ }
+  // Fall back to hostname (each subdomain = different tenant)
+  return window.location.hostname;
+}
 
 export function useBranding() {
   const [settings, setSettings] = useState<BrandingSettings>({});
@@ -115,22 +124,38 @@ export function useBranding() {
 
   useEffect(() => {
     const fetchBranding = async () => {
-      // Check cache first
+      const cacheKey = getTenantCacheKey();
       const now = Date.now();
-      if (brandingCache && (now - brandingCache.timestamp) < CACHE_DURATION) {
-        setSettings(brandingCache.settings);
+
+      // Check tenant-specific cache
+      const cached = brandingCacheMap.get(cacheKey);
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        setSettings(cached.settings);
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch('/api/settings/branding', { cache: 'no-store' });
+        // Include tenant override header if active
+        const headers: Record<string, string> = {};
+        try {
+          const stored = localStorage.getItem('tenant_override');
+          if (stored) {
+            const { tenantId } = JSON.parse(stored);
+            if (tenantId) headers['x-tenant-override'] = tenantId;
+          }
+        } catch { /* ignore */ }
+
+        const response = await fetch('/api/settings/branding', {
+          cache: 'no-store',
+          headers,
+        });
         if (response.ok) {
           const data = await response.json();
           const fetchedSettings = data.settings || {};
           setSettings(fetchedSettings);
-          // Update cache
-          brandingCache = { settings: fetchedSettings, timestamp: now };
+          // Update tenant-specific cache
+          brandingCacheMap.set(cacheKey, { settings: fetchedSettings, timestamp: now });
         } else {
           // Use defaults on error
           setSettings({
@@ -145,10 +170,10 @@ export function useBranding() {
         console.error('Error fetching branding:', error);
         // Use defaults on error
         setSettings({
-          site_name: { value: 'OECS MyPD' },
-          site_short_name: { value: 'MyPD' },
-          logo_url: { value: '/mypdlogo.png' },
-          logo_header_url: { value: '/Logo.png' },
+          site_name: { value: 'OECS Virtual Campus' },
+          site_short_name: { value: 'OECS Virtual Campus' },
+          logo_url: { value: '/oecs-logo.png' },
+          logo_header_url: { value: '/oecs-logo.png' },
           homepage_header_background: { value: '/oecsmypd.png' }
         });
       } finally {
@@ -158,16 +183,18 @@ export function useBranding() {
 
     fetchBranding();
 
-    // Listen for cache invalidation events
+    // Listen for cache invalidation events (branding saved or tenant switched)
     const handleCacheInvalidation = () => {
-      brandingCache = null;
+      brandingCacheMap.clear();
       fetchBranding();
     };
 
     if (typeof window !== 'undefined') {
       window.addEventListener('branding-settings-updated', handleCacheInvalidation);
+      window.addEventListener('tenant-override-changed', handleCacheInvalidation);
       return () => {
         window.removeEventListener('branding-settings-updated', handleCacheInvalidation);
+        window.removeEventListener('tenant-override-changed', handleCacheInvalidation);
       };
     }
   }, []);
@@ -242,17 +269,12 @@ export function useBranding() {
     colorThemes: getJsonSetting<Record<string, ColorTheme>>('color_themes', {}),
     themePrimaryColor: getSetting('theme_primary_color', '#3B82F6'),
     themeSecondaryColor: getSetting('theme_secondary_color', '#6366F1'),
-    // Get current theme colors based on selected theme
+    // Get current theme colors based on selected theme (merges with shared defaults)
     getThemeColors: () => {
       const themeKey = getSetting('color_theme', 'ocean-blue');
-      const themes = getJsonSetting<Record<string, ColorTheme>>('color_themes', {});
-      const currentTheme = themes[themeKey] || themes['ocean-blue'] || {
-        name: 'Ocean Blue',
-        primary: '#3B82F6',
-        secondary: '#6366F1',
-        accent: '#60A5FA',
-        description: 'Professional blue theme'
-      };
+      const savedThemes = getJsonSetting<Record<string, ColorTheme>>('color_themes', {});
+      const mergedThemes = { ...DEFAULT_COLOR_THEMES, ...savedThemes };
+      const currentTheme = resolveThemeColors(themeKey, mergedThemes);
       return {
         primary: currentTheme.primary,
         secondary: currentTheme.secondary,
@@ -282,7 +304,7 @@ export function useBranding() {
     footerMemberStatesEnabled: getBooleanSetting('footer_member_states_enabled', true),
     homepageFeaturedCourseIds: getJsonSetting<string[]>('homepage_featured_course_ids', []),
     invalidateCache: () => {
-      brandingCache = null;
+      brandingCacheMap.clear();
     }
   };
 }

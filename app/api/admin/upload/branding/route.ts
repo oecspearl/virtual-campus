@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    if (!hasRole(authResult.userProfile.role, ['admin', 'super_admin', 'curriculum_designer'])) {
+    if (!hasRole(authResult.userProfile.role, ['admin', 'super_admin', 'tenant_admin', 'curriculum_designer'])) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       }, { status: 413 });
     }
 
-    const tenantId = getTenantIdFromRequest(request);
+    const tenantId = getTenantIdFromRequest(request, authResult.userProfile.role);
     const tq = createTenantQuery(tenantId);
 
     // Generate unique filename
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
             updated_by: authResult.user?.id,
             updated_at: new Date().toISOString()
           }, {
-            onConflict: 'setting_key'
+            onConflict: 'tenant_id,setting_key'
           });
       }
     }

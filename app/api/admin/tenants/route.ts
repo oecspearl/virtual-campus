@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
-import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 
 // GET - List all tenants (super_admin only)
+// Note: Uses service client directly because the tenants table does NOT have a tenant_id column
 export async function GET(request: NextRequest) {
   try {
     const authResult = await authenticateUser(request);
@@ -14,30 +14,31 @@ export async function GET(request: NextRequest) {
       return createAuthResponse('Forbidden: Super admin access required', 403);
     }
 
-    const tenantId = getTenantIdFromRequest(request);
-    const tq = createTenantQuery(tenantId);
-    const { data: tenants, error } = await tq
+    const serviceSupabase = createServiceSupabaseClient();
+
+    const { data: tenants, error } = await serviceSupabase
       .from('tenants')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('Tenants list error:', error);
       return NextResponse.json({ error: 'Failed to fetch tenants' }, { status: 500 });
     }
 
     // Get member counts per tenant
-    const { data: memberCounts } = await tq
+    const { data: memberships } = await serviceSupabase
       .from('tenant_memberships')
-      .select('tenant_id')
-      .then(({ data }) => {
-        const counts: Record<string, number> = {};
-        data?.forEach(m => { counts[m.tenant_id] = (counts[m.tenant_id] || 0) + 1; });
-        return { data: counts };
-      });
+      .select('tenant_id');
+
+    const memberCounts: Record<string, number> = {};
+    memberships?.forEach((m: any) => {
+      memberCounts[m.tenant_id] = (memberCounts[m.tenant_id] || 0) + 1;
+    });
 
     const tenantsWithCounts = tenants?.map(t => ({
       ...t,
-      member_count: memberCounts?.[t.id] || 0,
+      member_count: memberCounts[t.id] || 0,
     }));
 
     return NextResponse.json({ tenants: tenantsWithCounts });
@@ -64,16 +65,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name and slug are required' }, { status: 400 });
     }
 
-    // Validate slug format
     if (!/^[a-z0-9-]+$/.test(slug)) {
       return NextResponse.json({ error: 'Slug must only contain lowercase letters, numbers, and hyphens' }, { status: 400 });
     }
 
-    const tenantId = getTenantIdFromRequest(request);
-    const tq = createTenantQuery(tenantId);
+    const serviceSupabase = createServiceSupabaseClient();
 
     // Check if slug is taken
-    const { data: existing } = await tq
+    const { data: existing } = await serviceSupabase
       .from('tenants')
       .select('id')
       .eq('slug', slug)
@@ -84,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create tenant (branding settings are auto-seeded via DB trigger)
-    const { data: tenant, error } = await tq
+    const { data: tenant, error } = await serviceSupabase
       .from('tenants')
       .insert({
         name,
@@ -103,7 +102,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add the creating super_admin as a member
-    await tq
+    await serviceSupabase
       .from('tenant_memberships')
       .insert({
         tenant_id: tenant.id,

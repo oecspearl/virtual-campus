@@ -6,7 +6,9 @@ const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
 // Public GET endpoint - Fetch branding settings for display (no auth required)
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || DEFAULT_TENANT_ID;
+    // Support x-tenant-override for super_admin tenant switching
+    const override = request.headers.get('x-tenant-override');
+    const tenantId = override || request.headers.get('x-tenant-id') || DEFAULT_TENANT_ID;
     const serviceSupabase = createServiceSupabaseClient();
 
     // Fetch branding settings scoped to the current tenant

@@ -43,6 +43,7 @@ function MembersInner({ tenantId }: { tenantId: string }) {
   const [addForm, setAddForm] = useState({ email: "", role: "student" });
   const [adding, setAdding] = useState(false);
   const [tenantName, setTenantName] = useState("");
+  const [forbidden, setForbidden] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -51,6 +52,10 @@ function MembersInner({ tenantId }: { tenantId: string }) {
         fetch(`/api/admin/tenants/${tenantId}/members`, { cache: "no-store" }),
         fetch(`/api/admin/tenants/${tenantId}`, { cache: "no-store" }),
       ]);
+      if (membersRes.status === 403 || tenantRes.status === 403) {
+        setForbidden(true);
+        return;
+      }
       const membersData = await membersRes.json();
       const tenantData = await tenantRes.json();
       setMembers(membersData?.members || []);
@@ -126,6 +131,19 @@ function MembersInner({ tenantId }: { tenantId: string }) {
       default: return "bg-gray-100 text-gray-700";
     }
   };
+
+  if (forbidden) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="rounded-lg bg-red-50 border border-red-200 p-6 text-center">
+          <p className="text-red-700 font-medium">You do not have permission to access this tenant&apos;s members.</p>
+          <Link href="/dashboard" className="text-sm mt-2 inline-block underline" style={{ color: "var(--theme-primary)" }}>
+            Return to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">

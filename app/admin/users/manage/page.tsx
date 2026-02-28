@@ -284,27 +284,27 @@ export default function UserManagementPage() {
         throw new Error('Failed to load users');
       }
 
-      // Load schools for filtering
+      // Load tenants for filtering
       try {
-        const schoolsResponse = await fetch('/api/admin/schools?includeInactive=true', {
+        const tenantsResponse = await fetch('/api/admin/tenants', {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
-        if (schoolsResponse.ok) {
-          const schoolsData = await schoolsResponse.json();
-          setSchools(schoolsData.schools || []);
+        if (tenantsResponse.ok) {
+          const tenantsData = await tenantsResponse.json();
+          setSchools((tenantsData.tenants || []).map((t: any) => ({ id: t.id, name: t.name })));
         }
       } catch (err) {
-        console.error('Error loading schools:', err);
+        console.error('Error loading tenants:', err);
       }
 
-      // Load all courses (admin needs to see all courses for management, not just published)
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .order('title');
-
-      if (coursesError) throw coursesError;
-      setCourses(coursesData || []);
+      // Load all courses via API (tenant-aware)
+      const coursesResponse = await fetch('/api/courses?limit=500', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      if (coursesResponse.ok) {
+        const coursesData = await coursesResponse.json();
+        setCourses(coursesData.courses || []);
+      }
 
       // Load enrollments via API
       const enrollmentsResponse = await fetch('/api/admin/enrollments', {

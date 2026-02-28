@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from './supabase-server'
+import { createServerSupabaseClient, createServiceSupabaseClient } from './supabase-server'
 import { Database } from './supabase'
 
 type Tables = Database['public']['Tables']
@@ -7,18 +7,19 @@ type Tables = Database['public']['Tables']
 export async function getCurrentUser() {
   const supabase = await createServerSupabaseClient()
   const { data: { user }, error } = await supabase.auth.getUser()
-  
+
   if (error || !user) {
     return null
   }
-  
-  // Get user profile from our users table
-  const { data: profile } = await supabase
+
+  // Use service client to bypass RLS (same pattern as middleware and API auth)
+  const serviceSupabase = createServiceSupabaseClient()
+  const { data: profile } = await serviceSupabase
     .from('users')
     .select('*')
     .eq('id', user.id)
     .single()
-  
+
   return profile ? { ...user, ...profile } : user
 }
 
@@ -34,7 +35,7 @@ export function hasRole(userRole: string, requiredRoles: string | string[]): boo
 export async function isAdmin() {
   const user = await getCurrentUser()
   if (!user) return false
-  return hasRole(user.role, ['admin', 'super_admin'])
+  return hasRole(user.role, ['admin', 'super_admin', 'tenant_admin'])
 }
 
 // Helper function to check if user can grade

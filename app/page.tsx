@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { useBranding } from '@/lib/hooks/useBranding';
 import { useSupabase } from '@/lib/supabase-provider';
@@ -23,15 +22,7 @@ interface FeaturedCourse {
 }
 
 export default function Home() {
-  const router = useRouter();
   const { user } = useSupabase();
-
-  // Redirect logged-in users to dashboard
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
 
   const {
     homepageHeaderBackground,
@@ -279,11 +270,11 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           >
-            <Link 
-              href="/auth/signup" 
+            <Link
+              href={user ? "/dashboard" : "/auth/signup"}
               className="group relative px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold text-base sm:text-lg rounded-2xl shadow-2xl hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 flex items-center justify-center w-full sm:w-auto"
             >
-              <span className="relative z-10">{homepageHeroCtaPrimaryText}</span>
+              <span className="relative z-10">{user ? "Go to Dashboard" : homepageHeroCtaPrimaryText}</span>
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-orange-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Link>
             
@@ -349,13 +340,13 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-600 rounded-full text-sm font-semibold mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' }}>
               <Icon icon="material-symbols:star" className="w-4 h-4" />
               <span>{homepageFeaturesBadge}</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               {homepageFeaturesTitle}
-              <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="block bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, var(--theme-primary), var(--theme-secondary))' }}>
                 {homepageFeaturesTitleHighlight}
               </span>
             </h2>
@@ -812,8 +803,8 @@ export default function Home() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <Link 
-                href="/auth/signup" 
+              <Link
+                href={user ? "/dashboard" : "/auth/signup"}
                 className="group relative px-8 py-4 bg-white font-bold text-lg rounded-2xl shadow-2xl hover:shadow-white/25 transition-all duration-300 hover:scale-105"
                 style={{
                   color: 'var(--theme-primary)'
@@ -821,7 +812,7 @@ export default function Home() {
               >
                 <span className="relative z-10 flex items-center gap-2">
                   <Icon icon="material-symbols:rocket-launch" className="w-5 h-5" />
-                  {homepageCtaPrimaryText}
+                  {user ? "Go to Dashboard" : homepageCtaPrimaryText}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </Link>
@@ -870,7 +861,7 @@ export default function Home() {
             <div className="px-6 py-6">
               {/* Course Info */}
               <div className="flex items-center gap-3 mb-4 text-sm text-gray-600">
-                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold capitalize">
+                <span className="px-3 py-1 rounded-full font-semibold capitalize" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' }}>
                   {selectedCourse.difficulty || 'Beginner'}
                 </span>
                 <span className="text-gray-300">•</span>

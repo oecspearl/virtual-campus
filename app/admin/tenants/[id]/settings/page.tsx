@@ -48,6 +48,7 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
   const [success, setSuccess] = useState("");
   const [tenantName, setTenantName] = useState("");
   const [form, setForm] = useState<Record<string, string>>({});
+  const [forbidden, setForbidden] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -56,6 +57,10 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
         fetch(`/api/admin/tenants/${tenantId}/settings`, { cache: "no-store" }),
         fetch(`/api/admin/tenants/${tenantId}`, { cache: "no-store" }),
       ]);
+      if (settingsRes.status === 403 || tenantRes.status === 403) {
+        setForbidden(true);
+        return;
+      }
       const settingsData = await settingsRes.json();
       const tenantData = await tenantRes.json();
       const s = settingsData?.settings || {};
@@ -120,6 +125,19 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
 
   if (loading) {
     return <div className="mx-auto max-w-4xl px-4 py-8 text-gray-500">Loading settings...</div>;
+  }
+
+  if (forbidden) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="rounded-lg bg-red-50 border border-red-200 p-6 text-center">
+          <p className="text-red-700 font-medium">You do not have permission to access this tenant&apos;s settings.</p>
+          <Link href="/dashboard" className="text-sm mt-2 inline-block underline" style={{ color: "var(--theme-primary)" }}>
+            Return to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

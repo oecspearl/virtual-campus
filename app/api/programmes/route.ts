@@ -35,9 +35,6 @@ export async function GET(request: NextRequest) {
           weight,
           is_required,
           course:course_id(id, title, thumbnail)
-        ),
-        programme_category_assignments(
-          category:category_id(id, name, slug, icon, color)
         )
       `)
       .order('created_at', { ascending: false });
@@ -54,13 +51,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch programmes' }, { status: 500 });
     }
 
-    // Filter by category if specified
     let filteredProgrammes = programmes || [];
-    if (categoryId) {
-      filteredProgrammes = filteredProgrammes.filter(p =>
-        p.programme_category_assignments?.some((pca: any) => pca.category?.id === categoryId)
-      );
-    }
 
     // Add enrollment counts if requested
     if (withCounts) {
@@ -82,10 +73,9 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    // Transform categories for easier consumption
+    // Transform for easier consumption
     const transformedProgrammes = filteredProgrammes.map(p => ({
       ...p,
-      categories: p.programme_category_assignments?.map((pca: any) => pca.category).filter(Boolean) || [],
       courses: p.programme_courses?.map((pc: any) => ({
         ...pc.course,
         order: pc.order,

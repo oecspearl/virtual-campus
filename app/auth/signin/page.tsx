@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSupabase } from '@/lib/supabase-provider'
 import Link from 'next/link'
@@ -10,8 +10,24 @@ export default function SignInPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [ssoEnabled, setSsoEnabled] = useState(false)
   const router = useRouter()
   const { signIn, createUserProfile } = useSupabase()
+
+  // Check if SonisWeb SSO is configured for this tenant
+  useEffect(() => {
+    fetch('/api/sonisweb/auth/validate', { method: 'OPTIONS' })
+      .catch(() => {})
+    // Check for SSO connection by attempting a lightweight check
+    fetch('/api/tenant/current')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.sonisweb_sso_enabled) {
+          setSsoEnabled(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,6 +35,34 @@ export default function SignInPage() {
     setError('')
 
     try {
+      // If SSO passthrough is enabled, try SonisWeb validation first
+      if (ssoEnabled) {
+        try {
+          const ssoRes = await fetch('/api/sonisweb/auth/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          })
+
+          if (ssoRes.ok) {
+            const ssoData = await ssoRes.json()
+            if (ssoData.success) {
+              // SSO validated — now sign in via Supabase with the same credentials
+              // The user was auto-created/found by the validate endpoint
+              const { data, error: signInError } = await signIn(email, password)
+              if (!signInError && data.user) {
+                router.push('/dashboard')
+                return
+              }
+              // If Supabase sign-in fails after SSO validation, fall through to normal flow
+            }
+          }
+          // If SSO validation fails, fall through to normal Supabase auth
+        } catch (ssoErr) {
+          console.error('SSO validation error, falling back to standard auth:', ssoErr)
+        }
+      }
+
       const { data, error } = await signIn(email, password)
 
       if (error) {
@@ -35,7 +79,7 @@ export default function SignInPage() {
               name: data.user.user_metadata?.full_name || data.user.email!.split('@')[0],
               role: data.user.user_metadata?.role || 'student'
             })
-            
+
             if (profileError) {
               console.error('Failed to create user profile:', profileError)
               // Continue anyway - the user can still access the app
@@ -45,7 +89,7 @@ export default function SignInPage() {
           console.error('Error checking/creating profile:', profileError)
           // Continue anyway - the user can still access the app
         }
-        
+
         router.push('/dashboard')
       }
     } catch (err) {
@@ -59,24 +103,24 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            <img 
-              src="/oecs-logo.png" 
-              alt="OECS Logo" 
+          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)' }}>
+            <img
+              src="/oecs-logo.png"
+              alt="OECS Logo"
               className="h-8 w-8 object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
                 (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
               }}
             />
-            <span className="text-2xl font-bold text-blue-600 hidden">OECS</span>
+            <span className="text-2xl font-bold hidden" style={{ color: 'var(--theme-primary)' }}>OECS</span>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Sign in to OECS Virtual Campus
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/auth/signup" className="font-medium hover:opacity-80" style={{ color: 'var(--theme-primary)' }}>
               create a new account
             </Link>
           </p>

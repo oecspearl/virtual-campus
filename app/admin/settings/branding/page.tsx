@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import RoleGuard from '@/app/components/RoleGuard';
 import { stripHtml } from '@/lib/utils';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
+import { DEFAULT_COLOR_THEMES, CUSTOM_THEME_KEY, type ColorTheme as SharedColorTheme } from '@/lib/color-themes';
 
 interface Feature {
   icon: string;
@@ -118,12 +120,20 @@ export default function BrandingSettingsPage() {
   useEffect(() => {
     fetchSettings();
     fetchAvailableCourses();
+
+    // Re-fetch when tenant context changes (TenantSwitcher)
+    const handleTenantChange = () => {
+      fetchSettings();
+      fetchAvailableCourses();
+    };
+    window.addEventListener('tenant-override-changed', handleTenantChange);
+    return () => window.removeEventListener('tenant-override-changed', handleTenantChange);
   }, []);
 
   const fetchAvailableCourses = async () => {
     try {
       setLoadingCourses(true);
-      const response = await fetch('/api/courses?limit=100');
+      const response = await tenantFetch('/api/courses?limit=100');
       if (response.ok) {
         const data = await response.json();
         // Filter to only published courses
@@ -140,8 +150,8 @@ export default function BrandingSettingsPage() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/settings/branding');
-      
+      const response = await tenantFetch('/api/admin/settings/branding');
+
       if (!response.ok) {
         throw new Error('Failed to fetch settings');
       }
@@ -204,7 +214,7 @@ export default function BrandingSettingsPage() {
       formData.append('file', file);
       formData.append('imageType', imageType);
 
-      const response = await fetch('/api/admin/upload/branding', {
+      const response = await tenantFetch('/api/admin/upload/branding', {
         method: 'POST',
         body: formData
       });
@@ -245,7 +255,7 @@ export default function BrandingSettingsPage() {
       setError(null);
       setSuccess(false);
 
-      const response = await fetch('/api/admin/settings/branding', {
+      const response = await tenantFetch('/api/admin/settings/branding', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -287,7 +297,7 @@ export default function BrandingSettingsPage() {
   }
 
   return (
-    <RoleGuard roles={['admin', 'super_admin', 'curriculum_designer']}>
+    <RoleGuard roles={['admin', 'super_admin', 'tenant_admin', 'curriculum_designer']}>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
@@ -941,8 +951,8 @@ export default function BrandingSettingsPage() {
             {/* Color Theme Selection */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Color Theme</h2>
-              <p className="text-sm text-gray-600 mb-6">Choose a color theme for your application. This will update the primary colors throughout the platform.</p>
-              
+              <p className="text-sm text-gray-600 mb-6">Choose a color theme for your application. This will update the primary, secondary, and accent colors throughout the platform.</p>
+
               <ThemeSelector
                 themes={(() => {
                   try {
@@ -952,7 +962,31 @@ export default function BrandingSettingsPage() {
                   }
                 })()}
                 selectedTheme={settings.color_theme?.value || 'ocean-blue'}
-                onThemeSelect={(themeKey) => handleInputChange('color_theme', themeKey)}
+                onThemeSelect={(themeKey, customColors) => {
+                  handleInputChange('color_theme', themeKey);
+                  // Always persist the full theme definitions so ThemeProvider can read them
+                  const existingThemes = (() => {
+                    try {
+                      return JSON.parse(settings.color_themes?.value || '{}');
+                    } catch {
+                      return {};
+                    }
+                  })();
+                  const mergedThemes = { ...DEFAULT_COLOR_THEMES, ...existingThemes };
+                  if (customColors) {
+                    mergedThemes[CUSTOM_THEME_KEY] = {
+                      name: 'Custom',
+                      primary: customColors.primary,
+                      secondary: customColors.secondary,
+                      accent: customColors.accent,
+                      description: 'Your custom color theme'
+                    };
+                  }
+                  setSettings(prev => ({
+                    ...prev,
+                    color_themes: { value: JSON.stringify(mergedThemes) }
+                  }));
+                }}
               />
             </div>
 
@@ -1249,100 +1283,175 @@ function ThemeSelector({
 }: {
   themes: Record<string, ColorTheme>;
   selectedTheme: string;
-  onThemeSelect: (themeKey: string) => void;
+  onThemeSelect: (themeKey: string, customColors?: { primary: string; secondary: string; accent: string }) => void;
 }) {
-  const defaultThemes: Record<string, ColorTheme> = {
-    'ocean-blue': {
-      name: 'Ocean Blue',
-      primary: '#3B82F6',
-      secondary: '#6366F1',
-      accent: '#60A5FA',
-      description: 'Professional blue theme perfect for educational platforms'
-    },
-    'forest-green': {
-      name: 'Forest Green',
-      primary: '#10B981',
-      secondary: '#059669',
-      accent: '#34D399',
-      description: 'Natural green theme representing growth and learning'
-    },
-    'sunset-orange': {
-      name: 'Sunset Orange',
-      primary: '#F59E0B',
-      secondary: '#D97706',
-      accent: '#FBBF24',
-      description: 'Warm orange theme with energetic vibes'
-    },
-    'royal-purple': {
-      name: 'Royal Purple',
-      primary: '#8B5CF6',
-      secondary: '#7C3AED',
-      accent: '#A78BFA',
-      description: 'Elegant purple theme for premium experiences'
-    },
-    'caribbean-teal': {
-      name: 'Caribbean Teal',
-      primary: '#14B8A6',
-      secondary: '#0D9488',
-      accent: '#5EEAD4',
-      description: 'Fresh teal theme inspired by Caribbean waters'
-    }
-  };
+  const [customPrimary, setCustomPrimary] = useState('#3B82F6');
+  const [customSecondary, setCustomSecondary] = useState('#6366F1');
+  const [customAccent, setCustomAccent] = useState('#60A5FA');
 
-  const availableThemes = Object.keys(themes).length > 0 ? themes : defaultThemes;
+  // Initialize custom colors from saved custom theme if it exists
+  useEffect(() => {
+    const saved = themes[CUSTOM_THEME_KEY] || DEFAULT_COLOR_THEMES[CUSTOM_THEME_KEY as keyof typeof DEFAULT_COLOR_THEMES];
+    if (saved) {
+      setCustomPrimary(saved.primary);
+      setCustomSecondary(saved.secondary);
+      setCustomAccent(saved.accent);
+    }
+  }, [themes]);
+
+  // Merge saved themes with defaults (saved themes override defaults)
+  const availableThemes = { ...DEFAULT_COLOR_THEMES, ...themes };
+  // Remove custom from the grid — it's shown separately below
+  const { [CUSTOM_THEME_KEY]: _custom, ...presetThemes } = availableThemes;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Object.entries(availableThemes).map(([key, theme]) => (
+    <div className="space-y-6">
+      {/* Preset Themes */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Preset Themes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Object.entries(presetThemes).map(([key, theme]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onThemeSelect(key)}
+              className={`relative p-4 border-2 rounded-lg transition-all duration-200 text-left ${
+                selectedTheme === key
+                  ? 'border-blue-600 bg-blue-50 shadow-md'
+                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+              }`}
+            >
+              {selectedTheme === key && (
+                <div className="absolute top-2 right-2">
+                  <Icon icon="mdi:check-circle" className="w-6 h-6 text-blue-600" />
+                </div>
+              )}
+
+              {/* Color Preview Bar */}
+              <div className="flex h-3 rounded-full overflow-hidden mb-3">
+                <div className="flex-1" style={{ backgroundColor: theme.primary }} />
+                <div className="flex-1" style={{ backgroundColor: theme.secondary }} />
+                <div className="flex-1" style={{ backgroundColor: theme.accent }} />
+              </div>
+
+              <div className="flex items-center gap-2 mb-1">
+                <div className="flex gap-1">
+                  <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: theme.primary }} title="Primary" />
+                  <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: theme.secondary }} title="Secondary" />
+                  <div className="w-5 h-5 rounded-full border border-gray-200" style={{ backgroundColor: theme.accent }} title="Accent" />
+                </div>
+                <h4 className="font-medium text-sm text-gray-900">{theme.name}</h4>
+              </div>
+
+              <p className="text-xs text-gray-500 line-clamp-1">{theme.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom Color Picker */}
+      <div className={`border-2 rounded-lg p-5 transition-all duration-200 ${
+        selectedTheme === CUSTOM_THEME_KEY
+          ? 'border-blue-600 bg-blue-50 shadow-md'
+          : 'border-gray-200'
+      }`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Icon icon="mdi:palette" className="w-5 h-5 text-gray-600" />
+            <h3 className="text-sm font-medium text-gray-900">Custom Colors</h3>
+          </div>
+          {selectedTheme === CUSTOM_THEME_KEY && (
+            <Icon icon="mdi:check-circle" className="w-6 h-6 text-blue-600" />
+          )}
+        </div>
+
+        <p className="text-xs text-gray-500 mb-4">Pick your own colors for primary, secondary, and accent. Click &quot;Apply Custom Theme&quot; to activate.</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Primary Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={customPrimary}
+                onChange={(e) => setCustomPrimary(e.target.value)}
+                className="h-10 w-14 rounded border border-gray-300 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={customPrimary}
+                onChange={(e) => setCustomPrimary(e.target.value)}
+                className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded font-mono"
+                placeholder="#3B82F6"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Secondary Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={customSecondary}
+                onChange={(e) => setCustomSecondary(e.target.value)}
+                className="h-10 w-14 rounded border border-gray-300 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={customSecondary}
+                onChange={(e) => setCustomSecondary(e.target.value)}
+                className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded font-mono"
+                placeholder="#6366F1"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Accent Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={customAccent}
+                onChange={(e) => setCustomAccent(e.target.value)}
+                className="h-10 w-14 rounded border border-gray-300 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={customAccent}
+                onChange={(e) => setCustomAccent(e.target.value)}
+                className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded font-mono"
+                placeholder="#60A5FA"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Custom color preview */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex h-3 rounded-full overflow-hidden flex-1">
+            <div className="flex-1" style={{ backgroundColor: customPrimary }} />
+            <div className="flex-1" style={{ backgroundColor: customSecondary }} />
+            <div className="flex-1" style={{ backgroundColor: customAccent }} />
+          </div>
+          <span className="text-xs text-gray-500">Preview</span>
+        </div>
+
         <button
-          key={key}
           type="button"
-          onClick={() => onThemeSelect(key)}
-          className={`relative p-4 border-2 rounded-lg transition-all duration-200 text-left ${
-            selectedTheme === key
-              ? 'border-blue-600 bg-blue-50 shadow-md'
-              : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+          onClick={() => onThemeSelect(CUSTOM_THEME_KEY, {
+            primary: customPrimary,
+            secondary: customSecondary,
+            accent: customAccent
+          })}
+          className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+            selectedTheme === CUSTOM_THEME_KEY
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
-          {selectedTheme === key && (
-            <div className="absolute top-2 right-2">
-              <Icon icon="mdi:check-circle" className="w-6 h-6 text-blue-600" />
-            </div>
-          )}
-          
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex gap-1">
-              <div
-                className="w-8 h-8 rounded"
-                style={{ backgroundColor: theme.primary }}
-                title="Primary Color"
-              />
-              <div
-                className="w-8 h-8 rounded"
-                style={{ backgroundColor: theme.secondary }}
-                title="Secondary Color"
-              />
-              <div
-                className="w-8 h-8 rounded"
-                style={{ backgroundColor: theme.accent }}
-                title="Accent Color"
-              />
-            </div>
-            <h3 className="font-semibold text-gray-900">{theme.name}</h3>
-          </div>
-          
-          <p className="text-xs text-gray-600">{theme.description}</p>
-          
-          <div className="mt-3 flex gap-2 text-xs">
-            <span className="px-2 py-1 bg-gray-100 rounded text-gray-700">
-              {theme.primary}
-            </span>
-            <span className="px-2 py-1 bg-gray-100 rounded text-gray-700">
-              {theme.secondary}
-            </span>
-          </div>
+          {selectedTheme === CUSTOM_THEME_KEY ? 'Update Custom Theme' : 'Apply Custom Theme'}
         </button>
-      ))}
+      </div>
     </div>
   );
 }

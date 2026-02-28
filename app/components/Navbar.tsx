@@ -11,6 +11,7 @@ import { canAccessAdmin, hasRole } from "@/lib/rbac";
 import SmartSearch from "@/app/components/SmartSearch";
 import { useBranding } from "@/lib/hooks/useBranding";
 import NotificationButton from "@/app/components/NotificationButton";
+import TenantSwitcher from "@/app/components/TenantSwitcher";
 
 export default function Navbar() {
   const { user, loading, signOut, supabase } = useSupabase();
@@ -95,6 +96,14 @@ export default function Navbar() {
     setOpen(false);
   }, [pathname]);
 
+  // Theme-aware active link styles
+  const activeStyle = { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' };
+  const activeLinkClass = (isActive: boolean) => isActive
+    ? 'shadow-sm'
+    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100';
+  const activeMobileClass = (isActive: boolean) => isActive
+    ? ''
+    : 'text-gray-700 hover:bg-gray-100';
 
   return (
     <header className="hidden lg:block sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-lg">
@@ -103,7 +112,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3 group transition-all duration-200 hover:opacity-90">
             <div className="relative flex-shrink-0">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-200 blur-sm"></div>
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-200 blur-sm" style={{ background: 'linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))' }}></div>
               <Image
                 src={logoUrl}
                 alt={`${siteShortName} Logo`}
@@ -115,8 +124,8 @@ export default function Navbar() {
               />
             </div>
             <div className="flex flex-col">
-        <span className="text-lg font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-          OECS Virtual Campus
+        <span className="text-lg font-bold bg-clip-text text-transparent leading-tight" style={{ backgroundImage: 'linear-gradient(to right, var(--theme-primary), var(--theme-secondary))' }}>
+          {siteShortName}
         </span>
               <div className="text-[10px] text-gray-500 font-medium leading-tight tracking-wide">
                 Powered by Learnboard
@@ -130,11 +139,8 @@ export default function Navbar() {
           {/* Home */}
           <Link
             href="/"
-            className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-              pathname === '/'
-                ? 'bg-blue-100 text-blue-700 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
+            className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${activeLinkClass(pathname === '/')}`}
+            style={pathname === '/' ? activeStyle : undefined}
           >
             Home
           </Link>
@@ -144,11 +150,8 @@ export default function Navbar() {
             <div className="relative academics-dropdown">
               <button
                 onClick={() => { setAcademicsOpen(!academicsOpen); setEngagementOpen(false); setMoreOpen(false); }}
-                className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-1 ${
-                  pathname.startsWith('/programmes') || pathname.startsWith('/courses')
-                    ? 'bg-blue-100 text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+                className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-1 ${activeLinkClass(pathname.startsWith('/programmes') || pathname.startsWith('/courses'))}`}
+                style={(pathname.startsWith('/programmes') || pathname.startsWith('/courses')) ? activeStyle : undefined}
               >
                 Academics
                 <svg className={`w-4 h-4 transition-transform duration-200 ${academicsOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,13 +160,13 @@ export default function Navbar() {
               </button>
               {academicsOpen && (
                 <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-3 z-50 backdrop-blur-md">
-                  <Link href="/programmes" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg mx-2">
+                  <Link href="/programmes" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                     <div className="flex items-center gap-3">
                       <Icon icon="material-symbols:school" className="w-5 h-5 text-indigo-500" />
                       Programmes
                     </div>
                   </Link>
-                  <Link href="/courses" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg mx-2">
+                  <Link href="/courses" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                     <div className="flex items-center gap-3">
                       <Icon icon="material-symbols:book" className="w-5 h-5 text-blue-500" />
                       Courses
@@ -178,11 +181,8 @@ export default function Navbar() {
           {isAuthenticated && (
             <Link
               href="/dashboard"
-              className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
-                pathname.startsWith('/dashboard')
-                  ? 'bg-blue-100 text-blue-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+              className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${activeLinkClass(pathname.startsWith('/dashboard'))}`}
+              style={pathname.startsWith('/dashboard') ? activeStyle : undefined}
             >
               Dashboard
             </Link>
@@ -193,11 +193,8 @@ export default function Navbar() {
             <div className="relative engagement-dropdown">
               <button
                 onClick={() => { setEngagementOpen(!engagementOpen); setAcademicsOpen(false); setMoreOpen(false); }}
-                className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-1 ${
-                  pathname.startsWith('/crm') || pathname.startsWith('/discussions')
-                    ? pathname.startsWith('/crm') ? 'bg-teal-100 text-teal-700 shadow-sm' : 'bg-blue-100 text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+                className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-1 ${activeLinkClass(pathname.startsWith('/crm') || pathname.startsWith('/discussions'))}`}
+                style={(pathname.startsWith('/crm') || pathname.startsWith('/discussions')) ? activeStyle : undefined}
               >
                 Engagement
                 <svg className={`w-4 h-4 transition-transform duration-200 ${engagementOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,14 +204,14 @@ export default function Navbar() {
               {engagementOpen && (
                 <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-3 z-50 backdrop-blur-md">
                   {hasRole(role, ['instructor', 'admin', 'super_admin']) && (
-                    <Link href="/crm" onClick={() => setEngagementOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors rounded-lg mx-2">
+                    <Link href="/crm" onClick={() => setEngagementOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                       <div className="flex items-center gap-3">
                         <Icon icon="mdi:account-heart" className="w-5 h-5 text-teal-500" />
                         CRM
                       </div>
                     </Link>
                   )}
-                  <Link href="/discussions" onClick={() => setEngagementOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg mx-2">
+                  <Link href="/discussions" onClick={() => setEngagementOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:forum" className="w-5 h-5 text-blue-500" />
                       Discussions
@@ -229,11 +226,8 @@ export default function Navbar() {
           <div className="relative more-dropdown">
             <button
               onClick={() => { setMoreOpen(!moreOpen); setAcademicsOpen(false); setEngagementOpen(false); }}
-              className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-1 ${
-                pathname.startsWith('/about') || pathname.startsWith('/contact') || pathname.startsWith('/help')
-                  ? 'bg-blue-100 text-blue-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+              className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center gap-1 ${activeLinkClass(pathname.startsWith('/about') || pathname.startsWith('/contact') || pathname.startsWith('/help'))}`}
+              style={(pathname.startsWith('/about') || pathname.startsWith('/contact') || pathname.startsWith('/help')) ? activeStyle : undefined}
             >
               More
               <svg className={`w-4 h-4 transition-transform duration-200 ${moreOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,19 +237,19 @@ export default function Navbar() {
 
             {moreOpen && (
               <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 py-3 z-50 backdrop-blur-md">
-                <Link href="/about" onClick={() => setMoreOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg mx-2">
+                <Link href="/about" onClick={() => setMoreOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:info" className="w-5 h-5 text-blue-500" />
                     About
                   </div>
                 </Link>
-                <Link href="/contact" onClick={() => setMoreOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg mx-2">
+                <Link href="/contact" onClick={() => setMoreOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:contact-mail" className="w-5 h-5 text-purple-500" />
                     Contact
                   </div>
                 </Link>
-                <Link href={role === 'admin' || role === 'super_admin' ? '/help/admin' : role === 'instructor' || role === 'curriculum_designer' ? '/help/instructor' : '/help/student'} onClick={() => setMoreOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg mx-2">
+                <Link href={role === 'admin' || role === 'super_admin' ? '/help/admin' : role === 'instructor' || role === 'curriculum_designer' ? '/help/instructor' : '/help/student'} onClick={() => setMoreOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:help" className="w-5 h-5 text-orange-500" />
                     Help Center
@@ -273,15 +267,17 @@ export default function Navbar() {
             <SmartSearch compact />
           </div>
 
+          {/* Tenant Switcher (Super Admin Only) */}
+          {isAuthenticated && role === 'super_admin' && (
+            <TenantSwitcher />
+          )}
+
           {/* System Settings (Admin Only) */}
           {isAuthenticated && canAccessAdmin(role) && (
             <Link
               href="/admin/settings"
-              className={`relative p-3 rounded-xl transition-all duration-200 ${
-                pathname.startsWith('/admin/settings')
-                  ? 'bg-orange-100 text-orange-700'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+              className={`relative p-3 rounded-xl transition-all duration-200 ${activeLinkClass(pathname.startsWith('/admin/settings'))}`}
+              style={pathname.startsWith('/admin/settings') ? activeStyle : undefined}
               title="System Settings"
             >
               <Icon icon="material-symbols:settings" className="w-5 h-5" />
@@ -292,11 +288,8 @@ export default function Navbar() {
           {isAuthenticated && (
             <Link
               href="/messages"
-              className={`relative p-3 rounded-xl transition-all duration-200 ${
-                pathname.startsWith('/messages')
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
+              className={`relative p-3 rounded-xl transition-all duration-200 ${activeLinkClass(pathname.startsWith('/messages'))}`}
+              style={pathname.startsWith('/messages') ? activeStyle : undefined}
               title="Messages"
             >
               <Icon icon="mdi:chat" className="w-5 h-5" />
@@ -334,7 +327,8 @@ export default function Navbar() {
                   />
                 ) : null}
                 <div 
-                  className={`w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm ${userAvatar ? 'hidden' : ''}`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${userAvatar ? 'hidden' : ''}`}
+                  style={{ background: 'linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))' }}
                 >
                   {(userName || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || 'U').charAt(0).toUpperCase()}
                 </div>
@@ -481,7 +475,7 @@ export default function Navbar() {
                           Course Management
                         </div>
                       </Link>
-                      <Link href="/admin/schools" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Link href="/admin/tenants" className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-3">
                           <Icon icon="material-symbols:account-balance" className="w-5 h-5 text-cyan-500" />
                           Schools
@@ -570,9 +564,10 @@ export default function Navbar() {
               >
                 Sign In
               </Link>
-              <Link 
-                href="/auth/signup" 
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              <Link
+                href="/auth/signup"
+                className="px-6 py-2 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:opacity-90"
+                style={{ background: 'linear-gradient(to right, var(--theme-primary), var(--theme-secondary))' }}
               >
                 Sign Up
               </Link>
@@ -601,11 +596,8 @@ export default function Navbar() {
             {/* Home */}
             <Link
               href="/"
-              className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                pathname === '/'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
+              className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname === '/')}`}
+              style={pathname === '/' ? activeStyle : undefined}
             >
               <div className="flex items-center gap-3">
                 <Icon icon="material-symbols:home" className="w-5 h-5" />
@@ -619,11 +611,8 @@ export default function Navbar() {
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-4">Academics</div>
                 <Link
                   href="/programmes"
-                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    pathname.startsWith('/programmes')
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/programmes'))}`}
+                  style={pathname.startsWith('/programmes') ? activeStyle : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:school" className="w-5 h-5 text-indigo-500" />
@@ -632,11 +621,8 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/courses"
-                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    pathname.startsWith('/courses')
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/courses'))}`}
+                  style={pathname.startsWith('/courses') ? activeStyle : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:book" className="w-5 h-5 text-blue-500" />
@@ -650,11 +636,8 @@ export default function Navbar() {
             {isAuthenticated && (
               <Link
                 href="/dashboard"
-                className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                  pathname.startsWith('/dashboard')
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/dashboard'))}`}
+                style={pathname.startsWith('/dashboard') ? activeStyle : undefined}
               >
                 <div className="flex items-center gap-3">
                   <Icon icon="material-symbols:dashboard" className="w-5 h-5" />
@@ -670,11 +653,8 @@ export default function Navbar() {
                 {hasRole(role, ['instructor', 'admin', 'super_admin']) && (
                   <Link
                     href="/crm"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/crm')
-                        ? 'bg-teal-100 text-teal-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/crm'))}`}
+                    style={pathname.startsWith('/crm') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:account-heart" className="w-5 h-5 text-teal-500" />
@@ -684,11 +664,8 @@ export default function Navbar() {
                 )}
                 <Link
                   href="/discussions"
-                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    pathname.startsWith('/discussions')
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/discussions'))}`}
+                  style={pathname.startsWith('/discussions') ? activeStyle : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <Icon icon="mdi:forum" className="w-5 h-5 text-blue-500" />
@@ -706,11 +683,8 @@ export default function Navbar() {
 
                   <Link
                     href="/my-courses"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/my-courses')
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/my-courses'))}`}
+                    style={pathname.startsWith('/my-courses') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="material-symbols:school" className="w-5 h-5" />
@@ -720,11 +694,8 @@ export default function Navbar() {
 
                   <Link
                     href="/messages"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/messages')
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/messages'))}`}
+                    style={pathname.startsWith('/messages') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:chat" className="w-5 h-5" />
@@ -734,11 +705,8 @@ export default function Navbar() {
 
                   <Link
                     href="/profile"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/profile')
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/profile'))}`}
+                    style={pathname.startsWith('/profile') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="material-symbols:person" className="w-5 h-5" />
@@ -753,11 +721,8 @@ export default function Navbar() {
 
                   <Link
                     href="/student/calendar"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/student/calendar')
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/student/calendar'))}`}
+                    style={pathname.startsWith('/student/calendar') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:calendar" className="w-5 h-5 text-blue-500" />
@@ -767,11 +732,8 @@ export default function Navbar() {
 
                   <Link
                     href="/student/bookmarks"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/student/bookmarks')
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/student/bookmarks'))}`}
+                    style={pathname.startsWith('/student/bookmarks') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:bookmark" className="w-5 h-5 text-amber-500" />
@@ -781,11 +743,8 @@ export default function Navbar() {
 
                   <Link
                     href="/student/notes"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/student/notes')
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/student/notes'))}`}
+                    style={pathname.startsWith('/student/notes') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:note-text" className="w-5 h-5 text-yellow-500" />
@@ -795,11 +754,8 @@ export default function Navbar() {
 
                   <Link
                     href="/student/study-groups"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/student/study-groups')
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/student/study-groups'))}`}
+                    style={pathname.startsWith('/student/study-groups') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:account-group" className="w-5 h-5 text-purple-500" />
@@ -809,11 +765,8 @@ export default function Navbar() {
 
                   <Link
                     href="/learning-paths"
-                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                      pathname.startsWith('/learning-paths')
-                        ? 'bg-green-100 text-green-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                    className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/learning-paths'))}`}
+                    style={pathname.startsWith('/learning-paths') ? activeStyle : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <Icon icon="mdi:road-variant" className="w-5 h-5 text-green-500" />
@@ -827,11 +780,8 @@ export default function Navbar() {
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-4">Administration</div>
                     <Link
                       href="/admin/users/manage"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/admin/users/manage')
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/admin/users/manage'))}`}
+                      style={pathname.startsWith('/admin/users/manage') ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:people" className="w-5 h-5" />
@@ -840,11 +790,8 @@ export default function Navbar() {
                     </Link>
                     <Link
                       href="/admin/courses/manage"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/admin/courses/manage')
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/admin/courses/manage'))}`}
+                      style={pathname.startsWith('/admin/courses/manage') ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:school" className="w-5 h-5" />
@@ -852,12 +799,9 @@ export default function Navbar() {
                       </div>
                     </Link>
                     <Link
-                      href="/admin/schools"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/admin/schools')
-                          ? 'bg-cyan-100 text-cyan-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      href="/admin/tenants"
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/admin/tenants'))}`}
+                      style={pathname.startsWith('/admin/tenants') ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:account-balance" className="w-5 h-5" />
@@ -866,11 +810,8 @@ export default function Navbar() {
                     </Link>
                     <Link
                       href="/admin/settings"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/admin/settings')
-                          ? 'bg-orange-100 text-orange-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/admin/settings'))}`}
+                      style={pathname.startsWith('/admin/settings') ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:settings" className="w-5 h-5" />
@@ -879,11 +820,8 @@ export default function Navbar() {
                     </Link>
                     <Link
                       href="/surveys"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/surveys')
-                          ? 'bg-teal-100 text-teal-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/surveys'))}`}
+                      style={pathname.startsWith('/surveys') ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:poll" className="w-5 h-5 text-teal-500" />
@@ -892,11 +830,8 @@ export default function Navbar() {
                     </Link>
                     <Link
                       href="/admin/users"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/admin') && !pathname.startsWith('/admin/users/manage') && !pathname.startsWith('/admin/courses/manage') && !pathname.startsWith('/admin/settings') && !pathname.startsWith('/admin/tenants')
-                          ? 'bg-red-100 text-red-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/admin') && !pathname.startsWith('/admin/users/manage') && !pathname.startsWith('/admin/courses/manage') && !pathname.startsWith('/admin/settings') && !pathname.startsWith('/admin/tenants'))}`}
+                      style={(pathname.startsWith('/admin') && !pathname.startsWith('/admin/users/manage') && !pathname.startsWith('/admin/courses/manage') && !pathname.startsWith('/admin/settings') && !pathname.startsWith('/admin/tenants')) ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:admin-panel-settings" className="w-5 h-5" />
@@ -909,11 +844,8 @@ export default function Navbar() {
                   <>
                     <Link
                       href="/admin/tenants"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/admin/tenants')
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/admin/tenants'))}`}
+                      style={pathname.startsWith('/admin/tenants') ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:domain" className="w-5 h-5 text-emerald-500" />
@@ -922,11 +854,8 @@ export default function Navbar() {
                     </Link>
                     <Link
                       href="/admin/system"
-                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                        pathname.startsWith('/admin/system')
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
+                      className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${activeMobileClass(pathname.startsWith('/admin/system'))}`}
+                      style={pathname.startsWith('/admin/system') ? activeStyle : undefined}
                     >
                       <div className="flex items-center gap-3">
                         <Icon icon="material-symbols:monitoring" className="w-5 h-5 text-amber-500" />
@@ -942,11 +871,8 @@ export default function Navbar() {
             <div className="border-t border-gray-200 pt-4 mt-4">
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-4">More</div>
 
-              <Link href="/about" className={`block px-4 py-3 rounded-xl transition-colors ${
-                pathname.startsWith('/about')
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}>
+              <Link href="/about" className={`block px-4 py-3 rounded-xl transition-colors ${activeMobileClass(pathname.startsWith('/about'))}`}
+                style={pathname.startsWith('/about') ? activeStyle : undefined}>
                 <div className="flex items-center gap-3">
                   <Icon icon="material-symbols:info" className="w-5 h-5 text-blue-500" />
                   About
@@ -996,9 +922,10 @@ export default function Navbar() {
                   >
                     Sign In
                   </Link>
-                  <Link 
-                    href="/auth/signup" 
-                    className="block w-full px-4 py-3 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
+                  <Link
+                    href="/auth/signup"
+                    className="block w-full px-4 py-3 text-center text-white font-semibold rounded-xl transition-all duration-200 hover:opacity-90"
+                    style={{ background: 'linear-gradient(to right, var(--theme-primary), var(--theme-secondary))' }}
                   >
                     Sign Up
                   </Link>

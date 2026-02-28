@@ -101,13 +101,17 @@ class TenantFilteredQuery {
  * Extracts the tenant_id from request headers (set by middleware).
  * Supports x-tenant-override header for super_admin users to switch tenant context.
  * Throws if the header is missing — this prevents accidental cross-tenant queries.
+ *
+ * @param request - The incoming request
+ * @param authenticatedRole - Optional pre-verified role from authenticateUser().
+ *   Pass this after authentication so the override works without x-user-role header.
  */
-export function getTenantIdFromRequest(request: Request): string {
+export function getTenantIdFromRequest(request: Request, authenticatedRole?: string): string {
   // Check for super_admin tenant override
   const override = request.headers.get('x-tenant-override');
   if (override) {
-    // Only super_admin can use the override — verified by checking x-user-role header
-    const userRole = request.headers.get('x-user-role');
+    // Only super_admin can use the override
+    const userRole = authenticatedRole || request.headers.get('x-user-role');
     if (userRole === 'super_admin') {
       return override;
     }

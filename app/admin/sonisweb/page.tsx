@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/Button';
 import { Input } from '@/app/components/Input';
@@ -21,6 +21,25 @@ interface Connection {
   connection_status: string;
   settings: Record<string, any>;
   created_at: string;
+}
+
+interface XMLImportResult {
+  status: string;
+  persons_processed: number;
+  persons_created: number;
+  persons_skipped: number;
+  persons_failed: number;
+  groups_processed: number;
+  courses_created: number;
+  courses_skipped: number;
+  courses_failed: number;
+  memberships_processed: number;
+  enrollments_created: number;
+  enrollments_skipped: number;
+  enrollments_failed: number;
+  instructors_assigned: number;
+  errors: string[];
+  datasource?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,6 +63,18 @@ export default function SonisWebAdminPage() {
     api_mode: 'both',
     auth_flow: 'welcome_email',
   });
+  const [showXMLImport, setShowXMLImport] = useState(false);
+  const [xmlImporting, setXmlImporting] = useState(false);
+  const [xmlResult, setXmlResult] = useState<XMLImportResult | null>(null);
+  const [xmlOptions, setXmlOptions] = useState({
+    createUsers: true,
+    createCourses: true,
+    createEnrollments: true,
+    publishCourses: false,
+    defaultModality: 'online',
+    authFlow: 'welcome_email',
+  });
+  const xmlFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadConnections();
@@ -134,6 +165,45 @@ export default function SonisWebAdminPage() {
     loadConnections();
   };
 
+  const handleXMLImport = async () => {
+    const file = xmlFileRef.current?.files?.[0];
+    if (!file) {
+      alert('Please select an XML file');
+      return;
+    }
+
+    setXmlImporting(true);
+    setXmlResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('xml', file);
+      fd.append('createUsers', String(xmlOptions.createUsers));
+      fd.append('createCourses', String(xmlOptions.createCourses));
+      fd.append('createEnrollments', String(xmlOptions.createEnrollments));
+      fd.append('publishCourses', String(xmlOptions.publishCourses));
+      fd.append('defaultModality', xmlOptions.defaultModality);
+      fd.append('authFlow', xmlOptions.authFlow);
+
+      const res = await fetch('/api/sonisweb/import/xml', {
+        method: 'POST',
+        body: fd,
+      });
+      const data = await res.json();
+      setXmlResult(data);
+    } catch (err) {
+      setXmlResult({
+        status: 'failed',
+        persons_processed: 0, persons_created: 0, persons_skipped: 0, persons_failed: 0,
+        groups_processed: 0, courses_created: 0, courses_skipped: 0, courses_failed: 0,
+        memberships_processed: 0, enrollments_created: 0, enrollments_skipped: 0, enrollments_failed: 0,
+        instructors_assigned: 0,
+        errors: ['Network error: Could not reach the server'],
+      });
+    } finally {
+      setXmlImporting(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -141,10 +211,16 @@ export default function SonisWebAdminPage() {
           <h1 className="text-2xl font-bold">SonisWeb SIS Integration</h1>
           <p className="text-gray-500 mt-1">Connect and sync with SonisWeb Student Information System instances</p>
         </div>
-        <Button onClick={() => setShowAddForm(!showAddForm)}>
-          <Icon icon="mdi:plus" className="mr-2" />
-          Add Connection
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => { setShowXMLImport(!showXMLImport); setShowAddForm(false); }}>
+            <Icon icon="mdi:file-xml-box" className="mr-2" />
+            XML Import
+          </Button>
+          <Button onClick={() => { setShowAddForm(!showAddForm); setShowXMLImport(false); }}>
+            <Icon icon="mdi:plus" className="mr-2" />
+            Add Connection
+          </Button>
+        </div>
       </div>
 
       {showAddForm && (
@@ -206,6 +282,167 @@ export default function SonisWebAdminPage() {
               <Button variant="secondary" onClick={() => setShowAddForm(false)}>Cancel</Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showXMLImport && (
+        <div className="bg-white rounded-lg border p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Icon icon="mdi:file-xml-box" className="text-2xl text-violet-500" />
+            <div>
+              <h2 className="text-lg font-semibold">Import from IMS Enterprise XML</h2>
+              <p className="text-sm text-gray-500">Upload an XML file exported from SonisWeb to create users, courses, and enrollments</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">XML File</label>
+              <input
+                ref={xmlFileRef}
+                type="file"
+                accept=".xml"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+              />
+              <p className="text-xs text-gray-400 mt-1">Supports IMS Enterprise XML format (up to 50MB). This is the format used by SonisWeb for Moodle/LMS exports.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={xmlOptions.createUsers}
+                  onChange={(e) => setXmlOptions(p => ({ ...p, createUsers: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Create Users</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={xmlOptions.createCourses}
+                  onChange={(e) => setXmlOptions(p => ({ ...p, createCourses: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Create Courses</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={xmlOptions.createEnrollments}
+                  onChange={(e) => setXmlOptions(p => ({ ...p, createEnrollments: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Create Enrollments</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={xmlOptions.publishCourses}
+                  onChange={(e) => setXmlOptions(p => ({ ...p, publishCourses: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm">Publish Courses Immediately</span>
+              </label>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Course Modality</label>
+                <select
+                  className="w-full border rounded-lg px-3 py-1.5 text-sm"
+                  value={xmlOptions.defaultModality}
+                  onChange={(e) => setXmlOptions(p => ({ ...p, defaultModality: e.target.value }))}
+                >
+                  <option value="online">Online</option>
+                  <option value="blended">Blended</option>
+                  <option value="in_person">In Person</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">User Auth Flow</label>
+                <select
+                  className="w-full border rounded-lg px-3 py-1.5 text-sm"
+                  value={xmlOptions.authFlow}
+                  onChange={(e) => setXmlOptions(p => ({ ...p, authFlow: e.target.value }))}
+                >
+                  <option value="welcome_email">Welcome Email (temp password)</option>
+                  <option value="sso_passthrough">SSO Passthrough</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleXMLImport} disabled={xmlImporting}>
+                {xmlImporting ? (
+                  <>
+                    <Icon icon="mdi:loading" className="mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="mdi:upload" className="mr-2" />
+                    Import XML
+                  </>
+                )}
+              </Button>
+              <Button variant="secondary" onClick={() => { setShowXMLImport(false); setXmlResult(null); }}>Cancel</Button>
+            </div>
+          </div>
+
+          {xmlResult && (
+            <div className={`mt-4 p-4 rounded-lg border ${xmlResult.status === 'success' ? 'bg-green-50 border-green-200' : xmlResult.status === 'partial' ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <Icon
+                  icon={xmlResult.status === 'success' ? 'mdi:check-circle' : xmlResult.status === 'partial' ? 'mdi:alert-circle' : 'mdi:close-circle'}
+                  className={`text-xl ${xmlResult.status === 'success' ? 'text-green-600' : xmlResult.status === 'partial' ? 'text-yellow-600' : 'text-red-600'}`}
+                />
+                <span className="font-semibold">
+                  Import {xmlResult.status === 'success' ? 'Complete' : xmlResult.status === 'partial' ? 'Partially Complete' : 'Failed'}
+                </span>
+                {xmlResult.datasource && (
+                  <span className="text-xs text-gray-500 ml-2">Source: {xmlResult.datasource}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="font-medium text-gray-700 mb-1">Users</div>
+                  <div className="space-y-0.5 text-gray-600">
+                    <div>{xmlResult.persons_processed} processed</div>
+                    <div className="text-green-600">{xmlResult.persons_created} created</div>
+                    <div className="text-gray-400">{xmlResult.persons_skipped} skipped (existing)</div>
+                    {xmlResult.persons_failed > 0 && <div className="text-red-600">{xmlResult.persons_failed} failed</div>}
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium text-gray-700 mb-1">Courses</div>
+                  <div className="space-y-0.5 text-gray-600">
+                    <div>{xmlResult.groups_processed} processed</div>
+                    <div className="text-green-600">{xmlResult.courses_created} created</div>
+                    <div className="text-gray-400">{xmlResult.courses_skipped} skipped (existing)</div>
+                    {xmlResult.courses_failed > 0 && <div className="text-red-600">{xmlResult.courses_failed} failed</div>}
+                  </div>
+                </div>
+                <div>
+                  <div className="font-medium text-gray-700 mb-1">Enrollments</div>
+                  <div className="space-y-0.5 text-gray-600">
+                    <div>{xmlResult.memberships_processed} processed</div>
+                    <div className="text-green-600">{xmlResult.enrollments_created} enrolled</div>
+                    <div className="text-blue-600">{xmlResult.instructors_assigned} instructors assigned</div>
+                    <div className="text-gray-400">{xmlResult.enrollments_skipped} skipped</div>
+                    {xmlResult.enrollments_failed > 0 && <div className="text-red-600">{xmlResult.enrollments_failed} failed</div>}
+                  </div>
+                </div>
+              </div>
+              {xmlResult.errors.length > 0 && (
+                <details className="mt-3">
+                  <summary className="text-sm text-red-600 cursor-pointer font-medium">
+                    {xmlResult.errors.length} error{xmlResult.errors.length > 1 ? 's' : ''} (click to expand)
+                  </summary>
+                  <div className="mt-2 max-h-40 overflow-y-auto text-xs text-red-700 bg-red-100 rounded p-2 space-y-1">
+                    {xmlResult.errors.map((err, i) => <div key={i}>{err}</div>)}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -1601,6 +1601,61 @@ async function AdminView(role: string) {
           </div>
         </div>
 
+        {/* SIS Integration */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4">
+            <h3 className="text-lg font-bold text-white flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              SIS Integration
+            </h3>
+            <p className="text-violet-100 text-sm">Student Information System sync</p>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              <Link
+                href="/admin/sonisweb"
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-violet-50 transition-colors group"
+              >
+                <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center group-hover:bg-violet-200 transition-colors">
+                  <Icon icon="material-symbols:sync" className="w-4 h-4 text-violet-600" />
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">SonisWeb Connections</div>
+                  <div className="text-sm text-gray-600">Manage SOAP API connections and sync</div>
+                </div>
+              </Link>
+
+              <Link
+                href="/admin/sonisweb#xml-import"
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-purple-50 transition-colors group"
+              >
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                  <Icon icon="material-symbols:upload-file" className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">XML Import</div>
+                  <div className="text-sm text-gray-600">Import users and courses from IMS Enterprise XML</div>
+                </div>
+              </Link>
+
+              <Link
+                href="/admin/sonisweb#sync-logs"
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-fuchsia-50 transition-colors group"
+              >
+                <div className="w-8 h-8 bg-fuchsia-100 rounded-lg flex items-center justify-center group-hover:bg-fuchsia-200 transition-colors">
+                  <Icon icon="material-symbols:history" className="w-4 h-4 text-fuchsia-600" />
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">Sync History</div>
+                  <div className="text-sm text-gray-600">View sync logs and import results</div>
+                </div>
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Integrations */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-4">

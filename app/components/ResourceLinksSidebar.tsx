@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
+import LoadingIndicator from '@/app/components/LoadingIndicator';
+import GoogleDrivePicker, { GoogleDriveFile, getGoogleFileTypeLabel } from '@/app/components/GoogleDrivePicker';
 
 // Allowed file types for resource uploads
 const ALLOWED_FILE_TYPES = {
@@ -36,12 +38,15 @@ interface ResourceLink {
 interface ResourceLinksSidebarProps {
   courseId?: string;
   lessonId?: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }
 
-export default function ResourceLinksSidebar({ courseId, lessonId }: ResourceLinksSidebarProps) {
+export default function ResourceLinksSidebar({ courseId, lessonId, collapsible = false, defaultOpen = true }: ResourceLinksSidebarProps) {
   const [links, setLinks] = useState<ResourceLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSectionOpen, setIsSectionOpen] = useState(defaultOpen);
   const [editForm, setEditForm] = useState({ title: '', url: '', description: '', link_type: 'external' });
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -261,49 +266,64 @@ export default function ResourceLinksSidebar({ courseId, lessonId }: ResourceLin
     }
   };
 
+  const resourceHeader = (
+    <div
+      className={`px-5 py-3 border-b border-gray-100 ${collapsible ? 'cursor-pointer select-none' : ''}`}
+      onClick={collapsible ? () => setIsSectionOpen(!isSectionOpen) : undefined}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+          Resources
+        </h3>
+        <div className="flex items-center gap-2">
+          {!collapsible && (
+            <RoleGuard roles={['instructor', 'curriculum_designer', 'admin', 'super_admin']}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                  setEditForm({ title: '', url: '', description: '', link_type: 'external' });
+                  setEditingId(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            </RoleGuard>
+          )}
+          {collapsible && (
+            <svg className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${isSectionOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-4">
-          <h3 className="text-lg font-bold text-white">Resource Links</h3>
-        </div>
-        <div className="p-6">
-          <div className="animate-pulse space-y-3">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="bg-white rounded-lg border border-gray-200/80 overflow-hidden">
+        {resourceHeader}
+        {(!collapsible || isSectionOpen) && (
+          <div className="p-4">
+            <div className="animate-pulse space-y-3">
+              <div className="h-3 bg-gray-100 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-100 rounded w-1/2"></div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            Resource Links
-          </h3>
-          <RoleGuard roles={['instructor', 'curriculum_designer', 'admin', 'super_admin']}>
-            <button
-              onClick={() => {
-                setIsEditing(true);
-                setEditForm({ title: '', url: '', description: '', link_type: 'external' });
-                setEditingId(null);
-              }}
-              className="text-white hover:text-gray-200 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          </RoleGuard>
-        </div>
-      </div>
-      <div className="p-6">
+    <div className="bg-white rounded-lg border border-gray-200/80 overflow-hidden">
+      {resourceHeader}
+      {(!collapsible || isSectionOpen) && (
+      <div className="p-4">
         {links.length === 0 ? (
           <div className="text-center py-8">
             <svg className="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -425,9 +445,27 @@ export default function ResourceLinksSidebar({ courseId, lessonId }: ResourceLin
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
-                        Upload File
+                        Upload
                       </span>
                     </button>
+                    {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                      <button
+                        type="button"
+                        onClick={() => setUploadMode('google' as any)}
+                        className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                          uploadMode === ('google' as any)
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <span className="flex items-center justify-center gap-1">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7.71 3.5l-1.42 2.46L2.2 12l4.09 6.04 1.42 2.46h8.58l1.42-2.46L21.8 12l-4.09-6.04-1.42-2.46H7.71zm.79 1h7l1.2 2.08L20.2 12l-3.5 5.42L15.5 19.5h-7l-1.2-2.08L3.8 12l3.5-5.42L8.5 4.5z"/>
+                          </svg>
+                          Drive
+                        </span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -475,8 +513,7 @@ export default function ResourceLinksSidebar({ courseId, lessonId }: ResourceLin
                       />
                       {uploading ? (
                         <div className="flex flex-col items-center">
-                          <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-2"></div>
-                          <span className="text-xs text-gray-600">Uploading...</span>
+                          <LoadingIndicator variant="dots" size="sm" text="Uploading..." />
                         </div>
                       ) : (
                         <>
@@ -505,6 +542,39 @@ export default function ResourceLinksSidebar({ courseId, lessonId }: ResourceLin
                     )}
                   </div>
                 )}
+                {/* Google Drive Picker */}
+                {uploadMode === ('google' as any) && !editingId && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Select from Google Drive
+                    </label>
+                    <GoogleDrivePicker
+                      onSelect={(files: GoogleDriveFile[]) => {
+                        if (files.length > 0) {
+                          const file = files[0];
+                          setEditForm(prev => ({
+                            ...prev,
+                            url: file.embedUrl,
+                            title: prev.title || file.name,
+                            link_type: 'document',
+                          }));
+                        }
+                      }}
+                      buttonLabel="Browse Google Drive"
+                      buttonVariant="outline"
+                      className="w-full"
+                    />
+                    {editForm.url && uploadMode === ('google' as any) && (
+                      <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Google Drive file selected
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Description (Optional)
@@ -560,6 +630,7 @@ export default function ResourceLinksSidebar({ courseId, lessonId }: ResourceLin
           </RoleGuard>
         )}
       </div>
+      )}
     </div>
   );
 }

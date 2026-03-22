@@ -8,10 +8,12 @@ import FileUpload, { UploadResult } from '@/app/components/FileUpload';
 import RoleGuard from '@/app/components/RoleGuard';
 import QuizSelectorModal from '@/app/components/QuizSelectorModal';
 import SurveySelectorModal from '@/app/components/SurveySelectorModal';
+import LibraryResourcePicker from '@/app/components/LibraryResourcePicker';
+import { Icon } from '@iconify/react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
-  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'survey'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label';
+  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'survey'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label'|'whiteboard';
   title: string;
   data: any;
   id?: string;
@@ -41,6 +43,62 @@ export default function EditLessonPage() {
   const [quizSelectorIndex, setQuizSelectorIndex] = React.useState<number | null>(null);
   const [surveySelectorOpen, setSurveySelectorOpen] = React.useState(false);
   const [surveySelectorIndex, setSurveySelectorIndex] = React.useState<number | null>(null);
+
+  // Library resources
+  const [libraryPickerOpen, setLibraryPickerOpen] = React.useState(false);
+  const [attachedLibResources, setAttachedLibResources] = React.useState<any[]>([]);
+  const [loadingLibResources, setLoadingLibResources] = React.useState(false);
+
+  // Load library resources attached to this lesson
+  const loadLibraryResources = React.useCallback(async () => {
+    if (!courseId) return;
+    setLoadingLibResources(true);
+    try {
+      const res = await fetch(`/api/courses/${courseId}/library-resources?lessonId=${lessonId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAttachedLibResources(data.attachments || []);
+      }
+    } catch (err) {
+      console.error('Error loading library resources:', err);
+    } finally {
+      setLoadingLibResources(false);
+    }
+  }, [courseId, lessonId]);
+
+  React.useEffect(() => {
+    if (courseId) loadLibraryResources();
+  }, [courseId, loadLibraryResources]);
+
+  const handleAttachLibResources = async (resourceIds: string[]) => {
+    if (!courseId) return;
+    try {
+      const res = await fetch(`/api/courses/${courseId}/library-resources`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resource_ids: resourceIds, lesson_id: lessonId }),
+      });
+      if (res.ok) {
+        loadLibraryResources();
+      }
+    } catch (err) {
+      console.error('Error attaching library resources:', err);
+    }
+  };
+
+  const handleDetachLibResource = async (attachmentId: string) => {
+    if (!courseId) return;
+    try {
+      const res = await fetch(`/api/courses/${courseId}/library-resources?attachment_id=${attachmentId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setAttachedLibResources(prev => prev.filter(a => a.id !== attachmentId));
+      }
+    } catch (err) {
+      console.error('Error detaching library resource:', err);
+    }
+  };
 
   React.useEffect(() => {
     (async () => {
@@ -99,6 +157,14 @@ export default function EditLessonPage() {
         size: 'medium' // 'small', 'medium', 'large'
       };
       initialTitle = 'Section Label';
+    } else if (type === 'whiteboard') {
+      initialData = {
+        whiteboard_id: null,
+        elements: [],
+        app_state: {},
+        mode: 'collaborate'
+      };
+      initialTitle = 'Whiteboard';
     }
 
     const item: ContentItem = {
@@ -208,7 +274,7 @@ export default function EditLessonPage() {
               </svg>
               Back
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">Edit Lesson</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">Edit Lesson</h1>
           </div>
           <div className="flex items-center gap-3">
             <Button 
@@ -231,7 +297,7 @@ export default function EditLessonPage() {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Basic Information */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
             <div className="space-y-4">
               <div>
@@ -281,7 +347,7 @@ export default function EditLessonPage() {
           </div>
 
           {/* Learning Outcomes */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Learning Outcomes</h2>
             <div className="space-y-4">
               <div className="flex gap-2">
@@ -312,14 +378,14 @@ export default function EditLessonPage() {
           </div>
 
           {/* Instructions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Lesson Instructions</h2>
             <TextEditor value={instructions} onChange={setInstructions} />
           </div>
         </div>
 
         {/* SCORM Package Upload */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Content Type</h2>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -425,7 +491,7 @@ export default function EditLessonPage() {
 
         {/* Content Builder - Only shown for non-SCORM content types */}
         {contentType !== 'scorm' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900">Content Builder</h2>
               <div className="flex items-center gap-2">
@@ -440,6 +506,7 @@ export default function EditLessonPage() {
                   <option value="interactive_video">🎬 Interactive Video</option>
                   <option value="audio">🎵 Audio/Podcast</option>
                   <option value="code_sandbox">💻 Code Sandbox</option>
+                  <option value="whiteboard">🎨 Whiteboard</option>
                   <option value="image">🖼️ Image</option>
                   <option value="pdf">📄 PDF Document</option>
                   <option value="file">📎 File Upload</option>
@@ -523,7 +590,7 @@ export default function EditLessonPage() {
                             id={`show-transcript-${idx}`}
                             checked={Boolean(item.data?.showTranscript)} 
                             onChange={(e)=>{ const arr=[...content]; arr[idx] = { ...item, data: { ...item.data, showTranscript: e.target.checked } }; setContent(arr); }} 
-                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                            className="h-4 w-4 text-purple-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
                           <label htmlFor={`show-transcript-${idx}`} className="text-xs text-gray-600">
                             Show transcript by default
@@ -1237,7 +1304,7 @@ export default function EditLessonPage() {
 
         {/* Show message when SCORM is selected */}
         {contentType === 'scorm' && !scormPackage && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
             <div className="flex items-start gap-3">
               <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1251,6 +1318,111 @@ export default function EditLessonPage() {
             </div>
           </div>
         )}
+
+          {/* Library Resources */}
+          {courseId && (
+            <div className="mt-6 rounded-lg border border-gray-200 bg-white p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Library Resources</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Attach reusable resources from the library to this lesson</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setLibraryPickerOpen(true)}>
+                  <Icon icon="material-symbols:add" className="w-4 h-4 mr-1" />
+                  Add from Library
+                </Button>
+              </div>
+
+              {loadingLibResources ? (
+                <div className="py-4 text-center text-sm text-gray-400">Loading...</div>
+              ) : attachedLibResources.length === 0 ? (
+                <div className="py-6 text-center">
+                  <Icon icon="material-symbols:library-books" className="w-10 h-10 mx-auto mb-2 text-gray-200" />
+                  <p className="text-sm text-gray-400">No library resources attached</p>
+                  <button
+                    onClick={() => setLibraryPickerOpen(true)}
+                    className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    Browse library
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {attachedLibResources.map((attachment) => {
+                    const res = attachment.library_resources;
+                    if (!res) return null;
+                    const typeIcons: Record<string, string> = {
+                      document: 'material-symbols:description',
+                      video: 'material-symbols:videocam',
+                      link: 'material-symbols:link',
+                      template: 'material-symbols:content-copy',
+                      scorm: 'material-symbols:package-2',
+                      image: 'material-symbols:image',
+                      audio: 'material-symbols:audio-file',
+                      other: 'material-symbols:attachment',
+                    };
+                    return (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg group"
+                      >
+                        <div className="w-8 h-8 rounded flex items-center justify-center bg-white border border-gray-200 flex-shrink-0">
+                          <Icon
+                            icon={typeIcons[res.resource_type] || 'material-symbols:attachment'}
+                            className="w-4 h-4 text-gray-500"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{res.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-gray-400 capitalize">{res.resource_type}</span>
+                            {res.library_resource_categories && (
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded"
+                                style={{
+                                  backgroundColor: `${res.library_resource_categories.color}15`,
+                                  color: res.library_resource_categories.color,
+                                }}
+                              >
+                                {res.library_resource_categories.name}
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-400">v{res.version}</span>
+                          </div>
+                        </div>
+                        {(res.url || res.file_url) && (
+                          <a
+                            href={res.url || res.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Open"
+                          >
+                            <Icon icon="material-symbols:open-in-new" className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleDetachLibResource(attachment.id)}
+                          className="p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Remove"
+                        >
+                          <Icon icon="material-symbols:close" className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Library Resource Picker Modal */}
+          <LibraryResourcePicker
+            isOpen={libraryPickerOpen}
+            onClose={() => setLibraryPickerOpen(false)}
+            onSelect={handleAttachLibResources}
+            excludeIds={attachedLibResources.map(a => a.resource_id)}
+          />
 
           {/* Publish Settings */}
           <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4">

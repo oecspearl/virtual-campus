@@ -6,18 +6,21 @@ import VideoPlayer from '@/app/components/VideoPlayer';
 import AudioPlayer from '@/app/components/AudioPlayer';
 import InteractiveVideoPlayer, { CheckpointQuestion } from '@/app/components/InteractiveVideoPlayer';
 import CodeSandbox from '@/app/components/CodeSandbox';
+import WhiteboardViewer from '@/app/components/WhiteboardViewer';
 import AutoResizeTextContent from '@/app/components/AutoResizeTextContent';
 import QuizStatusButton from '@/app/components/QuizStatusButton';
 import { sanitizeHtml } from '@/lib/sanitize';
 import SlideshowViewer from '@/app/components/SlideshowViewer';
+import GoogleFileEmbed, { isGoogleWorkspaceUrl } from '@/app/components/GoogleFileEmbed';
 import { BookmarkButton, NotesPanel } from '@/app/components/student';
 import Link from 'next/link';
 import { StickyNote, Bookmark, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Check, Square, Maximize2, X } from 'lucide-react';
 import { useActivityLogger, ACTIVITY_TYPES, ITEM_TYPES, ACTIONS } from '@/lib/hooks/useActivityLogger';
+import LoadingIndicator from '@/app/components/LoadingIndicator';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
-  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label'|'survey';
+  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label'|'survey'|'whiteboard';
   title: string;
   data: any;
   id?: string;
@@ -238,15 +241,15 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         }}
         className={`p-1 rounded transition-colors ${
           isComplete
-            ? 'text-green-400 hover:text-green-300'
-            : 'text-white/50 hover:text-white/80'
+            ? 'text-teal-400 hover:text-teal-300'
+            : 'text-white/30 hover:text-white/60'
         }`}
         title={isComplete ? 'Mark as incomplete' : 'Mark as complete'}
       >
         {isComplete ? (
-          <Check className="w-5 h-5" />
+          <Check className="w-4 h-4" />
         ) : (
-          <Square className="w-5 h-5" />
+          <Square className="w-4 h-4" />
         )}
       </button>
     );
@@ -421,26 +424,24 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
     switch (item.type) {
       case 'text':
         return (
-          <div className="group bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-lg border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-r from-blue-800 to-blue-900 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Reading</span>
                     <span className="truncate">{item.title}</span>
                   </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <ContentProgressCheckbox index={index} item={item} />
                     <BookmarkButton
                       type="lesson_content"
                       id={lessonId}
                       size="sm"
-                      className="text-white/80 hover:text-white hover:bg-white/20"
+                      className="text-white/50 hover:text-white/80"
                       metadata={{ content_type: 'text', content_title: item.title, content_index: index }}
                     />
                     <button
@@ -449,16 +450,16 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                         const html = typeof item.data === 'string' ? item.data : (item.data?.html || '');
                         setFullscreenContent({ title: item.title, html });
                       }}
-                      className="p-1 rounded hover:bg-white/20 transition-colors"
+                      className="p-1 rounded hover:bg-white/10 transition-colors"
                       title="View fullscreen"
                     >
-                      <Maximize2 className="w-5 h-5 text-white" />
+                      <Maximize2 className="w-4 h-4 text-white/50" />
                     </button>
-                    <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
                       {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-white" />
+                        <ChevronDown className="w-4 h-4 text-white/50" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-white" />
+                        <ChevronUp className="w-4 h-4 text-white/50" />
                       )}
                     </div>
                   </div>
@@ -474,7 +475,7 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                         const html = typeof item.data === 'string' ? item.data : (item.data?.html || '');
                         setFullscreenContent({ title: item.title || 'Content', html });
                       }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-xs font-medium"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-400 hover:text-slate-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors text-xs"
                       title="View fullscreen"
                     >
                       <Maximize2 className="w-3.5 h-3.5" />
@@ -486,7 +487,7 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                   content={typeof item.data === 'string' ? item.data : (item.data?.html || '')}
                   minHeight={150}
                   maxHeight={1000}
-                  className="text-content prose prose-sm sm:prose-base max-w-none"
+                  className="text-content prose prose-sm sm:prose-base max-w-none prose-headings:font-medium prose-headings:text-slate-800"
                 />
               </div>
             </div>
@@ -495,50 +496,31 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'video':
         return (
-          <div className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-r from-orange-500 to-oecs-orange-yellow px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Video</span>
                     <span className="truncate">{item.title}</span>
                   </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleContentComplete(index, item);
-                      }}
-                      className={`p-1 rounded transition-colors ${
-                        contentProgress[index]
-                          ? 'text-green-600 hover:text-green-700'
-                          : 'text-blue-900/50 hover:text-blue-900/80'
-                      }`}
-                      title={contentProgress[index] ? 'Mark as incomplete' : 'Mark as complete'}
-                    >
-                      {contentProgress[index] ? (
-                        <Check className="w-5 h-5" />
-                      ) : (
-                        <Square className="w-5 h-5" />
-                      )}
-                    </button>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <ContentProgressCheckbox index={index} item={item} />
                     <BookmarkButton
                       type="lesson_content"
                       id={lessonId}
                       size="sm"
-                      className="text-blue-900 hover:text-blue-800 hover:bg-black/10"
+                      className="text-white/50 hover:text-white/80"
                       metadata={{ content_type: 'video', content_title: item.title, content_index: index }}
                     />
-                    <div className="p-1 rounded hover:bg-black/10 transition-colors">
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
                       {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-blue-900" />
+                        <ChevronDown className="w-4 h-4 text-white/50" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-blue-900" />
+                        <ChevronUp className="w-4 h-4 text-white/50" />
                       )}
                     </div>
                   </div>
@@ -555,23 +537,13 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                   src={item.data?.url || item.data}
                   title={item.data?.title || 'Video Content'}
                 />
-                {/* Video Description/Notes for Students */}
                 {item.data?.description && (
-                  <div className="mt-4 p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg border border-orange-100">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                        <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-orange-800 mb-2">Video Notes</h4>
-                        <div
-                          className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-a:text-orange-600 prose-strong:text-gray-900"
-                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.data.description) }}
-                        />
-                      </div>
-                    </div>
+                  <div className="mt-4 pl-4 border-l-2 border-slate-200">
+                    <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Notes</h4>
+                    <div
+                      className="prose prose-sm max-w-none text-slate-600 prose-headings:text-slate-800 prose-headings:font-medium"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.data.description) }}
+                    />
                   </div>
                 )}
               </div>
@@ -581,33 +553,31 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'audio':
         return (
-          <div className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                    </svg>
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Audio</span>
                     <span className="truncate">{item.title}</span>
                   </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <ContentProgressCheckbox index={index} item={item} />
                     <BookmarkButton
                       type="lesson_content"
                       id={lessonId}
                       size="sm"
-                      className="text-white/80 hover:text-white hover:bg-white/20"
+                      className="text-white/50 hover:text-white/80"
                       metadata={{ content_type: 'audio', content_title: item.title, content_index: index }}
                     />
-                    <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
                       {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-white" />
+                        <ChevronDown className="w-4 h-4 text-white/50" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-white" />
+                        <ChevronUp className="w-4 h-4 text-white/50" />
                       )}
                     </div>
                   </div>
@@ -639,38 +609,36 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'interactive_video':
         return (
-          <div className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Interactive</span>
                     <span className="truncate">{item.title}</span>
                     {item.data?.checkpoints?.length > 0 && (
-                      <span className="ml-3 px-2 py-1 bg-white/20 rounded text-xs font-normal">
+                      <span className="ml-3 px-1.5 py-0.5 bg-white/10 rounded text-[10px] text-slate-400 font-normal">
                         {item.data.checkpoints.length} checkpoint{item.data.checkpoints.length !== 1 ? 's' : ''}
                       </span>
                     )}
                   </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <ContentProgressCheckbox index={index} item={item} />
                     <BookmarkButton
                       type="lesson_content"
                       id={lessonId}
                       size="sm"
-                      className="text-white/80 hover:text-white hover:bg-white/20"
+                      className="text-white/50 hover:text-white/80"
                       metadata={{ content_type: 'interactive_video', content_title: item.title, content_index: index }}
                     />
-                    <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
                       {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-white" />
+                        <ChevronDown className="w-4 h-4 text-white/50" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-white" />
+                        <ChevronUp className="w-4 h-4 text-white/50" />
                       )}
                     </div>
                   </div>
@@ -698,21 +666,12 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                   />
                   {/* Video Description/Notes for Students */}
                   {item.data?.description && (
-                    <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-100">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-blue-800 mb-2">Video Notes</h4>
-                          <div
-                            className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-a:text-blue-600 prose-strong:text-gray-900"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.data.description) }}
-                          />
-                        </div>
-                      </div>
+                    <div className="mt-4 pl-4 border-l-2 border-slate-200">
+                      <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Notes</h4>
+                      <div
+                        className="prose prose-sm max-w-none text-slate-600 prose-headings:text-slate-800 prose-headings:font-medium"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.data.description) }}
+                      />
                     </div>
                   )}
                 </>
@@ -732,33 +691,31 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'code_sandbox':
         return (
-          <div className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Code</span>
                     <span className="truncate">{item.title}</span>
                   </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <ContentProgressCheckbox index={index} item={item} />
                     <BookmarkButton
                       type="lesson_content"
                       id={lessonId}
                       size="sm"
-                      className="text-white/80 hover:text-white hover:bg-white/20"
+                      className="text-white/50 hover:text-white/80"
                       metadata={{ content_type: 'code_sandbox', content_title: item.title, content_index: index }}
                     />
-                    <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
                       {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-white" />
+                        <ChevronDown className="w-4 h-4 text-white/50" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-white" />
+                        <ChevronUp className="w-4 h-4 text-white/50" />
                       )}
                     </div>
                   </div>
@@ -780,35 +737,73 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
           </div>
         );
 
-      case 'image':
+      case 'whiteboard':
         return (
-          <div className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Board</span>
                     <span className="truncate">{item.title}</span>
                   </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <ContentProgressCheckbox index={index} item={item} />
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
+                      {isCollapsed(index) ? (
+                        <ChevronDown className="w-4 h-4 text-white/50" />
+                      ) : (
+                        <ChevronUp className="w-4 h-4 text-white/50" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
+              <div className="p-4">
+                <WhiteboardViewer
+                  whiteboardId={item.data?.whiteboard_id}
+                  elements={item.data?.elements}
+                  appState={item.data?.app_state}
+                  title={item.title}
+                  height="450px"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'image':
+        return (
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
+            {item.title && (
+              <div
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
+                onClick={() => toggleCollapse(index)}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Image</span>
+                    <span className="truncate">{item.title}</span>
+                  </h3>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <ContentProgressCheckbox index={index} item={item} />
                     <BookmarkButton
                       type="lesson_content"
                       id={lessonId}
                       size="sm"
-                      className="text-white/80 hover:text-white hover:bg-white/20"
+                      className="text-white/50 hover:text-white/80"
                       metadata={{ content_type: 'image', content_title: item.title, content_index: index }}
                     />
-                    <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
                       {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-white" />
+                        <ChevronDown className="w-4 h-4 text-white/50" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-white" />
+                        <ChevronUp className="w-4 h-4 text-white/50" />
                       )}
                     </div>
                   </div>
@@ -822,7 +817,7 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                     <img
                       src={item.data?.url || `/api/files/${item.data.fileId}`}
                       alt={item.data?.title || 'Image'}
-                      className="max-w-full h-auto rounded-lg sm:rounded-xl shadow-lg mx-auto group-hover:scale-105 transition-transform duration-300"
+                      className="max-w-full h-auto rounded-lg mx-auto"
                       loading="lazy"
                     />
                   </div>
@@ -842,33 +837,31 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'pdf':
         return (
-          <div className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-r from-red-500 to-red-600 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">PDF</span>
                     <span className="truncate">{item.title}</span>
                   </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <ContentProgressCheckbox index={index} item={item} />
                     <BookmarkButton
                       type="lesson_content"
                       id={lessonId}
                       size="sm"
-                      className="text-white/80 hover:text-white hover:bg-white/20"
+                      className="text-white/50 hover:text-white/80"
                       metadata={{ content_type: 'pdf', content_title: item.title, content_index: index }}
                     />
-                    <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
                       {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-white" />
+                        <ChevronDown className="w-4 h-4 text-white/50" />
                       ) : (
-                        <ChevronUp className="w-5 h-5 text-white" />
+                        <ChevronUp className="w-4 h-4 text-white/50" />
                       )}
                     </div>
                   </div>
@@ -878,29 +871,23 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
               <div className="p-4 sm:p-6">
               {item.data?.fileId ? (
-                <div className="border-2 border-red-100 rounded-lg sm:rounded-xl p-4 sm:p-6 bg-red-50 hover:bg-red-100 transition-colors group-hover:scale-105 transform duration-300">
-                  <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-lg sm:rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
-                      <span className="text-white font-bold text-sm sm:text-lg">PDF</span>
-                    </div>
-                    <div className="flex-1 min-w-0 w-full">
-                      <p className="font-semibold text-gray-900 text-sm sm:text-lg">{item.data?.fileName || 'PDF Document'}</p>
-                      <p className="text-xs sm:text-sm text-gray-600 mt-1">Click to view or download this document</p>
-                    </div>
-                    <a
-                      href={item.data?.url || `/api/files/${item.data.fileId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => logContentAccess('pdf', item.data?.fileName || 'PDF Document', 'viewed', { fileName: item.data?.fileName })}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-colors flex items-center justify-center group-hover:scale-105 transform duration-300 text-xs sm:text-sm w-full sm:w-auto"
-                    >
-                      <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                      <span className="hidden sm:inline">View PDF</span>
-                      <span className="sm:hidden">View</span>
-                    </a>
+                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 p-4 border border-gray-100 rounded-md bg-gray-50/50">
+                  <div className="flex-1 min-w-0 w-full">
+                    <p className="font-medium text-slate-800 text-sm">{item.data?.fileName || 'PDF Document'}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Click to view or download</p>
                   </div>
+                  <a
+                    href={item.data?.url || `/api/files/${item.data.fileId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => logContentAccess('pdf', item.data?.fileName || 'PDF Document', 'viewed', { fileName: item.data?.fileName })}
+                    className="border border-slate-300 text-slate-600 hover:text-slate-800 hover:border-slate-400 px-4 py-2 rounded-md text-sm transition-colors flex items-center w-full sm:w-auto justify-center"
+                  >
+                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    View PDF
+                  </a>
                 </div>
               ) : (
                 <div className="p-12 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">
@@ -918,32 +905,30 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'file':
         return (
-          <div key={index} className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             <div
-              className="bg-gradient-to-r from-oecs-light-green to-oecs-lime-green px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
               onClick={() => toggleCollapse(index)}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
+                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">File</span>
                   <span className="truncate">{item.data?.title || 'File'}</span>
                 </h3>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <ContentProgressCheckbox index={index} item={item} />
                   <BookmarkButton
                     type="lesson_content"
                     id={lessonId}
                     size="sm"
-                    className="text-white/80 hover:text-white hover:bg-white/20"
+                    className="text-white/50 hover:text-white/80"
                     metadata={{ content_type: 'file', content_title: item.data?.title || 'File', content_index: index }}
                   />
-                  <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
                     {isCollapsed(index) ? (
-                      <ChevronDown className="w-5 h-5 text-white" />
+                      <ChevronDown className="w-4 h-4 text-white/50" />
                     ) : (
-                      <ChevronUp className="w-5 h-5 text-white" />
+                      <ChevronUp className="w-4 h-4 text-white/50" />
                     )}
                   </div>
                 </div>
@@ -952,24 +937,19 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
               <div className="p-4 sm:p-6">
                 {item.data?.fileId ? (
-                  <div className="border rounded-lg p-3 sm:p-4 bg-gray-50 group-hover:scale-105 transform duration-300">
-                    <div className="flex flex-col sm:flex-row items-start gap-3">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-oecs-light-green rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
-                        <span className="text-xl sm:text-2xl">📎</span>
-                      </div>
-                      <div className="flex-1 min-w-0 w-full">
-                        <p className="font-medium text-sm sm:text-base">{item.data?.fileName || 'File'}</p>
-                        <p className="text-xs sm:text-sm text-gray-500">Click to download</p>
-                      </div>
-                      <a
-                        href={item.data?.url || `/api/files/${item.data.fileId}`}
-                        download
-                        onClick={() => logContentAccess('file', item.data?.fileName || 'File', 'downloaded', { fileName: item.data?.fileName })}
-                        className="btn-primary group-hover:scale-105 transform duration-300 text-sm text-center w-full sm:w-auto justify-center"
-                      >
-                        Download
-                      </a>
+                  <div className="flex flex-col sm:flex-row items-start gap-3 p-4 border border-gray-100 rounded-md bg-gray-50/50">
+                    <div className="flex-1 min-w-0 w-full">
+                      <p className="font-medium text-slate-800 text-sm">{item.data?.fileName || 'File'}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Click to download</p>
                     </div>
+                    <a
+                      href={item.data?.url || `/api/files/${item.data.fileId}`}
+                      download
+                      onClick={() => logContentAccess('file', item.data?.fileName || 'File', 'downloaded', { fileName: item.data?.fileName })}
+                      className="border border-slate-300 text-slate-600 hover:text-slate-800 hover:border-slate-400 px-4 py-2 rounded-md text-sm transition-colors text-center w-full sm:w-auto"
+                    >
+                      Download
+                    </a>
                   </div>
                 ) : (
                   <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500">
@@ -983,32 +963,30 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'embed':
         return (
-          <div key={index} className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             <div
-              className="bg-gradient-to-r from-purple-500 to-purple-600 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
               onClick={() => toggleCollapse(index)}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Embed</span>
                   <span className="truncate">{item.data?.title || 'Embedded Content'}</span>
                 </h3>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <ContentProgressCheckbox index={index} item={item} />
                   <BookmarkButton
                     type="lesson_content"
                     id={lessonId}
                     size="sm"
-                    className="text-white/80 hover:text-white hover:bg-white/20"
+                    className="text-white/50 hover:text-white/80"
                     metadata={{ content_type: 'embed', content_title: item.data?.title || 'Embedded Content', content_index: index }}
                   />
-                  <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
                     {isCollapsed(index) ? (
-                      <ChevronDown className="w-5 h-5 text-white" />
+                      <ChevronDown className="w-4 h-4 text-white/50" />
                     ) : (
-                      <ChevronUp className="w-5 h-5 text-white" />
+                      <ChevronUp className="w-4 h-4 text-white/50" />
                     )}
                   </div>
                 </div>
@@ -1016,16 +994,24 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
             </div>
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
               <div className="p-4 sm:p-6">
-                <div className="border rounded-lg p-2 sm:p-4 bg-gray-50 group-hover:scale-105 transform duration-300">
-                  <iframe
-                    src={item.data?.url || item.data}
-                    className="w-full h-[600px] sm:h-[800px] rounded"
-                    title={item.data?.title || 'Embedded Content'}
-                    loading="lazy"
-                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                    referrerPolicy="no-referrer"
+                {isGoogleWorkspaceUrl(item.data?.url || item.data) ? (
+                  <GoogleFileEmbed
+                    url={item.data?.url || item.data}
+                    title={item.data?.title || 'Google Document'}
+                    height="700px"
                   />
-                </div>
+                ) : (
+                  <div className="border border-gray-100 rounded-md overflow-hidden">
+                    <iframe
+                      src={item.data?.url || item.data}
+                      className="w-full h-[600px] sm:h-[800px] rounded"
+                      title={item.data?.title || 'Embedded Content'}
+                      loading="lazy"
+                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1049,7 +1035,7 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         // Only render if we have a valid URL
         if (!slideshowUrl || slideshowUrl.trim() === '') {
           return (
-            <div key={index} className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md p-4">
+            <div key={index} className="group bg-white rounded-lg overflow-hidden border border-gray-200 shadow-md p-4">
               <div className="text-sm text-gray-600">
                 <p className="font-medium text-gray-900 mb-2">{slideshowTitle}</p>
                 <p className="text-red-600">No slideshow URL provided. Please edit this lesson to add a slideshow URL.</p>
@@ -1059,32 +1045,30 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         }
 
         return (
-          <div key={index} className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             <div
-              className="bg-gradient-to-r from-amber-500 to-yellow-500 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer select-none"
+              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
               onClick={() => toggleCollapse(index)}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
+                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Slides</span>
                   <span className="truncate">{slideshowTitle}</span>
                 </h3>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <ContentProgressCheckbox index={index} item={item} />
                   <BookmarkButton
                     type="lesson_content"
                     id={lessonId}
                     size="sm"
-                    className="text-white/80 hover:text-white hover:bg-white/20"
+                    className="text-white/50 hover:text-white/80"
                     metadata={{ content_type: 'slideshow', content_title: slideshowTitle, content_index: index }}
                   />
-                  <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
                     {isCollapsed(index) ? (
-                      <ChevronDown className="w-5 h-5 text-white" />
+                      <ChevronDown className="w-4 h-4 text-white/50" />
                     ) : (
-                      <ChevronUp className="w-5 h-5 text-white" />
+                      <ChevronUp className="w-4 h-4 text-white/50" />
                     )}
                   </div>
                 </div>
@@ -1107,10 +1091,10 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         // Check if this quiz was deleted (not found)
         if (item.data?.quizId && notFoundQuizzes.has(item.data.quizId)) {
           return (
-            <div className="group bg-white rounded-xl overflow-hidden border-2 border-dashed border-gray-300 shadow-sm">
+            <div className="group bg-white rounded-lg overflow-hidden border-2 border-dashed border-gray-300 shadow-sm">
               <div className="bg-gradient-to-br from-gray-400 to-gray-500 px-4 sm:px-6 py-4 sm:py-5">
                 <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center mr-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-lg flex items-center justify-center mr-3">
                     <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -1137,81 +1121,57 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         }
 
         return (
-          <div className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             {item.title && (
               <div
-                className="bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600 px-4 sm:px-6 py-4 sm:py-5 relative overflow-hidden cursor-pointer select-none"
+                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
                 onClick={() => toggleCollapse(index)}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center mr-3 backdrop-blur-sm">
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <span className="truncate">{item.title}</span>
-                    </h3>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <ContentProgressCheckbox index={index} item={item} />
-                      <div className="p-1 rounded hover:bg-white/20 transition-colors">
-                        {isCollapsed(index) ? (
-                          <ChevronDown className="w-5 h-5 text-white" />
-                        ) : (
-                          <ChevronUp className="w-5 h-5 text-white" />
-                        )}
-                      </div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Quiz</span>
+                    <span className="truncate">{item.title}</span>
+                  </h3>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <ContentProgressCheckbox index={index} item={item} />
+                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
+                      {isCollapsed(index) ? (
+                        <ChevronDown className="w-4 h-4 text-white/50" />
+                      ) : (
+                        <ChevronUp className="w-4 h-4 text-white/50" />
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             )}
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-white">
+              <div className="p-4 sm:p-6">
               {item.data?.quizId ? (
-                <div className="bg-white rounded-xl border-2 border-orange-100 shadow-md hover:border-orange-200 transition-all duration-300 overflow-hidden" style={{ willChange: 'auto' }}>
-                  <div className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0 w-full min-h-[80px]">
-                        <div className="flex items-center gap-2 mb-3">
-                          <h4 className="font-bold text-gray-900 text-base sm:text-lg">Quiz Activity</h4>
-                          <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">Assessment</span>
+                <div className="border border-gray-100 rounded-md overflow-hidden" style={{ willChange: 'auto' }}>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
+                      <div className="flex-1 min-w-0 w-full min-h-[60px]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium text-slate-800 text-sm sm:text-base">Quiz</h4>
+                          <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded uppercase tracking-wider">Assessment</span>
                         </div>
                         {loadingData.has(item.data.quizId) ? (
                           <div className="flex items-center gap-2 text-sm text-gray-500 pb-2">
-                            <div className="w-4 h-4 border-2 border-gray-300 border-t-orange-600 rounded-full animate-spin"></div>
-                            Loading quiz details...
+                            <LoadingIndicator variant="dots" size="xs" text="Loading quiz details..." />
                           </div>
                         ) : quizData[item.data.quizId] ? (
                           <div className="space-y-3">
                             <div className="text-sm sm:text-base text-gray-700 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(quizData[item.data.quizId].description || "Test your knowledge and understanding") }} />
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                              <span className="inline-flex items-center px-3 py-1 bg-orange-50 text-orange-700 rounded-lg text-xs font-medium border border-orange-200">
-                                <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {quizData[item.data.quizId].points || 100} pts
-                              </span>
-                              <span className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200">
-                                <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                </svg>
-                                {quizData[item.data.quizId].questions?.length || 0} questions
-                              </span>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                              <span>{quizData[item.data.quizId].points || 100} pts</span>
+                              <span className="text-slate-200">|</span>
+                              <span>{quizData[item.data.quizId].questions?.length || 0} questions</span>
                               {quizData[item.data.quizId].time_limit && (
-                                <span className="inline-flex items-center px-3 py-1 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium border border-purple-200">
-                                  <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  {quizData[item.data.quizId].time_limit} min
-                                </span>
+                                <>
+                                  <span className="text-slate-200">|</span>
+                                  <span>{quizData[item.data.quizId].time_limit} min</span>
+                                </>
                               )}
                             </div>
                           </div>
@@ -1276,10 +1236,10 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         // Check if this assignment was deleted (not found)
         if (item.data?.assignmentId && notFoundAssignments.has(item.data.assignmentId)) {
           return (
-            <div key={index} className="group bg-white rounded-xl overflow-hidden border-2 border-dashed border-gray-300 shadow-sm">
+            <div key={index} className="group bg-white rounded-lg overflow-hidden border-2 border-dashed border-gray-300 shadow-sm">
               <div className="bg-gradient-to-br from-gray-400 to-gray-500 px-4 sm:px-6 py-4 sm:py-5">
                 <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center mr-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-lg flex items-center justify-center mr-3">
                     <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -1306,80 +1266,56 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         }
 
         return (
-          <div key={index} className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             <div
-              className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 px-4 sm:px-6 py-4 sm:py-5 relative overflow-hidden cursor-pointer select-none"
+              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
               onClick={() => toggleCollapse(index)}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center mr-3 backdrop-blur-sm">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                      </svg>
-                    </div>
-                    Assignment
-                  </h3>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <div className="p-1 rounded hover:bg-white/20 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-5 h-5 text-white" />
-                      ) : (
-                        <ChevronUp className="w-5 h-5 text-white" />
-                      )}
-                    </div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Assignment</span>
+                  <span className="truncate">{item.title || 'Assignment'}</span>
+                </h3>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <ContentProgressCheckbox index={index} item={item} />
+                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
+                    {isCollapsed(index) ? (
+                      <ChevronDown className="w-4 h-4 text-white/50" />
+                    ) : (
+                      <ChevronUp className="w-4 h-4 text-white/50" />
+                    )}
                   </div>
                 </div>
               </div>
             </div>
             <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-white">
+              <div className="p-4 sm:p-6">
               {item.data?.assignmentId ? (
-                <div className="bg-white rounded-xl border-2 border-emerald-100 shadow-md hover:border-emerald-200 transition-all duration-300 overflow-hidden" style={{ willChange: 'auto' }}>
-                  <div className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0 w-full min-h-[80px]">
-                        <div className="flex items-center gap-2 mb-3">
-                          <h4 className="font-bold text-gray-900 text-base sm:text-lg">Assignment</h4>
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Submission</span>
+                <div className="border border-gray-100 rounded-md overflow-hidden" style={{ willChange: 'auto' }}>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
+                      <div className="flex-1 min-w-0 w-full min-h-[60px]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium text-slate-800 text-sm sm:text-base">Assignment</h4>
+                          <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded uppercase tracking-wider">Submission</span>
                         </div>
                         {loadingData.has(item.data.assignmentId) ? (
                           <div className="flex items-center gap-2 text-sm text-gray-500 pb-2">
-                            <div className="w-4 h-4 border-2 border-gray-300 border-t-emerald-600 rounded-full animate-spin"></div>
-                            Loading assignment details...
+                            <LoadingIndicator variant="dots" size="xs" text="Loading assignment details..." />
                           </div>
                         ) : assignmentData[item.data.assignmentId] ? (
                           <div className="space-y-3">
                             <div className="text-sm sm:text-base text-gray-700 leading-relaxed line-clamp-2 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(assignmentData[item.data.assignmentId].description || "Complete this assignment") }} />
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                              <span className="inline-flex items-center px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium border border-emerald-200">
-                                <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {assignmentData[item.data.assignmentId].points || 100} pts
-                              </span>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                              <span>{assignmentData[item.data.assignmentId].points || 100} pts</span>
                               {assignmentData[item.data.assignmentId].due_date && (
-                                <span className="inline-flex items-center px-3 py-1 bg-red-50 text-red-700 rounded-lg text-xs font-medium border border-red-200">
-                                  <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                  </svg>
-                                  Due: {new Date(assignmentData[item.data.assignmentId].due_date).toLocaleDateString()}
-                                </span>
+                                <>
+                                  <span className="text-slate-200">|</span>
+                                  <span>Due: {new Date(assignmentData[item.data.assignmentId].due_date).toLocaleDateString()}</span>
+                                </>
                               )}
-                              <span className="inline-flex items-center px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium border border-indigo-200">
-                                <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                                {assignmentData[item.data.assignmentId].submission_types?.join(', ') || 'File'} submission
-                              </span>
+                              <span className="text-slate-200">|</span>
+                              <span>{assignmentData[item.data.assignmentId].submission_types?.join(', ') || 'File'} submission</span>
                             </div>
                           </div>
                         ) : (
@@ -1388,9 +1324,9 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-6 w-full sm:w-auto min-h-[40px]">
-                      <Link 
+                      <Link
                         href={`/assignment/${item.data.assignmentId}`}
-                        className="inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md text-sm self-start"
+                        className="inline-flex items-center justify-center px-4 py-2 border border-teal-600 text-teal-700 hover:bg-teal-50 rounded-md text-sm transition-colors self-start"
                       >
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1477,12 +1413,8 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
             large: "text-lg"
           };
           return (
-            <div className={`relative ${paddingClasses[size]} my-5 rounded-lg bg-gradient-to-r from-emerald-50 to-teal-50 border-l-4 border-emerald-500 shadow-sm`}>
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent rounded-lg" />
-              <span className={`relative ${sectionTextSizes[size]} font-bold text-emerald-800 flex items-center gap-2`}>
-                <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
+            <div className={`${paddingClasses[size]} my-5 pl-4 border-l-2 border-slate-300`}>
+              <span className={`${sectionTextSizes[size]} font-medium text-slate-700`}>
                 {text}
               </span>
             </div>
@@ -1496,33 +1428,24 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
             large: "text-lg"
           };
           return (
-            <div className={`relative overflow-hidden ${paddingClasses[size]} my-5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-lg`}>
-              <div className="absolute inset-0 opacity-20">
-                <div className="absolute inset-0" style={{
-                  backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
-                  backgroundSize: '20px 20px'
-                }} />
-              </div>
-              <div className="relative text-center">
-                <span className={`${bannerTextSizes[size]} font-bold text-white drop-shadow-sm`}>
-                  {text}
-                </span>
-              </div>
+            <div className={`${paddingClasses[size]} my-5 rounded-md bg-slate-800 text-center`}>
+              <span className={`${bannerTextSizes[size]} font-medium text-white`}>
+                {text}
+              </span>
             </div>
           );
         }
 
-        // Default: heading style with attractive background
+        // Default: heading style
         const headingSizes: Record<string, string> = {
-          small: "text-lg",
-          medium: "text-xl",
-          large: "text-2xl"
+          small: "text-base",
+          medium: "text-lg",
+          large: "text-xl"
         };
 
         return (
-          <div className={`relative ${paddingClasses[size]} my-5 rounded-lg bg-gradient-to-r from-gray-50 to-slate-100 border border-gray-200 shadow-sm`}>
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-l-lg" />
-            <h3 className={`${headingSizes[size]} font-bold text-gray-800 pl-3`}>
+          <div className={`${paddingClasses[size]} my-5 pl-4 border-l-2 border-slate-700`}>
+            <h3 className={`${headingSizes[size]} font-medium text-slate-800`}>
               {text}
             </h3>
           </div>
@@ -1532,34 +1455,30 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
       case 'survey':
         const surveyId = item.data?.surveyId;
         return (
-          <div key={index} className="group bg-white rounded-xl overflow-hidden border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300">
+          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
             <div
-              className="bg-gradient-to-r from-teal-500 to-cyan-600 px-4 sm:px-6 py-4 sm:py-5 cursor-pointer select-none"
+              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
               onClick={() => toggleCollapse(index)}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                  </div>
+                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Survey</span>
                   <span className="truncate">{item.title || 'Survey'}</span>
                 </h3>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <ContentProgressCheckbox index={index} item={item} />
                   <BookmarkButton
                     type="lesson_content"
                     id={lessonId}
                     size="sm"
-                    className="text-white/80 hover:text-white hover:bg-white/20"
+                    className="text-white/50 hover:text-white/80"
                     metadata={{ content_type: 'survey', content_title: item.title, content_index: index }}
                   />
-                  <div className="p-1 rounded hover:bg-white/20 transition-colors">
+                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
                     {isCollapsed(index) ? (
-                      <ChevronDown className="w-5 h-5 text-white" />
+                      <ChevronDown className="w-4 h-4 text-white/50" />
                     ) : (
-                      <ChevronUp className="w-5 h-5 text-white" />
+                      <ChevronUp className="w-4 h-4 text-white/50" />
                     )}
                   </div>
                 </div>
@@ -1569,11 +1488,11 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
               <div className="p-4 sm:p-6">
                 {surveyId ? (
                   <div className="space-y-4">
-                    <p className="text-gray-600">{item.data?.description || 'Please complete this survey to provide feedback.'}</p>
+                    <p className="text-sm text-slate-500">{item.data?.description || 'Please complete this survey to provide feedback.'}</p>
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Link
                         href={`/surveys/${surveyId}/take`}
-                        className="inline-flex items-center justify-center px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-all duration-200 text-sm"
+                        className="inline-flex items-center justify-center px-4 py-2 border border-teal-600 text-teal-700 hover:bg-teal-50 rounded-md text-sm transition-colors"
                       >
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -1649,57 +1568,57 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
   return (
     <div className="relative">
       {/* Tools Toolbar */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 mb-4 sm:mb-6 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2">
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-100 mb-4 sm:mb-5 -mx-5 sm:-mx-8 px-5 sm:px-8 py-2">
         <div className="flex items-center justify-between gap-2">
           {/* Collapse Controls */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={allCollapsed ? expandAll : collapseAll}
-              className="flex items-center gap-1.5 px-3 py-2 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-400 hover:text-slate-600 rounded-md transition-colors text-xs"
               title={allCollapsed ? "Expand all sections" : "Collapse all sections"}
             >
               {allCollapsed ? (
                 <>
-                  <ChevronsUpDown className="w-4 h-4" />
-                  <span className="text-sm font-medium hidden sm:inline">Expand All</span>
+                  <ChevronsUpDown className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Expand All</span>
                 </>
               ) : (
                 <>
-                  <ChevronsDownUp className="w-4 h-4" />
-                  <span className="text-sm font-medium hidden sm:inline">Collapse All</span>
+                  <ChevronsDownUp className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Collapse All</span>
                 </>
               )}
             </button>
             {collapsedCount > 0 && (
-              <span className="text-xs text-gray-500 hidden sm:inline">
-                ({collapsedCount} collapsed)
+              <span className="text-[10px] text-slate-300 hidden sm:inline">
+                {collapsedCount} collapsed
               </span>
             )}
           </div>
 
-          {/* Study tools - available to all users */}
-          <div className="flex items-center gap-2">
+          {/* Study tools */}
+          <div className="flex items-center gap-1.5">
             <BookmarkButton
               type="lesson"
               id={lessonId}
               size="md"
               showLabel
-              className="bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
+              className="hover:bg-gray-50"
             />
             <button
               onClick={() => setIsNotesPanelOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-400 hover:text-slate-600 rounded-md transition-colors text-xs"
               title="Open notes"
             >
-              <StickyNote className="w-5 h-5 text-yellow-500" />
-              <span className="text-sm font-medium">Notes</span>
+              <StickyNote className="w-4 h-4" />
+              <span>Notes</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Lesson Content */}
-      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+      <div className="space-y-4 sm:space-y-5">
         {content.map((item, index) => (
           <div key={item.id || index} id={`content-${index}`} className="group scroll-mt-20">
             {renderContentItem(item, index)}
@@ -1718,24 +1637,24 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
       {fullscreenContent && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-800 to-blue-900 px-4 sm:px-6 py-4 shadow-md">
+          <div className="sticky top-0 z-10 bg-slate-800 px-4 sm:px-6 py-3 border-b border-slate-700">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
-              <h2 className="text-lg sm:text-xl font-bold text-white truncate mr-4">
+              <h2 className="text-base sm:text-lg font-medium text-white truncate mr-4">
                 {fullscreenContent.title}
               </h2>
               <button
                 onClick={() => setFullscreenContent(null)}
-                className="flex items-center gap-2 px-3 py-2 text-white/90 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-white/60 hover:text-white/90 rounded-md transition-colors flex-shrink-0 text-sm"
               >
-                <X className="w-5 h-5" />
-                <span className="text-sm font-medium hidden sm:inline">Close</span>
+                <X className="w-4 h-4" />
+                <span className="hidden sm:inline">Close</span>
               </button>
             </div>
           </div>
           {/* Content */}
           <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
             <div
-              className="prose prose-lg max-w-none rich-text-content"
+              className="prose prose-lg max-w-none rich-text-content prose-headings:font-medium prose-headings:text-slate-800"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(fullscreenContent.html) }}
             />
           </div>

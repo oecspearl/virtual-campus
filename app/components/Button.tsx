@@ -17,19 +17,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const styles: Record<ButtonVariant, string> = {
   primary:
-    "px-4 py-2 rounded-md text-sm transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 font-semibold",
+    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors",
   secondary:
-    "px-4 py-2 rounded-md text-sm transition-colors bg-gray-100 hover:bg-gray-200",
+    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors bg-gray-50 hover:bg-gray-100 text-slate-700",
   ghost:
-    "px-4 py-2 rounded-md text-sm transition-colors",
+    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-gray-50",
   outline:
-    "px-4 py-2 rounded-md text-sm border-2 transition-all duration-300",
+    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-gray-200 transition-colors hover:bg-gray-50",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
   sm: "px-3 py-1.5 text-xs",
   md: "",
-  lg: "px-6 py-3 text-base",
+  lg: "px-5 py-2.5 text-sm",
 };
 
 export default function Button({
@@ -45,24 +45,13 @@ export default function Button({
     switch (variant) {
       case "primary":
         return {
-          background: `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`,
+          backgroundColor: 'var(--theme-primary)',
           color: 'white',
-        };
-      case "secondary":
-        return {
-          color: 'var(--theme-primary)',
-          backgroundColor: '#f3f4f6',
-        };
-      case "ghost":
-        return {
-          color: `var(--theme-primary)`,
-          backgroundColor: 'transparent',
         };
       case "outline":
         return {
-          borderColor: `var(--theme-primary)`,
+          borderColor: `color-mix(in srgb, var(--theme-primary) 30%, #d1d5db)`,
           color: `var(--theme-primary)`,
-          backgroundColor: 'transparent',
         };
       default:
         return {};
@@ -71,32 +60,18 @@ export default function Button({
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (variant === "primary") {
-      const primary = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary');
-      const secondary = getComputedStyle(document.documentElement).getPropertyValue('--theme-secondary');
-      e.currentTarget.style.background = `linear-gradient(to right, ${primary}DD, ${secondary}DD)`;
-    } else if (variant === "secondary") {
-      e.currentTarget.style.backgroundColor = '#e5e7eb';
-    } else if (variant === "ghost") {
-      const primary = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary');
-      e.currentTarget.style.backgroundColor = `${primary}15`;
-    } else if (variant === "outline") {
-      const primary = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary');
-      e.currentTarget.style.backgroundColor = `${primary}15`;
+      e.currentTarget.style.backgroundColor = `color-mix(in srgb, var(--theme-primary) 85%, black)`;
     }
   };
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (variant === "primary") {
-      e.currentTarget.style.background = `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`;
-    } else if (variant === "secondary") {
-      e.currentTarget.style.backgroundColor = '#f3f4f6';
-    } else if (variant === "ghost" || variant === "outline") {
-      e.currentTarget.style.backgroundColor = 'transparent';
+      e.currentTarget.style.backgroundColor = `var(--theme-primary)`;
     }
   };
 
   return (
-    <button 
+    <button
       className={cn(styles[variant], size !== "md" && sizeStyles[size], className)}
       style={getButtonStyle()}
       onMouseEnter={handleMouseEnter}

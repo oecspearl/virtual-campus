@@ -91,6 +91,15 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabaseClient();
     const serviceSupabase = createServiceSupabaseClient();
 
+    // Resolve tenant for this request
+    let tenantId = '00000000-0000-0000-0000-000000000001';
+    try {
+      const { getTenantIdFromRequest } = await import('@/lib/tenant-query');
+      tenantId = getTenantIdFromRequest(request as any);
+    } catch {
+      // fallback to default tenant
+    }
+
     // Read and extract ZIP file
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -144,11 +153,12 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check for duplicate course name
-    const { data: existingCourse } = await supabase
+    // Check for duplicate course name within the tenant
+    const { data: existingCourse } = await serviceSupabase
       .from('courses')
       .select('id')
       .eq('title', manifest.course.title)
+      .eq('tenant_id', tenantId)
       .single();
 
     const courseTitle = existingCourse
@@ -156,15 +166,17 @@ export async function POST(request: Request) {
       : manifest.course.title;
 
     // Start transaction-like operations
-    // Create new course
+    // Create new course - strip old id/tenant_id and set current tenant
+    const { id: _oldCourseId, tenant_id: _oldCourseTenant, created_at: _cc, updated_at: _cu, ...courseFields } = manifest.course;
     const newCourseData = {
-      ...manifest.course,
+      ...courseFields,
       title: courseTitle,
+      tenant_id: tenantId,
       published: false, // Restore as unpublished by default
       featured: false
     };
 
-    const { data: newCourse, error: courseError } = await supabase
+    const { data: newCourse, error: courseError } = await serviceSupabase
       .from('courses')
       .insert([newCourseData])
       .select()
@@ -224,7 +236,7 @@ export async function POST(request: Request) {
             .getPublicUrl(fileName);
 
           // Create file record in database
-          const { data: fileRecord, error: fileRecordError } = await supabase
+          const { data: fileRecord, error: fileRecordError } = await serviceSupabase
             .from('files')
             .insert([{
               name: fileInfo.name,
@@ -232,7 +244,8 @@ export async function POST(request: Request) {
               size: fileBuffer.length,
               url: urlData.publicUrl,
               uploaded_by: user.id,
-              course_id: newCourse.id
+              course_id: newCourse.id,
+              tenant_id: tenantId
             }])
             .select()
             .single();
@@ -287,16 +300,18 @@ export async function POST(request: Request) {
           return item;
         });
 
-        // Create lesson
+        // Create lesson - strip old id/tenant_id and set current tenant
+        const { id: _oldLessonId, tenant_id: _oldLessonTenant, created_at: _lc, updated_at: _lu, ...lessonFields } = lesson;
         const lessonData = {
-          ...lesson,
+          ...lessonFields,
           course_id: newCourse.id,
+          tenant_id: tenantId,
           content: updatedContent,
           resources: updatedResources,
           published: false // Restore as unpublished
         };
 
-        const { data: newLesson, error: lessonError } = await supabase
+        const { data: newLesson, error: lessonError } = await serviceSupabase
           .from('lessons')
           .insert([lessonData])
           .select()
@@ -321,7 +336,7 @@ export async function POST(request: Request) {
       
       for (const instructorRef of manifest.instructors) {
         // Check if instructor exists (by ID)
-        const { data: instructorExists } = await supabase
+        const { data: instructorExists } = await serviceSupabase
           .from('users')
           .select('id')
           .eq('id', instructorRef.instructor_id)
@@ -330,7 +345,8 @@ export async function POST(request: Request) {
         if (instructorExists) {
           instructorInserts.push({
             course_id: newCourse.id,
-            instructor_id: instructorRef.instructor_id
+            instructor_id: instructorRef.instructor_id,
+            tenant_id: tenantId
           });
         }
       }
@@ -339,18 +355,20 @@ export async function POST(request: Request) {
       if (!instructorInserts.find(ci => ci.instructor_id === user.id)) {
         instructorInserts.push({
           course_id: newCourse.id,
-          instructor_id: user.id
+          instructor_id: user.id,
+          tenant_id: tenantId
         });
       }
 
       if (instructorInserts.length > 0) {
-        await supabase.from('course_instructors').insert(instructorInserts);
+        await serviceSupabase.from('course_instructors').insert(instructorInserts);
       }
     } else {
       // If no instructors in backup, add current user as instructor
-      await supabase.from('course_instructors').insert([{
+      await serviceSupabase.from('course_instructors').insert([{
         course_id: newCourse.id,
-        instructor_id: user.id
+        instructor_id: user.id,
+        tenant_id: tenantId
       }]);
     }
 
@@ -358,7 +376,7 @@ export async function POST(request: Request) {
     if (manifest.course.thumbnail) {
       const thumbnailMatch = manifest.course.thumbnail.match(/\/api\/files\/([^/?]+)/);
       if (thumbnailMatch && fileMapping[thumbnailMatch[1]]) {
-        await supabase
+        await serviceSupabase
           .from('courses')
           .update({ thumbnail: `/api/files/${fileMapping[thumbnailMatch[1]]}` })
           .eq('id', newCourse.id);
@@ -419,9 +437,11 @@ export async function POST(request: Request) {
         // Create classes
         const classMapping: Record<string, string> = {};
         for (const classData of userData.classes || []) {
+          const { id: _oldClassId, tenant_id: _oldClassTenant, created_at: _clc, updated_at: _clu, ...classFields } = classData;
           const newClassData = {
-            ...classData,
-            course_id: newCourse.id
+            ...classFields,
+            course_id: newCourse.id,
+            tenant_id: tenantId
           };
 
           const { data: newClass } = await serviceSupabase

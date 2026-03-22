@@ -1339,7 +1339,7 @@ const WeeklyFormat: React.FC<{
                         <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
                           <div className="mt-1 flex gap-2">
                             {(() => {
-                              // Lessons not in this section (unassigned + from other weeks)
+                              // All lessons not currently in this section
                               const availableLessons = allLessons.filter(l => l.section_id !== section.id);
                               if (availableLessons.length > 0) {
                                 return (
@@ -1354,22 +1354,11 @@ const WeeklyFormat: React.FC<{
                                     className="flex-1 py-2 px-3 text-xs text-gray-500 bg-white border border-dashed border-gray-200 hover:border-blue-300 rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                   >
                                     <option value="">+ Add lesson to this week ({availableLessons.length} available)</option>
-                                    {unsectionedLessons.length > 0 && (
-                                      <optgroup label="Unassigned">
-                                        {unsectionedLessons.map(l => (
-                                          <option key={l.id} value={l.id}>{l.title}</option>
-                                        ))}
-                                      </optgroup>
-                                    )}
-                                    {sortedSections.filter(s => s.id !== section.id).map(otherSection => {
-                                      const otherLessons = allLessons.filter(l => l.section_id === otherSection.id);
-                                      if (otherLessons.length === 0) return null;
+                                    {availableLessons.map(l => {
+                                      const fromSection = l.section_id ? sortedSections.find(s => s.id === l.section_id) : null;
+                                      const suffix = fromSection ? ` (from ${fromSection.title})` : '';
                                       return (
-                                        <optgroup key={otherSection.id} label={`Move from ${otherSection.title}`}>
-                                          {otherLessons.map(l => (
-                                            <option key={l.id} value={l.id}>{l.title}</option>
-                                          ))}
-                                        </optgroup>
+                                        <option key={l.id} value={l.id}>{l.title}{suffix}</option>
                                       );
                                     })}
                                   </select>

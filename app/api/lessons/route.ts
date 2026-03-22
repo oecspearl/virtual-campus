@@ -89,6 +89,11 @@ export async function POST(request: Request) {
     
     // Add course_id directly - no subjects needed
     lessonData.course_id = course_id;
+
+    // Optional: assign to a section (week) for weekly/topics format
+    if (body.section_id) {
+      lessonData.section_id = body.section_id;
+    }
     
     const { data: lesson, error } = await tq.from("lessons")
       .insert([lessonData])

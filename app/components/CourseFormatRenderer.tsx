@@ -40,6 +40,37 @@ interface CourseFormatRendererProps {
   editMode?: boolean;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
   lessonProgress?: LessonProgress[];
+  courseStartDate?: string | null;
+  /** When provided, lesson clicks call this instead of navigating to /course/[id]/lesson/[lessonId]. Used by shared courses. */
+  onLessonClick?: (lessonId: string) => void;
+}
+
+// ---- Lesson Link Helper ----
+// Renders a <Link> for regular courses or a <button> for shared courses (via onLessonClick)
+function LessonLink({ courseId, lessonId, onLessonClick, className, children, ...rest }: {
+  courseId: string;
+  lessonId: string;
+  onLessonClick?: (lessonId: string) => void;
+  className?: string;
+  children: React.ReactNode;
+  [key: string]: any;
+}) {
+  if (onLessonClick) {
+    return (
+      <button
+        onClick={(e) => { e.preventDefault(); onLessonClick(lessonId); }}
+        className={className}
+        {...rest}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <Link href={`/course/${courseId}/lesson/${lessonId}`} className={className} {...rest}>
+      {children}
+    </Link>
+  );
 }
 
 // ---- Helpers ----
@@ -208,7 +239,7 @@ const CourseNavRail: React.FC<CourseNavRailProps> = ({
       </button>
       {showNav && (
         <div className="lg:hidden fixed inset-0 z-50 bg-black/40" onClick={() => setShowNav(false)}>
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-2xl p-4 space-y-1" onClick={e => e.stopPropagation()}>
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-lg p-4 space-y-1" onClick={e => e.stopPropagation()}>
             {navContent(true)}
           </div>
         </div>
@@ -229,9 +260,10 @@ const SequentialFormat: React.FC<{
   isReorderMode: boolean;
   onToggleReorderMode: () => void;
   onReorder: (lessons: Lesson[]) => void;
+  onLessonClick?: (lessonId: string) => void;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
   lessonProgress: LessonProgress[];
-}> = ({ courseId, lessons, sections, editMode, isReorderMode, onToggleReorderMode, onReorder, onAssignSection, lessonProgress }) => {
+}> = ({ courseId, lessons, sections, editMode, isReorderMode, onToggleReorderMode, onReorder, onAssignSection, lessonProgress, onLessonClick }) => {
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => [...lessons].sort((a, b) => a.order - b.order), [lessons]);
@@ -419,20 +451,20 @@ const SequentialFormat: React.FC<{
               Done
             </span>
           ) : isCurrent || isInProgress ? (
-            <Link
-              href={`/course/${courseId}/lesson/${lesson.id}`}
+            <LessonLink
+              courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
             >
               <Icon icon="material-symbols:play-arrow" className="w-3.5 h-3.5" />
               {isInProgress ? 'Continue' : 'Start'}
-            </Link>
+            </LessonLink>
           ) : (
-            <Link
-              href={`/course/${courseId}/lesson/${lesson.id}`}
+            <LessonLink
+              courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors opacity-0 group-hover:opacity-100"
             >
               Preview
-            </Link>
+            </LessonLink>
           )}
         </div>
       </div>
@@ -446,7 +478,7 @@ const SequentialFormat: React.FC<{
 
         <div className="flex-1 min-w-0">
           {/* Top bar: progress indicator */}
-          <div className="flex items-center justify-between mb-5 bg-white rounded-xl border border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between mb-5 bg-white rounded-lg border border-gray-200 px-4 py-3">
             <div className="flex items-center gap-3">
               <Icon icon="material-symbols:view-module" className="w-5 h-5 text-blue-600" />
               <span className="text-sm font-semibold text-gray-900">Modules</span>
@@ -475,7 +507,7 @@ const SequentialFormat: React.FC<{
               return (
                 <div
                   key={section.id}
-                  className={`rounded-xl border overflow-hidden transition-all ${
+                  className={`rounded-lg border overflow-hidden transition-all ${
                     moduleLocked ? 'border-gray-200 opacity-70' :
                     comp.allDone ? 'border-green-300 bg-green-50/10' :
                     'border-gray-200'
@@ -490,7 +522,7 @@ const SequentialFormat: React.FC<{
                       'bg-white hover:bg-gray-50/80'
                     }`}
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-bold ${
                       moduleLocked ? 'bg-gray-200 text-gray-400' :
                       comp.allDone ? 'bg-green-100 text-green-700' :
                       'bg-blue-100 text-blue-700'
@@ -558,7 +590,7 @@ const SequentialFormat: React.FC<{
 
             {/* Unsectioned lessons */}
             {unsectionedLessons.length > 0 && (
-              <div className={`rounded-xl border border-gray-200 overflow-hidden ${!hasModules ? '' : 'border-dashed'}`}>
+              <div className={`rounded-lg border border-gray-200 overflow-hidden ${!hasModules ? '' : 'border-dashed'}`}>
                 {hasModules && (
                   <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
                     <Icon icon="material-symbols:list" className="w-5 h-5 text-gray-400" />
@@ -577,17 +609,17 @@ const SequentialFormat: React.FC<{
           </div>
 
           {/* Footer navigation */}
-          <div className="mt-6 flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+          <div className="mt-6 flex items-center justify-between bg-white rounded-lg border border-gray-200 px-4 py-3">
             <div>
               {prevItem ? (
-                <Link
-                  href={`/course/${courseId}/lesson/${prevItem.id}`}
+                <LessonLink
+                  courseId={courseId} lessonId={prevItem.id} onLessonClick={onLessonClick}
                   className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
                 >
                   <Icon icon="material-symbols:chevron-left" className="w-5 h-5" />
                   <span className="hidden sm:inline truncate max-w-[160px]">{prevItem.title}</span>
                   <span className="sm:hidden">Previous</span>
-                </Link>
+                </LessonLink>
               ) : <div />}
             </div>
 
@@ -597,14 +629,14 @@ const SequentialFormat: React.FC<{
 
             <div>
               {nextItem ? (
-                <Link
-                  href={`/course/${courseId}/lesson/${nextItem.id}`}
+                <LessonLink
+                  courseId={courseId} lessonId={nextItem.id} onLessonClick={onLessonClick}
                   className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-600 transition-colors"
                 >
                   <span className="hidden sm:inline truncate max-w-[160px]">{nextItem.title}</span>
                   <span className="sm:hidden">Next</span>
                   <Icon icon="material-symbols:chevron-right" className="w-5 h-5" />
-                </Link>
+                </LessonLink>
               ) : <div />}
             </div>
           </div>
@@ -628,7 +660,8 @@ const TopicsFormat: React.FC<{
   editMode: boolean;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
   lessonProgress: LessonProgress[];
-}> = ({ courseId, lessons, sections, editMode, onAssignSection, lessonProgress }) => {
+  onLessonClick?: (lessonId: string) => void;
+}> = ({ courseId, lessons, sections, editMode, onAssignSection, lessonProgress, onLessonClick }) => {
   // All sections expanded by default (wireframe: "all sections visible on one page")
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -721,7 +754,7 @@ const TopicsFormat: React.FC<{
               if (activeFilter && filteredLessons.length === 0) return null;
 
               return (
-                <div key={section.id} className={`rounded-xl border overflow-hidden transition-all ${
+                <div key={section.id} className={`rounded-lg border overflow-hidden transition-all ${
                   isComplete ? 'border-green-300 bg-green-50/20' : 'border-gray-200'
                 }`}>
                   {/* Module header */}
@@ -837,12 +870,12 @@ const TopicsFormat: React.FC<{
                                 {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                               </select>
                             )}
-                            <Link
-                              href={`/course/${courseId}/lesson/${lesson.id}`}
+                            <LessonLink
+                              courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
                               className="text-xs font-medium text-blue-600 hover:text-blue-700 flex-shrink-0"
                             >
                               {status === 'completed' ? 'Review' : status === 'in_progress' ? 'Continue' : 'Start'}
-                            </Link>
+                            </LessonLink>
                             {editMode && (
                               <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
                                 <Link href={`/lessons/${lesson.id}/edit`} className="p-1 text-gray-400 hover:text-gray-600">
@@ -865,7 +898,7 @@ const TopicsFormat: React.FC<{
 
             {/* Unsectioned lessons */}
             {unsectionedLessons.length > 0 && (!activeFilter || filterLessons(unsectionedLessons).length > 0) && (
-              <div className="border border-dashed border-gray-300 rounded-xl overflow-hidden">
+              <div className="border border-dashed border-gray-300 rounded-lg overflow-hidden">
                 <div className="px-5 py-3 bg-gray-50 border-b border-dashed border-gray-300">
                   <h3 className="font-semibold text-gray-600 text-sm">Unassigned Lessons</h3>
                   <p className="text-xs text-gray-400">Use the dropdown on each lesson to assign it to a module</p>
@@ -894,9 +927,9 @@ const TopicsFormat: React.FC<{
                             {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                           </select>
                         )}
-                        <Link href={`/course/${courseId}/lesson/${lesson.id}`} className="text-xs text-blue-600 font-medium">
+                        <LessonLink courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick} className="text-xs text-blue-600 font-medium">
                           {status === 'completed' ? 'Review' : status === 'in_progress' ? 'Continue' : 'Open'}
-                        </Link>
+                        </LessonLink>
                       </div>
                     );
                   })}
@@ -932,9 +965,31 @@ const WeeklyFormat: React.FC<{
   editMode: boolean;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
   lessonProgress: LessonProgress[];
-}> = ({ courseId, lessons, sections, editMode, onAssignSection, lessonProgress }) => {
+  courseStartDate?: string | null;
+  onLessonClick?: (lessonId: string) => void;
+}> = ({ courseId, lessons, sections, editMode, onAssignSection, lessonProgress, courseStartDate, onLessonClick }) => {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  // Compute dates for sections that don't have them, using course start date
+  const sectionsWithDates = useMemo(() => {
+    return sections.map((section, index) => {
+      if (section.start_date && section.end_date) return section;
+      if (!courseStartDate) return section;
+      // Calculate week dates from course start date + section order
+      const base = new Date(courseStartDate + 'T00:00:00');
+      const weekOffset = section.order ?? index;
+      const start = new Date(base);
+      start.setDate(start.getDate() + weekOffset * 7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return {
+        ...section,
+        start_date: start.toISOString().split('T')[0],
+        end_date: end.toISOString().split('T')[0],
+      };
+    });
+  }, [sections, courseStartDate]);
 
   const progressMap = useMemo(() => {
     const m = new Map<string, LessonProgress>();
@@ -947,7 +1002,7 @@ const WeeklyFormat: React.FC<{
     allLessons.filter(l => l.section_id === sectionId);
 
   const unsectionedLessons = allLessons.filter(l => !l.section_id);
-  const sortedSections = useMemo(() => [...sections].sort((a, b) => a.order - b.order), [sections]);
+  const sortedSections = useMemo(() => [...sectionsWithDates].sort((a, b) => a.order - b.order), [sectionsWithDates]);
 
   // Activity type counts for nav rail
   const typeCounts = useMemo(() => {
@@ -1024,7 +1079,7 @@ const WeeklyFormat: React.FC<{
         <div className="flex-1 min-w-0">
           {/* Banner: unassigned lessons */}
           {sortedSections.length > 0 && unsectionedLessons.length > 0 && editMode && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between mb-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Icon icon="material-symbols:info" className="w-5 h-5 text-amber-600 flex-shrink-0" />
                 <div>
@@ -1119,7 +1174,7 @@ const WeeklyFormat: React.FC<{
               return (
                 <div
                   key={section.id}
-                  className={`rounded-xl border overflow-hidden transition-all ${
+                  className={`rounded-lg border overflow-hidden transition-all ${
                     isCurrent
                       ? 'border-blue-400 ring-2 ring-blue-100 shadow-md'
                       : isPast
@@ -1136,7 +1191,7 @@ const WeeklyFormat: React.FC<{
                     }`}
                   >
                     {/* Week number badge */}
-                    <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0 ${
+                    <div className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center flex-shrink-0 ${
                       isCurrent
                         ? 'bg-blue-600 text-white'
                         : weekComplete
@@ -1255,14 +1310,14 @@ const WeeklyFormat: React.FC<{
                                 {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                               </select>
                             )}
-                            <Link
-                              href={`/course/${courseId}/lesson/${lesson.id}`}
+                            <LessonLink
+                              courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
                               className={`text-xs font-medium flex-shrink-0 ${
                                 status === 'completed' ? 'text-green-600' : 'text-blue-600 hover:text-blue-700'
                               }`}
                             >
                               {status === 'completed' ? 'Review' : status === 'in_progress' ? 'Continue' : 'Start'}
-                            </Link>
+                            </LessonLink>
                             {editMode && (
                               <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
                                 <Link href={`/lessons/${lesson.id}/edit`} className="p-1 text-gray-400 hover:text-gray-600">
@@ -1273,9 +1328,34 @@ const WeeklyFormat: React.FC<{
                           </div>
                         );
                       }) : (
-                        <p className="text-sm text-gray-400 text-center py-4">
-                          {activeFilter ? 'No matching activities this week' : 'No activities scheduled this week'}
-                        </p>
+                        <div className="text-center py-4">
+                          <p className="text-sm text-gray-400">
+                            {activeFilter ? 'No matching activities this week' : 'No activities scheduled this week'}
+                          </p>
+                          {!activeFilter && editMode && (
+                            <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                              <Link
+                                href={`/manage-lessons?course_id=${courseId}&section_id=${section.id}`}
+                                className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-blue-600 hover:text-blue-700"
+                              >
+                                <Icon icon="material-symbols:add" className="w-3.5 h-3.5" />
+                                Add lesson to this week
+                              </Link>
+                            </RoleGuard>
+                          )}
+                        </div>
+                      )}
+                      {/* Add Lesson button at bottom of week */}
+                      {editMode && filteredLessons.length > 0 && (
+                        <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                          <Link
+                            href={`/manage-lessons?course_id=${courseId}&section_id=${section.id}`}
+                            className="flex items-center justify-center gap-1.5 w-full py-2 mt-1 text-xs font-medium text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
+                          >
+                            <Icon icon="material-symbols:add" className="w-3.5 h-3.5" />
+                            Add lesson
+                          </Link>
+                        </RoleGuard>
                       )}
                     </div>
                   )}
@@ -1285,7 +1365,7 @@ const WeeklyFormat: React.FC<{
 
             {/* Unscheduled lessons */}
             {unsectionedLessons.length > 0 && (
-              <div className="border border-dashed border-gray-300 rounded-xl overflow-hidden">
+              <div className="border border-dashed border-gray-300 rounded-lg overflow-hidden">
                 <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-gray-600 text-sm">Unscheduled Activities</h3>
@@ -1334,10 +1414,19 @@ const WeeklyFormat: React.FC<{
             )}
 
             {sortedSections.length === 0 && unsectionedLessons.length === 0 && lessons.length === 0 && (
-              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
                 <Icon icon="material-symbols:calendar-month" className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-600 font-medium">No weekly schedule yet</p>
                 <p className="text-sm text-gray-400 mt-1">Create weeks using the Section Manager, then add lessons.</p>
+                <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                  <Link
+                    href={`/manage-lessons?course_id=${courseId}`}
+                    className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  >
+                    <Icon icon="material-symbols:add" className="w-4 h-4" />
+                    Add Lessons
+                  </Link>
+                </RoleGuard>
               </div>
             )}
           </div>
@@ -1356,11 +1445,11 @@ const WeeklyFormat: React.FC<{
 
 const CARD_COLORS: Record<string, string> = {
   rich_text: 'from-blue-500 to-blue-600',
-  video: 'from-purple-500 to-purple-600',
+  video: 'from-blue-600 to-blue-700',
   scorm: 'from-teal-500 to-teal-600',
   quiz: 'from-amber-500 to-amber-600',
   assignment: 'from-green-500 to-green-600',
-  discussion: 'from-indigo-500 to-indigo-600',
+  discussion: 'from-blue-600 to-blue-700',
   file: 'from-gray-500 to-gray-600',
   audio: 'from-pink-500 to-pink-600',
   external: 'from-orange-500 to-orange-600',
@@ -1373,7 +1462,8 @@ const ActivityDashboardFormat: React.FC<{
   lessons: Lesson[];
   editMode: boolean;
   lessonProgress: LessonProgress[];
-}> = ({ courseId, lessons, editMode, lessonProgress }) => {
+  onLessonClick?: (lessonId: string) => void;
+}> = ({ courseId, lessons, editMode, lessonProgress, onLessonClick }) => {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const progressMap = useMemo(() => {
@@ -1414,19 +1504,19 @@ const ActivityDashboardFormat: React.FC<{
     <div>
       {/* Dashboard header with stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
+        <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-100">
           <div className="text-2xl font-bold text-blue-700">{sorted.length}</div>
           <div className="text-xs text-blue-600 font-medium">Total Activities</div>
         </div>
-        <div className="bg-green-50 rounded-xl p-3 text-center border border-green-100">
+        <div className="bg-green-50 rounded-lg p-3 text-center border border-green-100">
           <div className="text-2xl font-bold text-green-700">{completedCount}</div>
           <div className="text-xs text-green-600 font-medium">Completed</div>
         </div>
-        <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+        <div className="bg-amber-50 rounded-lg p-3 text-center border border-amber-100">
           <div className="text-2xl font-bold text-amber-700">{inProgressCount}</div>
           <div className="text-xs text-amber-600 font-medium">In Progress</div>
         </div>
-        <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-100">
+        <div className="bg-purple-50 rounded-lg p-3 text-center border border-purple-100">
           <div className="text-2xl font-bold text-purple-700">
             {totalTime > 60 ? `${Math.round(totalTime / 60)}h` : `${totalTime}m`}
           </div>
@@ -1436,7 +1526,7 @@ const ActivityDashboardFormat: React.FC<{
 
       {/* Overall progress bar */}
       {sorted.length > 0 && (
-        <div className="mb-5 bg-white rounded-xl border border-gray-200 px-4 py-3">
+        <div className="mb-5 bg-white rounded-lg border border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">Overall Progress</span>
             <span className="text-sm font-bold text-gray-900">{Math.round((completedCount / sorted.length) * 100)}%</span>
@@ -1487,10 +1577,10 @@ const ActivityDashboardFormat: React.FC<{
           const cardGradient = CARD_COLORS[lesson.content_type || 'rich_text'] || CARD_COLORS.rich_text;
 
           return (
-            <Link
+            <LessonLink
               key={lesson.id}
-              href={`/course/${courseId}/lesson/${lesson.id}`}
-              className={`block rounded-xl border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 group ${
+              courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
+              className={`block rounded-lg border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 group ${
                 status === 'completed'
                   ? 'border-green-200'
                   : status === 'in_progress'
@@ -1566,7 +1656,7 @@ const ActivityDashboardFormat: React.FC<{
                   <div className="mt-2 text-xs text-yellow-600 bg-yellow-50 rounded px-2 py-0.5 inline-block font-medium">Draft</div>
                 )}
               </div>
-            </Link>
+            </LessonLink>
           );
         })}
       </div>
@@ -1589,6 +1679,8 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
   editMode = true,
   onAssignSection,
   lessonProgress = [],
+  courseStartDate,
+  onLessonClick,
 }) => {
   switch (format) {
     case 'topics':
@@ -1600,6 +1692,7 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           editMode={editMode}
           onAssignSection={onAssignSection}
           lessonProgress={lessonProgress}
+          onLessonClick={onLessonClick}
         />
       );
     case 'weekly':
@@ -1611,6 +1704,8 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           editMode={editMode}
           onAssignSection={onAssignSection}
           lessonProgress={lessonProgress}
+          courseStartDate={courseStartDate}
+          onLessonClick={onLessonClick}
         />
       );
     case 'grid':
@@ -1620,6 +1715,7 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           lessons={lessons}
           editMode={editMode}
           lessonProgress={lessonProgress}
+          onLessonClick={onLessonClick}
         />
       );
     case 'lessons':
@@ -1635,6 +1731,7 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           onReorder={onReorder}
           onAssignSection={onAssignSection}
           lessonProgress={lessonProgress}
+          onLessonClick={onLessonClick}
         />
       );
   }

@@ -1334,38 +1334,58 @@ const WeeklyFormat: React.FC<{
                           </p>
                         </div>
                       )}
-                      {/* Add existing lesson to this week */}
-                      {editMode && onAssignSection && unsectionedLessons.length > 0 && (
+                      {/* Add / move lesson to this week */}
+                      {editMode && onAssignSection && (
                         <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
-                          <div className="mt-1">
-                            <select
-                              defaultValue=""
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  onAssignSection(e.target.value, section.id);
-                                  e.target.value = '';
-                                }
-                              }}
-                              className="w-full py-2 px-3 text-xs text-gray-500 bg-white border border-dashed border-gray-200 hover:border-blue-300 rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none"
-                              style={{ backgroundImage: 'none' }}
+                          <div className="mt-1 flex gap-2">
+                            {(() => {
+                              // Lessons not in this section (unassigned + from other weeks)
+                              const availableLessons = allLessons.filter(l => l.section_id !== section.id);
+                              if (availableLessons.length > 0) {
+                                return (
+                                  <select
+                                    defaultValue=""
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        onAssignSection(e.target.value, section.id);
+                                        e.target.value = '';
+                                      }
+                                    }}
+                                    className="flex-1 py-2 px-3 text-xs text-gray-500 bg-white border border-dashed border-gray-200 hover:border-blue-300 rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                  >
+                                    <option value="">+ Add lesson to this week ({availableLessons.length} available)</option>
+                                    {unsectionedLessons.length > 0 && (
+                                      <optgroup label="Unassigned">
+                                        {unsectionedLessons.map(l => (
+                                          <option key={l.id} value={l.id}>{l.title}</option>
+                                        ))}
+                                      </optgroup>
+                                    )}
+                                    {sortedSections.filter(s => s.id !== section.id).map(otherSection => {
+                                      const otherLessons = allLessons.filter(l => l.section_id === otherSection.id);
+                                      if (otherLessons.length === 0) return null;
+                                      return (
+                                        <optgroup key={otherSection.id} label={`Move from ${otherSection.title}`}>
+                                          {otherLessons.map(l => (
+                                            <option key={l.id} value={l.id}>{l.title}</option>
+                                          ))}
+                                        </optgroup>
+                                      );
+                                    })}
+                                  </select>
+                                );
+                              }
+                              return null;
+                            })()}
+                            <Link
+                              href={`/lessons/create?course_id=${courseId}`}
+                              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg transition-colors flex-shrink-0"
+                              title="Create new lesson"
                             >
-                              <option value="">+ Add lesson to this week ({unsectionedLessons.length} available)</option>
-                              {unsectionedLessons.map(l => (
-                                <option key={l.id} value={l.id}>{l.title}</option>
-                              ))}
-                            </select>
+                              <Icon icon="material-symbols:add" className="w-3.5 h-3.5" />
+                              New
+                            </Link>
                           </div>
-                        </RoleGuard>
-                      )}
-                      {editMode && unsectionedLessons.length === 0 && (
-                        <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
-                          <Link
-                            href={`/lessons/create?course_id=${courseId}`}
-                            className="flex items-center justify-center gap-1.5 w-full py-2 mt-1 text-xs font-medium text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
-                          >
-                            <Icon icon="material-symbols:add" className="w-3.5 h-3.5" />
-                            Create new lesson
-                          </Link>
                         </RoleGuard>
                       )}
                     </div>

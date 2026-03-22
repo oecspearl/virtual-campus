@@ -1332,28 +1332,39 @@ const WeeklyFormat: React.FC<{
                           <p className="text-sm text-gray-400">
                             {activeFilter ? 'No matching activities this week' : 'No activities scheduled this week'}
                           </p>
-                          {!activeFilter && editMode && (
-                            <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
-                              <Link
-                                href={`/manage-lessons?course_id=${courseId}&section_id=${section.id}`}
-                                className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-blue-600 hover:text-blue-700"
-                              >
-                                <Icon icon="material-symbols:add" className="w-3.5 h-3.5" />
-                                Add lesson to this week
-                              </Link>
-                            </RoleGuard>
-                          )}
                         </div>
                       )}
-                      {/* Add Lesson button at bottom of week */}
-                      {editMode && filteredLessons.length > 0 && (
+                      {/* Add existing lesson to this week */}
+                      {editMode && onAssignSection && unsectionedLessons.length > 0 && (
+                        <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                          <div className="mt-1">
+                            <select
+                              defaultValue=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  onAssignSection(e.target.value, section.id);
+                                  e.target.value = '';
+                                }
+                              }}
+                              className="w-full py-2 px-3 text-xs text-gray-500 bg-white border border-dashed border-gray-200 hover:border-blue-300 rounded-lg cursor-pointer focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none"
+                              style={{ backgroundImage: 'none' }}
+                            >
+                              <option value="">+ Add lesson to this week ({unsectionedLessons.length} available)</option>
+                              {unsectionedLessons.map(l => (
+                                <option key={l.id} value={l.id}>{l.title}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </RoleGuard>
+                      )}
+                      {editMode && unsectionedLessons.length === 0 && (
                         <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
                           <Link
-                            href={`/manage-lessons?course_id=${courseId}&section_id=${section.id}`}
+                            href={`/lessons/create?course_id=${courseId}`}
                             className="flex items-center justify-center gap-1.5 w-full py-2 mt-1 text-xs font-medium text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
                           >
                             <Icon icon="material-symbols:add" className="w-3.5 h-3.5" />
-                            Add lesson
+                            Create new lesson
                           </Link>
                         </RoleGuard>
                       )}
@@ -1420,11 +1431,11 @@ const WeeklyFormat: React.FC<{
                 <p className="text-sm text-gray-400 mt-1">Create weeks using the Section Manager, then add lessons.</p>
                 <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
                   <Link
-                    href={`/manage-lessons?course_id=${courseId}`}
+                    href={`/lessons/create?course_id=${courseId}`}
                     className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                   >
                     <Icon icon="material-symbols:add" className="w-4 h-4" />
-                    Add Lessons
+                    Create Lesson
                   </Link>
                 </RoleGuard>
               </div>

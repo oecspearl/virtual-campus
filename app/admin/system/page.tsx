@@ -188,7 +188,7 @@ function DashboardInner() {
             Refresh
           </button>
           <Link
-            href="/admin/tenants/create"
+            href="/admin/tenants"
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Icon icon="material-symbols:add" className="w-4 h-4" />
@@ -208,7 +208,7 @@ function DashboardInner() {
       </div>
 
       {/* Tenants Section */}
-      <div className="rounded-xl border bg-white shadow-sm mb-8">
+      <div className="rounded-lg border bg-white shadow-sm mb-8">
         <div className="px-4 py-3 border-b bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-lg font-semibold text-gray-900">Tenants Overview</h2>
           <div className="relative w-full sm:w-64">
@@ -308,7 +308,7 @@ function DashboardInner() {
       </div>
 
       {/* Global User Search */}
-      <div className="rounded-xl border bg-white shadow-sm">
+      <div className="rounded-lg border bg-white shadow-sm">
         <div className="px-4 py-3 border-b bg-gray-50">
           <h2 className="text-lg font-semibold text-gray-900">Global User Search</h2>
           <p className="text-xs text-gray-500 mt-0.5">Search users across all tenants by name or email</p>

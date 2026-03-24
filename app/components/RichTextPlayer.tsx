@@ -384,7 +384,7 @@ export default function RichTextPlayer({
                                   <p className="text-sm font-medium text-gray-900">{item.title || 'Quiz'}</p>
                                   <p className="text-[12px] text-gray-500 mt-0.5">Test your knowledge</p>
                                 </div>
-                                <QuizStatusButton quizId={item.data.quizId} />
+                                <QuizStatusButton quizId={item.data.quizId} quiz={item.data} />
                               </div>
                             </div>
                           )}

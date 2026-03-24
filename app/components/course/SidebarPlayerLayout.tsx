@@ -4,6 +4,8 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import LessonViewer from '@/app/components/LessonViewer';
+import VideoPlayer from '@/app/components/VideoPlayer';
+import VideoNotesPanel from '@/app/components/VideoNotesPanel';
 import SCORMPlayer from '@/app/components/SCORMPlayer';
 import AITutorWidget from '@/app/components/AITutorWidget';
 import RoleGuard from '@/app/components/RoleGuard';
@@ -70,6 +72,9 @@ export default function SidebarPlayerLayout({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [scormPackage, setScormPackage] = useState<any>(null);
   const [aiTutorEnabled, setAiTutorEnabled] = useState(false);
+  const [belowVideoTab, setBelowVideoTab] = useState<'overview' | 'notes'>('overview');
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+  const videoSeekRef = React.useRef<((time: number) => void) | null>(null);
 
   // Derived data
   const publishedLessons = useMemo(
@@ -228,7 +233,7 @@ export default function SidebarPlayerLayout({
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="fixed inset-0 flex flex-col bg-gray-50 z-40">
       {/* ── Top Bar ── */}
       <header className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm z-20">
         <div className="flex items-center justify-between h-14 px-4">
@@ -478,9 +483,26 @@ export default function SidebarPlayerLayout({
             </div>
           )}
 
-          {/* Scrollable lesson content */}
+          {/* SCORM: fill remaining space without scroll wrapper */}
+          {!loading && lessonContent && scormPackage && (
+            <div className="flex-1 overflow-hidden">
+              <SCORMPlayer
+                packageUrl={scormPackage.package_url}
+                scormPackageId={scormPackage.id}
+                scormVersion={scormPackage.scorm_version}
+                courseId={courseId}
+                lessonId={activeLessonId!}
+                lessonTitle={lessonContent?.title}
+                moduleTitle={courseTitle}
+                learningOutcomes={lessonContent?.content?.[0]?.data?.learning_outcomes}
+                instructions={lessonContent?.lesson_instructions}
+              />
+            </div>
+          )}
+
+          {/* Scrollable lesson content (non-SCORM) */}
+          {!(lessonContent && scormPackage) && (
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               {loading ? (
                 <div className="flex items-center justify-center py-20">
                   <div className="text-center">
@@ -496,64 +518,177 @@ export default function SidebarPlayerLayout({
                     <p className="text-sm text-gray-400">Choose a lesson from the sidebar to begin</p>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Lesson instructions */}
-                  {lessonContent.lesson_instructions && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-5">
-                      <h3 className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
-                        <Icon icon="material-symbols:info" className="w-4 h-4" />
-                        Instructions
-                      </h3>
-                      <div
-                        className="prose prose-sm max-w-none text-gray-700 rich-text-content"
-                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(lessonContent.lesson_instructions) }}
-                      />
-                    </div>
-                  )}
+              ) : (() => {
+                // Check if this is a video-primary lesson
+                const isVideoLesson = lessonContent.content_type === 'video' ||
+                  (lessonContent.content?.length > 0 && lessonContent.content[0]?.type === 'video');
+                const videoBlock = isVideoLesson ? lessonContent.content?.[0] : null;
 
-                  {/* SCORM content */}
-                  {scormPackage ? (
-                    <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-                      <SCORMPlayer
-                        packageUrl={scormPackage.package_url}
-                        scormPackageId={scormPackage.id}
-                        scormVersion={scormPackage.scorm_version}
-                        courseId={courseId}
-                        lessonId={activeLessonId!}
-                      />
-                    </div>
-                  ) : (
-                    /* Regular lesson content */
-                    <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-                      <div className="p-4 sm:p-6 lg:p-8">
-                        <LessonViewer
-                          content={lessonContent.content}
-                          lessonId={activeLessonId!}
-                          courseId={courseId}
-                          lessonTitle={lessonContent.title}
-                          isInstructor={isStaffRole(userRole)}
-                        />
+                if (isVideoLesson && videoBlock) {
+                  // ─── Video-first layout (Tutor LMS style) ─────────
+                  return (
+                    <div className="flex flex-col">
+                      {/* Video: edge-to-edge */}
+                      <div className="bg-black w-full">
+                        <div className="max-w-5xl mx-auto">
+                          <VideoPlayer
+                            src={videoBlock.data?.url || videoBlock.data}
+                            title={videoBlock.data?.title || lessonContent.title}
+                            lessonId={activeLessonId!}
+                            courseId={courseId}
+                            chapters={videoBlock.data?.chapters}
+                            captions={videoBlock.data?.captions}
+                            audioDescriptionSrc={videoBlock.data?.audioDescriptionSrc}
+                            preventSkipping={videoBlock.data?.preventSkipping}
+                            onWatchProgress={(data) => {
+                              setVideoCurrentTime(data.currentTime);
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tabs below video */}
+                      <div className="border-b border-gray-200 bg-white">
+                        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+                          <nav className="flex gap-0" aria-label="Tabs">
+                            <button
+                              onClick={() => setBelowVideoTab('overview')}
+                              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                                belowVideoTab === 'overview'
+                                  ? 'border-blue-600 text-blue-700'
+                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              }`}
+                            >
+                              <Icon icon="material-symbols:info-outline" className="w-4 h-4" />
+                              Overview
+                            </button>
+                            <button
+                              onClick={() => setBelowVideoTab('notes')}
+                              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                                belowVideoTab === 'notes'
+                                  ? 'border-blue-600 text-blue-700'
+                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              }`}
+                            >
+                              <Icon icon="material-symbols:sticky-note-2-outline" className="w-4 h-4" />
+                              Notes & Questions
+                            </button>
+                          </nav>
+                        </div>
+                      </div>
+
+                      {/* Tab content */}
+                      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+                        {belowVideoTab === 'overview' ? (
+                          <div className="space-y-6">
+                            {/* Video description */}
+                            {videoBlock.data?.description && (
+                              <div className="prose prose-sm max-w-none text-gray-700 rich-text-content"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(videoBlock.data.description) }}
+                              />
+                            )}
+
+                            {/* Lesson instructions */}
+                            {lessonContent.lesson_instructions && (
+                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-5">
+                                <h3 className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                                  <Icon icon="material-symbols:info" className="w-4 h-4" />
+                                  Instructions
+                                </h3>
+                                <div
+                                  className="prose prose-sm max-w-none text-gray-700 rich-text-content"
+                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(lessonContent.lesson_instructions) }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Remaining content blocks (if any beyond the video) */}
+                            {lessonContent.content.length > 1 && (
+                              <div className="bg-white rounded-lg shadow border border-gray-100 overflow-hidden">
+                                <div className="p-4 sm:p-6 lg:p-8">
+                                  <LessonViewer
+                                    content={lessonContent.content.slice(1)}
+                                    lessonId={activeLessonId!}
+                                    courseId={courseId}
+                                    lessonTitle={lessonContent.title}
+                                    isInstructor={isStaffRole(userRole)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* AI Tutor Widget */}
+                            {activeLessonId && (
+                              <AITutorWidget
+                                lessonId={activeLessonId}
+                                courseId={courseId}
+                                isEnabled={aiTutorEnabled}
+                                onToggle={() => setAiTutorEnabled(!aiTutorEnabled)}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          /* Notes tab */
+                          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden" style={{ minHeight: '400px' }}>
+                            <VideoNotesPanel
+                              lessonId={activeLessonId!}
+                              courseId={courseId}
+                              currentTime={videoCurrentTime}
+                              onSeek={() => {}}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+                  );
+                }
 
-                  {/* AI Tutor Widget */}
-                  {activeLessonId && (
-                    <AITutorWidget
-                      lessonId={activeLessonId}
-                      courseId={courseId}
-                      isEnabled={aiTutorEnabled}
-                      onToggle={() => setAiTutorEnabled(!aiTutorEnabled)}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
+                // ─── Standard lesson layout (non-video) ────────────
+                return (
+                  <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="space-y-6">
+                      {lessonContent.lesson_instructions && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-5">
+                          <h3 className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                            <Icon icon="material-symbols:info" className="w-4 h-4" />
+                            Instructions
+                          </h3>
+                          <div
+                            className="prose prose-sm max-w-none text-gray-700 rich-text-content"
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(lessonContent.lesson_instructions) }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="bg-white rounded-lg shadow border border-gray-100 overflow-hidden">
+                        <div className="p-4 sm:p-6 lg:p-8">
+                          <LessonViewer
+                            content={lessonContent.content}
+                            lessonId={activeLessonId!}
+                            courseId={courseId}
+                            lessonTitle={lessonContent.title}
+                            isInstructor={isStaffRole(userRole)}
+                          />
+                        </div>
+                      </div>
+
+                      {activeLessonId && (
+                        <AITutorWidget
+                          lessonId={activeLessonId}
+                          courseId={courseId}
+                          isEnabled={aiTutorEnabled}
+                          onToggle={() => setAiTutorEnabled(!aiTutorEnabled)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
+          )}
 
-          {/* ── Footer Nav ── */}
-          {activeLesson && (
+          {/* ── Footer Nav (hidden for SCORM — it has its own bottom bar) ── */}
+          {activeLesson && !scormPackage && (
             <footer className="flex-shrink-0 bg-white border-t border-gray-200 px-4 sm:px-6 py-3">
               <div className="flex items-center justify-between max-w-4xl mx-auto">
                 {/* Prev */}

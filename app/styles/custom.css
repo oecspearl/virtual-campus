@@ -221,6 +221,7 @@
     flex-shrink: 0 !important;
     line-height: 1 !important;
     overflow: visible !important;
+    aspect-ratio: 1 / 1 !important;
   }
 
   /* Prevent prose from adding margins to paragraphs inside styled containers */

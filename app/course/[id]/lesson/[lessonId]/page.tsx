@@ -2,22 +2,22 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import LessonViewer from '@/app/components/LessonViewer';
-import VideoPlayer from '@/app/components/VideoPlayer';
-import VideoNotesPanel from '@/app/components/VideoNotesPanel';
-import VideoDiscussionThread from '@/app/components/VideoDiscussionThread';
-import SCORMPlayer from '@/app/components/SCORMPlayer';
-import Button from '@/app/components/Button';
+import LessonViewer from '@/app/components/lesson/LessonViewer';
+import VideoPlayer from '@/app/components/media/VideoPlayer';
+import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
+import VideoDiscussionThread from '@/app/components/media/VideoDiscussionThread';
+import SCORMPlayer from '@/app/components/media/SCORMPlayer';
+import Button from '@/app/components/ui/Button';
 import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
-import LessonDiscussionsSidebar from '@/app/components/LessonDiscussionsSidebar';
-import VideoConferenceSection from '@/app/components/VideoConferenceSection';
-import AITutorWidget from '@/app/components/AITutorWidget';
-import AITutorPanel from '@/app/components/AITutorPanel';
-import RichTextPlayer from '@/app/components/RichTextPlayer';
-import ResourceLinksSidebar from '@/app/components/ResourceLinksSidebar';
-import SessionRecordingsCard from '@/app/components/SessionRecordingsCard';
-import Breadcrumb from '@/app/components/Breadcrumb';
+import LessonDiscussionsSidebar from '@/app/components/discussions/LessonDiscussionsSidebar';
+import VideoConferenceSection from '@/app/components/conference/VideoConferenceSection';
+import AITutorWidget from '@/app/components/ai/AITutorWidget';
+import AITutorPanel from '@/app/components/ai/AITutorPanel';
+import RichTextPlayer from '@/app/components/editor/RichTextPlayer';
+import ResourceLinksSidebar from '@/app/components/lesson/ResourceLinksSidebar';
+import SessionRecordingsCard from '@/app/components/conference/SessionRecordingsCard';
+import Breadcrumb from '@/app/components/ui/Breadcrumb';
 import { logLessonView } from '@/lib/activity-tracker';
 import { sanitizeHtml } from '@/lib/sanitize';
 

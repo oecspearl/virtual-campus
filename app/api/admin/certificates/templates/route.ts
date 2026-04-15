@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { getCurrentUser } from '@/lib/database-helpers';
+import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 
 /**
@@ -10,14 +10,13 @@ import { hasRole } from '@/lib/rbac';
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only admins can view templates
     if (!hasRole(user.role, ['admin', 'super_admin', 'curriculum_designer'])) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createAuthResponse("Forbidden", 403);
     }
 
     const tenantId = getTenantIdFromRequest(request);
@@ -53,14 +52,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only admins can create templates
     if (!hasRole(user.role, ['admin', 'super_admin', 'curriculum_designer'])) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createAuthResponse("Forbidden", 403);
     }
 
     const body = await request.json();

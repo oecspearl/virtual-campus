@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { calculateAllEngagementScores } from '@/lib/crm/engagement-engine';
+import { withCronLock } from '@/lib/cron-lock';
 
 /**
  * CRM Engagement Score Calculation Cron Job
@@ -7,33 +8,17 @@ import { calculateAllEngagementScores } from '@/lib/crm/engagement-engine';
  * GET /api/cron/crm-engagement
  *
  * Calculates engagement scores for all students.
- * Recommended: Run daily at 3 AM (after lifecycle cron at 2 AM).
+ * Protected by CRON_SECRET and distributed lock.
+ * Recommended: Run daily at 3 AM.
  */
 export async function GET(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+  return withCronLock('crm-engagement', request, async () => {
     const results = await calculateAllEngagementScores();
-
-    return NextResponse.json({
-      success: true,
-      message: `Calculated engagement scores`,
+    return {
       calculated: results.calculated,
       errors: results.errors,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    console.error('CRM Engagement cron error:', error);
-    return NextResponse.json({
-      error: 'Internal server error',
-      message: error.message,
-    }, { status: 500 });
-  }
+    };
+  });
 }
 
 export async function POST(request: NextRequest) {

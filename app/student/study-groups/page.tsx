@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Users, Plus, Search, X, Key } from 'lucide-react';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 import { StudyGroupList } from '@/app/components/student';
 
 interface StudyGroup {
@@ -185,7 +186,7 @@ export default function StudyGroupsPage() {
         {loading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+              <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
             ))}
           </div>
         ) : (
@@ -237,155 +238,133 @@ export default function StudyGroupsPage() {
         )}
 
         {/* Create Group Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Create Study Group
-                </h2>
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateGroup} className="p-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Group Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newGroup.name}
-                    onChange={(e) =>
-                      setNewGroup(prev => ({ ...prev, name: e.target.value }))
-                    }
-                    required
-                    placeholder="e.g., Calculus Study Squad"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={newGroup.description}
-                    onChange={(e) =>
-                      setNewGroup(prev => ({ ...prev, description: e.target.value }))
-                    }
-                    rows={3}
-                    placeholder="What's your group about?"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Max Members
-                  </label>
-                  <input
-                    type="number"
-                    value={newGroup.max_members}
-                    onChange={(e) =>
-                      setNewGroup(prev => ({ ...prev, max_members: parseInt(e.target.value) || 10 }))
-                    }
-                    min={2}
-                    max={50}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="is_private"
-                    checked={newGroup.is_private}
-                    onChange={(e) =>
-                      setNewGroup(prev => ({ ...prev, is_private: e.target.checked }))
-                    }
-                    className="w-4 h-4 text-purple-600 rounded"
-                  />
-                  <label htmlFor="is_private" className="text-sm text-gray-700 dark:text-gray-300">
-                    Private group (invite only)
-                  </label>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                  >
-                    Create Group
-                  </button>
-                </div>
-              </form>
+        <AccessibleModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Create Study Group"
+          size="md"
+        >
+          <form onSubmit={handleCreateGroup} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Group Name
+              </label>
+              <input
+                type="text"
+                value={newGroup.name}
+                onChange={(e) =>
+                  setNewGroup(prev => ({ ...prev, name: e.target.value }))
+                }
+                required
+                placeholder="e.g., Calculus Study Squad"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
             </div>
-          </div>
-        )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description
+              </label>
+              <textarea
+                value={newGroup.description}
+                onChange={(e) =>
+                  setNewGroup(prev => ({ ...prev, description: e.target.value }))
+                }
+                rows={3}
+                placeholder="What's your group about?"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Max Members
+              </label>
+              <input
+                type="number"
+                value={newGroup.max_members}
+                onChange={(e) =>
+                  setNewGroup(prev => ({ ...prev, max_members: parseInt(e.target.value) || 10 }))
+                }
+                min={2}
+                max={50}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_private"
+                checked={newGroup.is_private}
+                onChange={(e) =>
+                  setNewGroup(prev => ({ ...prev, is_private: e.target.checked }))
+                }
+                className="w-4 h-4 text-purple-600 rounded"
+              />
+              <label htmlFor="is_private" className="text-sm text-gray-700 dark:text-gray-300">
+                Private group (invite only)
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Create Group
+              </button>
+            </div>
+          </form>
+        </AccessibleModal>
 
         {/* Join with Code Modal */}
-        {showJoinModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Join with Code
-                </h2>
-                <button
-                  onClick={() => setShowJoinModal(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleJoinWithCode} className="p-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Invite Code
-                  </label>
-                  <input
-                    type="text"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    required
-                    placeholder="Enter 8-character code"
-                    maxLength={8}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-center text-lg tracking-widest"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowJoinModal(false)}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                  >
-                    Join
-                  </button>
-                </div>
-              </form>
+        <AccessibleModal
+          isOpen={showJoinModal}
+          onClose={() => setShowJoinModal(false)}
+          title="Join with Code"
+          size="sm"
+        >
+          <form onSubmit={handleJoinWithCode} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Invite Code
+              </label>
+              <input
+                type="text"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                required
+                placeholder="Enter 8-character code"
+                maxLength={8}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-center text-lg tracking-widest"
+              />
             </div>
-          </div>
-        )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowJoinModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Join
+              </button>
+            </div>
+          </form>
+        </AccessibleModal>
       </div>
     </div>
   );

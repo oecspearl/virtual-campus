@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
-import { hasRole } from '@/lib/database-helpers';
+import { hasRole } from '@/lib/rbac';
 import { getTenantIdFromRequest } from '@/lib/tenant-query';
-import { importIMSEnterpriseXML } from '@/lib/sonisweb/xml-import';
+import {
+  importPersonsBatch,
+  importGroupsBatch,
+  importMembershipsBatch,
+} from '@/lib/sonisweb/batch-import';
 
-export const maxDuration = 300; // 5 minutes for large files
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,54 +23,46 @@ export async function POST(request: NextRequest) {
     }
 
     const tenantId = getTenantIdFromRequest(request);
+    const body = await request.json();
+    const { type, batch, personIdMap, groupIdMap, options } = body;
 
-    const formData = await request.formData();
-    const file = formData.get('xml') as File;
-
-    if (!file) {
-      return NextResponse.json({ error: 'No XML file provided' }, { status: 400 });
+    if (!type || !batch || !Array.isArray(batch)) {
+      return NextResponse.json({ error: 'Missing type or batch array' }, { status: 400 });
     }
 
-    // Validate file type
-    const fileName = file.name.toLowerCase();
-    if (!fileName.endsWith('.xml')) {
-      return NextResponse.json({ error: 'Only XML files are allowed' }, { status: 400 });
+    switch (type) {
+      case 'persons': {
+        const result = await importPersonsBatch(batch, tenantId, {
+          defaultStudentRole: options?.defaultStudentRole || 'student',
+        });
+        return NextResponse.json(result);
+      }
+
+      case 'groups': {
+        const result = await importGroupsBatch(batch, tenantId, {
+          publishCourses: options?.publishCourses === true,
+          defaultModality: options?.defaultModality || 'online',
+        });
+        return NextResponse.json(result);
+      }
+
+      case 'memberships': {
+        if (!personIdMap || !groupIdMap) {
+          return NextResponse.json({ error: 'Missing personIdMap or groupIdMap for memberships' }, { status: 400 });
+        }
+        const result = await importMembershipsBatch(batch, tenantId, personIdMap, groupIdMap, {
+          defaultInstructorRole: options?.defaultInstructorRole || 'instructor',
+        });
+        return NextResponse.json(result);
+      }
+
+      default:
+        return NextResponse.json({ error: `Unknown batch type: ${type}` }, { status: 400 });
     }
-
-    // Validate file size (50MB limit for large institution exports)
-    if (file.size > 50 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File size must be less than 50MB' }, { status: 400 });
-    }
-
-    const xmlContent = await file.text();
-
-    // Basic sanity check
-    if (!xmlContent.includes('<enterprise') && !xmlContent.includes('<Enterprise')) {
-      return NextResponse.json({ error: 'Invalid IMS Enterprise XML: missing <enterprise> element' }, { status: 400 });
-    }
-
-    // Parse import options from form data
-    const options = {
-      createUsers: formData.get('createUsers') !== 'false',
-      createCourses: formData.get('createCourses') !== 'false',
-      createEnrollments: formData.get('createEnrollments') !== 'false',
-      defaultStudentRole: (formData.get('defaultStudentRole') as string) || 'student',
-      defaultInstructorRole: (formData.get('defaultInstructorRole') as string) || 'instructor',
-      authFlow: (formData.get('authFlow') as 'welcome_email' | 'sso_passthrough') || 'welcome_email',
-      publishCourses: formData.get('publishCourses') === 'true',
-      defaultModality: (formData.get('defaultModality') as string) || 'online',
-      semester: (formData.get('semester') as string) || '',
-    };
-
-    const result = await importIMSEnterpriseXML(xmlContent, tenantId, options);
-
-    return NextResponse.json(result, {
-      status: result.status === 'failed' ? 500 : 200,
-    });
   } catch (error) {
-    console.error('XML import error:', error);
+    console.error('Batch import error:', error);
     return NextResponse.json(
-      { error: 'Failed to process XML file', details: error instanceof Error ? error.message : String(error) },
+      { error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

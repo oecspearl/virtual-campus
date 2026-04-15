@@ -1,6 +1,6 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import GradingSchemeEditor, { Category, Scale } from "@/app/components/GradingSchemeEditor";
+import GradingSchemeEditor, { Category, Scale } from "@/app/components/gradebook/GradingSchemeEditor";
 
 export default function GradeSetupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

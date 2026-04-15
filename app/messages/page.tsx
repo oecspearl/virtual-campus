@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import ChatSidebar from "@/app/components/messaging/ChatSidebar";
 import { useSupabase } from "@/lib/supabase-provider";
 import { useRouter } from "next/navigation";
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 
 export default function MessagesPage() {
   const { user, loading } = useSupabase();
@@ -199,30 +200,16 @@ function CreateChatModal({
     setError(null);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-xl shadow-xl max-w-md w-full"
-      >
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">New Message</h2>
-            <button
-              onClick={() => {
-                onClose();
-                resetForm();
-              }}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <Icon icon="mdi:close" className="w-6 h-6" />
-            </button>
-          </div>
-
+    <AccessibleModal
+      isOpen={isOpen}
+      onClose={() => {
+        onClose();
+        resetForm();
+      }}
+      title="New Message"
+      size="md"
+    >
           {/* Mode Toggle */}
           <div className="flex gap-2 mb-6">
             <button
@@ -372,8 +359,6 @@ function CreateChatModal({
               {mode === "direct" ? "Start Chat" : "Create Group"}
             </button>
           </div>
-        </div>
-      </motion.div>
-    </div>
+    </AccessibleModal>
   );
 }

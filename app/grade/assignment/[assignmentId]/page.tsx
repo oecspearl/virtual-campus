@@ -3,8 +3,8 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import { Icon } from "@iconify/react";
-import GradingPanel from "@/app/components/GradingPanel";
-import PeerReviewManager from "@/app/components/PeerReviewManager";
+import GradingPanel from "@/app/components/assignment/GradingPanel";
+import PeerReviewManager from "@/app/components/assignment/PeerReviewManager";
 
 export default function Page() {
   const params = useParams<{ assignmentId: string }>();
@@ -61,7 +61,7 @@ export default function Page() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
         <div className="text-center">
           <Icon icon="mdi:loading" className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 text-lg">Loading grading interface...</p>
@@ -71,15 +71,15 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 px-8 py-6">
+          <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+            <div className="bg-slate-800 px-8 py-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-white flex items-center mb-2">
+                  <h1 className="text-xl font-medium text-white flex items-center mb-2">
                     <Icon icon="mdi:grading" className="w-8 h-8 mr-3" />
                     Grade Assignment
                   </h1>
@@ -114,7 +114,7 @@ export default function Page() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-xl shadow-lg p-6 mb-6">
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg shadow-lg p-6 mb-6">
             <div className="flex items-start gap-4">
               <Icon icon="mdi:alert-circle" className="w-8 h-8 text-red-600 flex-shrink-0 mt-1" />
               <div className="flex-1">
@@ -146,7 +146,7 @@ export default function Page() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Submissions List */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden h-full">
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden h-full">
                 <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-4 py-3 border-b border-gray-200">
                   <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                     <Icon icon="mdi:clipboard-list" className="w-5 h-5" />
@@ -167,7 +167,7 @@ export default function Page() {
                           key={s.id} 
                           className={`w-full rounded-lg p-3 text-left transition-all duration-200 ${
                             isActive 
-                              ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg" 
+                              ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg" 
                               : "bg-gray-50 text-gray-800 hover:bg-gray-100 border border-gray-200"
                           }`} 
                           onClick={() => setActiveId(s.id)}
@@ -220,7 +220,7 @@ export default function Page() {
                   onGraded={load} 
                 />
               ) : (
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-12">
+                <div className="bg-white rounded-lg border border-gray-200 p-12">
                   <div className="text-center">
                     <Icon icon="mdi:hand-pointing-up" className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a Submission</h3>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 export async function GET(
@@ -13,11 +13,9 @@ export async function GET(
     if (!studentId) {
       return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
     }
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Check if user can view this student's activity (own or admin/instructor)
     const canViewAll = hasRole(user.role, ['admin', 'super_admin', 'instructor', 'curriculum_designer']);
@@ -55,9 +53,8 @@ export async function GET(
 
     if (error) {
       console.error('Activity log fetch error:', error);
-      return NextResponse.json({ 
-        error: "Failed to fetch activity log",
-        details: error.message 
+      return NextResponse.json({
+        error: "Failed to fetch activity log"
       }, { status: 500 });
     }
 
@@ -81,9 +78,8 @@ export async function GET(
     });
   } catch (e: any) {
     console.error('Activity log GET API error:', e);
-    return NextResponse.json({ 
-      error: "Internal server error",
-      details: e.message 
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }

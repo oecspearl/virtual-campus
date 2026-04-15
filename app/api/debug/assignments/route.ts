@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
   try {
     console.log('=== DEBUG ASSIGNMENTS API ===');
     
     // Test 1: Check if we can get current user
-    console.log('1. Testing getCurrentUser...');
-    const user = await getCurrentUser();
-    console.log('User:', user ? { id: user.id, email: user.email, role: user.role } : 'No user');
-    
-    if (!user) {
-      return NextResponse.json({ 
-        error: "No authenticated user",
-        step: "getCurrentUser failed"
-      }, { status: 401 });
+    console.log('1. Testing authenticateUser...');
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) {
+      console.log('User: No user');
+      return createAuthResponse(authResult.error!, authResult.status!);
     }
+    const user = authResult.userProfile!;
+    console.log('User:', { id: user.id, email: user.email, role: user.role });
 
     // Test 2: Check if we can create Supabase client
     console.log('2. Testing Supabase client...');

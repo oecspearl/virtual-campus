@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import RoleGuard from '@/app/components/RoleGuard';
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 
 interface Activity {
   id: string;
@@ -266,10 +267,7 @@ export default function StudentActivityPage() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-600">Loading...</p>
-            </div>
+            <LoadingIndicator variant="pulse" text="Loading..." />
           </div>
         </div>
       </div>
@@ -303,7 +301,7 @@ export default function StudentActivityPage() {
             </Button>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-2">
                   Student Overview
                 </h1>
                 {user && (
@@ -491,10 +489,7 @@ export default function StudentActivityPage() {
             <>
               {progressLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-600">Loading progress...</p>
-                  </div>
+                  <LoadingIndicator variant="pulse" text="Loading progress..." />
                 </div>
               ) : (
                 <>

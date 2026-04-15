@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 // Extend timeout for AI generation (Vercel Pro/Enterprise: up to 60s, Hobby: 10s)
@@ -28,14 +28,13 @@ interface GenerateQuizRequest {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only instructors and above can generate quizzes
     if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return createAuthResponse("Forbidden", 403);
     }
 
     const body: GenerateQuizRequest = await request.json();

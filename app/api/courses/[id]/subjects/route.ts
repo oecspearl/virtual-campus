@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,8 +29,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

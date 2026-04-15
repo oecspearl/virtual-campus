@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
+import { InlineLoader } from '@/app/components/ui/LoadingIndicator';
 
 interface User {
   id: string;
@@ -145,7 +146,7 @@ export default function SendNotificationPage() {
             <Icon icon="material-symbols:arrow-back" className="w-5 h-5" />
             Back
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Send Notification</h1>
+          <h1 className="text-xl font-normal text-slate-900 tracking-tight">Send Notification</h1>
           <p className="text-gray-600 mt-2">Send messages via Email, SMS, WhatsApp, Push, or In-App notifications</p>
         </div>
 
@@ -425,7 +426,7 @@ export default function SendNotificationPage() {
             >
               {loading ? (
                 <>
-                  <Icon icon="svg-spinners:ring-resize" className="w-4 h-4 mr-2 animate-spin" />
+                  <InlineLoader className="mr-2" />
                   Sending...
                 </>
               ) : (

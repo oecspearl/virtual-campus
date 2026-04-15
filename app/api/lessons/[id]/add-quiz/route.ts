@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 
@@ -9,11 +9,10 @@ export async function POST(
 ) {
   try {
     const { id: lessonId } = await params;
-    const user = await getCurrentUser();
-    
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) return createAuthResponse("Forbidden", 403);
 
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);

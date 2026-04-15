@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
   try {
     const { id, attemptId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(_request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
     
     // Use service client to bypass RLS for all database reads
     const supabase = createServiceSupabaseClient();

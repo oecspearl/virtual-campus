@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { getCurrentUser } from '@/lib/database-helpers';
+import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 
 // Initialize OpenAI client only if API key is available
@@ -27,20 +27,9 @@ export async function POST(
     }
 
     // Get user with error handling
-    let user;
-    try {
-      user = await getCurrentUser();
-    } catch (authError) {
-      console.error('[Quiz Insights] Auth error:', authError);
-      return NextResponse.json({ 
-        error: 'Authentication failed',
-        details: authError instanceof Error ? authError.message : 'Unknown auth error'
-      }, { status: 401 });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Check if OpenAI API key is configured and get client
     const openai = getOpenAIClient();

@@ -3,15 +3,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
-import UserProfileComponent from '@/app/components/UserProfile';
-import Breadcrumb from '@/app/components/Breadcrumb';
+import UserProfileComponent from '@/app/components/user/UserProfile';
+import Breadcrumb from '@/app/components/ui/Breadcrumb';
 
 export default function ProfilePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-700 to-purple-800"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700"></div>
         <div 
           className="absolute inset-0 opacity-20"
           style={{

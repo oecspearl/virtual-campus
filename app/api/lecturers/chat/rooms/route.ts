@@ -34,11 +34,8 @@ export async function GET(request: Request) {
       console.error("Error fetching chat rooms:", error);
       console.error("Chat rooms error details:", JSON.stringify(error, null, 2));
       console.error("User ID:", user.id);
-      return NextResponse.json({ 
-        error: "Failed to fetch chat rooms",
-        details: error.message,
-        code: error.code,
-        hint: error.code === 'PGRST301' ? "RLS policy might be blocking access. Check if user is a member of any rooms." : "Check if lecturer_chat_rooms table exists and RLS policies are correct"
+      return NextResponse.json({
+        error: "Failed to fetch chat rooms"
       }, { status: 500 });
     }
 
@@ -85,10 +82,8 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error("Chat rooms API error:", error);
     console.error("Error stack:", error?.stack);
-    return NextResponse.json({ 
-      error: "Internal server error",
-      details: error?.message || "Unknown error",
-      hint: "Check server logs and verify database schema is applied"
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }

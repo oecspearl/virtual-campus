@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { hasRole } from "@/lib/database-helpers";
+import { hasRole } from '@/lib/rbac';
 
 export async function POST(
   request: NextRequest,

@@ -9,6 +9,7 @@ export { default as CourseEvaluations } from './CourseEvaluations';
 export { default as CourseEnrollmentCard } from './CourseEnrollmentCard';
 export { default as CourseTeam } from './CourseTeam';
 export { default as SidebarPlayerLayout } from './SidebarPlayerLayout';
+export { default as CourseTabBar } from './CourseTabBar';
 
 // Re-export types and helpers
 export * from './types';

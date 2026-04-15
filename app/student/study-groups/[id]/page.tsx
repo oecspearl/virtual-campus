@@ -226,7 +226,7 @@ export default function StudyGroupDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -283,7 +283,7 @@ export default function StudyGroupDetailPage() {
       <div className="max-w-6xl mx-auto px-4 py-6">
         {!isMember ? (
           /* Non-member view */
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               This is a private group
@@ -300,7 +300,7 @@ export default function StudyGroupDetailPage() {
           </div>
         ) : activeTab === 'chat' ? (
           /* Chat view */
-          <div className="bg-white rounded-xl shadow-sm flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+          <div className="bg-white rounded-lg shadow-sm flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
@@ -363,7 +363,7 @@ export default function StudyGroupDetailPage() {
           </div>
         ) : activeTab === 'members' ? (
           /* Members view */
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Members ({group.member_count})
             </h2>
@@ -407,7 +407,7 @@ export default function StudyGroupDetailPage() {
           /* Settings view */
           <div className="space-y-6">
             {/* Group Info */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Group Settings</h2>
               <div className="space-y-4">
                 <div>
@@ -435,7 +435,7 @@ export default function StudyGroupDetailPage() {
 
             {/* Invite Code */}
             {group.join_code && (
-              <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Invite Code</h2>
                 <div className="flex items-center gap-3">
                   <code className="flex-1 px-4 py-3 bg-gray-100 rounded-lg font-mono text-lg">
@@ -455,7 +455,7 @@ export default function StudyGroupDetailPage() {
             )}
 
             {/* Danger Zone */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-red-200">
               <h2 className="text-lg font-semibold text-red-600 mb-4">Danger Zone</h2>
               <div className="space-y-3">
                 {myRole !== 'owner' && (

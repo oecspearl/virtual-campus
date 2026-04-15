@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
 import { hasRole } from '@/lib/rbac';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import { Icon } from '@iconify/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -267,7 +267,7 @@ export default function ChatRoomPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -284,7 +284,7 @@ export default function ChatRoomPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -297,7 +297,7 @@ export default function ChatRoomPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <div className="bg-red-50 border border-red-200 rounded-md p-6 text-red-700">
             {error || 'Room not found'}
           </div>
         </div>
@@ -309,7 +309,7 @@ export default function ChatRoomPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col">
       <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col p-4">
         {/* Header */}
-        <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+        <div className="bg-white rounded-lg p-4 shadow-sm mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -333,7 +333,7 @@ export default function ChatRoomPage() {
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm flex flex-col overflow-hidden">
+        <div className="flex-1 bg-white rounded-lg shadow-sm flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500">
@@ -356,7 +356,7 @@ export default function ChatRoomPage() {
                       <div
                         className={`max-w-[70%] ${
                           isOwnMessage ? 'bg-[#0066CC] text-white' : 'bg-gray-100 text-gray-900'
-                        } rounded-2xl p-4`}
+                        } rounded-lg p-4`}
                       >
                         {!isOwnMessage && (
                           <div className="font-semibold mb-1 text-sm">

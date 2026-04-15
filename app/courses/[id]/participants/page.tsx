@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
 import RoleGuard from '@/app/components/RoleGuard';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 
 interface Participant {
   id: string;
@@ -376,7 +377,7 @@ export default function CourseParticipantsPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50/50">
         {/* Header */}
         <div className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -596,25 +597,16 @@ export default function CourseParticipantsPage() {
 
         {/* Add Participant Modal */}
         <RoleGuard roles={["instructor","curriculum_designer","admin","super_admin"]}>
-        {showAddParticipant && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Enroll Participants ({selectedUsers.size} selected)
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowAddParticipant(false);
-                    setSelectedUsers(new Set());
-                    setUserSearchQuery('');
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <Icon icon="mdi:close" className="w-5 h-5" />
-                </button>
-              </div>
-              
+        <AccessibleModal
+          isOpen={showAddParticipant}
+          onClose={() => {
+            setShowAddParticipant(false);
+            setSelectedUsers(new Set());
+            setUserSearchQuery('');
+          }}
+          title={`Enroll Participants (${selectedUsers.size} selected)`}
+          size="full"
+        >
               {/* Search */}
               <div className="mb-4">
                 <div className="relative">
@@ -681,7 +673,7 @@ export default function CourseParticipantsPage() {
                 )}
               </div>
               
-              <div className="flex justify-end space-x-3 border-t pt-4">
+              <div className="flex justify-end space-x-3 border-t pt-4 mt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -698,14 +690,12 @@ export default function CourseParticipantsPage() {
                   disabled={addingParticipant || selectedUsers.size === 0}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {addingParticipant 
-                    ? `Adding ${selectedUsers.size} participant${selectedUsers.size > 1 ? 's' : ''}...` 
+                  {addingParticipant
+                    ? `Adding ${selectedUsers.size} participant${selectedUsers.size > 1 ? 's' : ''}...`
                     : `Enroll ${selectedUsers.size} participant${selectedUsers.size !== 1 ? 's' : ''}`}
                 </button>
               </div>
-            </div>
-          </div>
-        )}
+        </AccessibleModal>
         </RoleGuard>
       </div>
     </>

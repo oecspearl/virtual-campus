@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import AutoResizeTextContent from '@/app/components/AutoResizeTextContent';
-import TextEditor from '@/app/components/TextEditor';
+import TextEditor from '@/app/components/editor/TextEditor';
 
 export default function TestAutoResizePage() {
   const [content, setContent] = useState(`
@@ -47,8 +47,8 @@ export default function TestAutoResizePage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Auto-Resize Text Content Test</h1>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-6">Auto-Resize Text Content Test</h1>
           <p className="text-gray-600 mb-8">
             This page demonstrates how text content containers automatically resize based on the amount of content.
           </p>
@@ -57,7 +57,7 @@ export default function TestAutoResizePage() {
             {/* Short Content Example */}
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-900">Short Content</h2>
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                 <AutoResizeTextContent 
                   content={content}
                   title="Short Text Block"
@@ -77,7 +77,7 @@ export default function TestAutoResizePage() {
             {/* Long Content Example */}
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-900">Long Content</h2>
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
                 <AutoResizeTextContent 
                   content={longContent}
                   title="Long Text Block"

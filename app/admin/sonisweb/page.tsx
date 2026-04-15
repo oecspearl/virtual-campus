@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 
 interface Connection {
   id: string;
@@ -66,6 +66,7 @@ export default function SonisWebAdminPage() {
   const [showXMLImport, setShowXMLImport] = useState(false);
   const [xmlImporting, setXmlImporting] = useState(false);
   const [xmlResult, setXmlResult] = useState<XMLImportResult | null>(null);
+  const [importProgress, setImportProgress] = useState<{ phase: string; current: number; total: number } | null>(null);
   const [xmlOptions, setXmlOptions] = useState({
     createUsers: true,
     createCourses: true,
@@ -165,42 +166,172 @@ export default function SonisWebAdminPage() {
     loadConnections();
   };
 
+  // Helper: send a single batch to the API
+  const sendBatch = async (payload: Record<string, unknown>) => {
+    const res = await fetch('/api/sonisweb/import/xml', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { throw new Error(`Invalid response: ${text.slice(0, 200)}`); }
+    if (!res.ok && data.error) throw new Error(data.error);
+    return data;
+  };
+
+  // Split an array into chunks of the given size
+  const chunk = <T,>(arr: T[], size: number): T[][] => {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+    return chunks;
+  };
+
   const handleXMLImport = async () => {
     const file = xmlFileRef.current?.files?.[0];
-    if (!file) {
-      alert('Please select an XML file');
-      return;
-    }
+    if (!file) { alert('Please select an XML file'); return; }
+    if (!file.name.toLowerCase().endsWith('.xml')) { alert('Only XML files are allowed'); return; }
+    if (file.size > 50 * 1024 * 1024) { alert('File size must be less than 50MB'); return; }
 
     setXmlImporting(true);
     setXmlResult(null);
-    try {
-      const fd = new FormData();
-      fd.append('xml', file);
-      fd.append('createUsers', String(xmlOptions.createUsers));
-      fd.append('createCourses', String(xmlOptions.createCourses));
-      fd.append('createEnrollments', String(xmlOptions.createEnrollments));
-      fd.append('publishCourses', String(xmlOptions.publishCourses));
-      fd.append('defaultModality', xmlOptions.defaultModality);
-      fd.append('authFlow', xmlOptions.authFlow);
+    setImportProgress(null);
 
-      const res = await fetch('/api/sonisweb/import/xml', {
-        method: 'POST',
-        body: fd,
-      });
-      const data = await res.json();
-      setXmlResult(data);
+    const totals: XMLImportResult = {
+      status: 'success', datasource: '',
+      persons_processed: 0, persons_created: 0, persons_skipped: 0, persons_failed: 0,
+      groups_processed: 0, courses_created: 0, courses_skipped: 0, courses_failed: 0,
+      memberships_processed: 0, enrollments_created: 0, enrollments_skipped: 0, enrollments_failed: 0,
+      instructors_assigned: 0, errors: [],
+    };
+
+    try {
+      // ── Step 1: Parse XML in the browser ──
+      setImportProgress({ phase: 'Parsing XML...', current: 0, total: 0 });
+      const xmlText = await file.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlText, 'text/xml');
+
+      const parseError = doc.querySelector('parsererror');
+      if (parseError) throw new Error('Invalid XML file: ' + parseError.textContent?.slice(0, 200));
+
+      totals.datasource = doc.querySelector('enterprise > properties > datasource')?.textContent || '';
+
+      // Extract persons
+      const personEls = doc.querySelectorAll('enterprise > person');
+      const persons = Array.from(personEls).map(el => ({
+        sourceId: el.querySelector('sourcedid > id')?.textContent || '',
+        name: el.querySelector('name > fn')?.textContent || '',
+        firstName: el.querySelector('name > n > given')?.textContent || '',
+        lastName: el.querySelector('name > n > family')?.textContent || '',
+        email: el.querySelector('email')?.textContent || '',
+      }));
+
+      // Extract groups
+      const groupEls = doc.querySelectorAll('enterprise > group');
+      const groups = Array.from(groupEls).map(el => ({
+        sourceId: el.querySelector('sourcedid > id')?.textContent || '',
+        shortDesc: el.querySelector('description > short')?.textContent || '',
+        longDesc: el.querySelector('description > long')?.textContent || '',
+        semester: el.querySelector('org > orgunit')?.textContent || '',
+      }));
+
+      // Extract memberships
+      const memberEls = doc.querySelectorAll('enterprise > membership');
+      const memberships = Array.from(memberEls).map(el => ({
+        groupSourceId: el.querySelector('sourcedid > id')?.textContent || '',
+        personSourceId: el.querySelector('member > sourcedid > id')?.textContent || '',
+        roleType: el.querySelector('member > role')?.getAttribute('roletype') || '01',
+        status: el.querySelector('member > role > status')?.textContent || '0',
+      }));
+
+      console.log(`Parsed: ${persons.length} persons, ${groups.length} groups, ${memberships.length} memberships`);
+
+      // Accumulated ID maps
+      const personIdMap: Record<string, string> = {};
+      const groupIdMap: Record<string, string> = {};
+
+      // ── Step 2: Import persons in batches ──
+      if (xmlOptions.createUsers && persons.length > 0) {
+        const batches = chunk(persons, 50);
+        for (let i = 0; i < batches.length; i++) {
+          setImportProgress({ phase: 'Creating users', current: i * 50, total: persons.length });
+          const res = await sendBatch({
+            type: 'persons',
+            batch: batches[i],
+            options: { defaultStudentRole: 'student' },
+          });
+          totals.persons_created += res.created || 0;
+          totals.persons_skipped += res.skipped || 0;
+          totals.persons_failed += res.failed || 0;
+          if (res.errors?.length) totals.errors.push(...res.errors);
+          if (res.idMap) Object.assign(personIdMap, res.idMap);
+        }
+        totals.persons_processed = persons.length;
+        setImportProgress({ phase: 'Creating users', current: persons.length, total: persons.length });
+      }
+
+      // ── Step 3: Import groups in batches ──
+      if (xmlOptions.createCourses && groups.length > 0) {
+        const batches = chunk(groups, 20);
+        for (let i = 0; i < batches.length; i++) {
+          setImportProgress({ phase: 'Creating courses', current: i * 20, total: groups.length });
+          const res = await sendBatch({
+            type: 'groups',
+            batch: batches[i],
+            options: { publishCourses: xmlOptions.publishCourses, defaultModality: xmlOptions.defaultModality },
+          });
+          totals.courses_created += res.created || 0;
+          totals.courses_skipped += res.skipped || 0;
+          totals.courses_failed += res.failed || 0;
+          if (res.errors?.length) totals.errors.push(...res.errors);
+          if (res.idMap) Object.assign(groupIdMap, res.idMap);
+        }
+        totals.groups_processed = groups.length;
+        setImportProgress({ phase: 'Creating courses', current: groups.length, total: groups.length });
+      }
+
+      // ── Step 4: Import memberships in batches ──
+      if (xmlOptions.createEnrollments && memberships.length > 0) {
+        const batches = chunk(memberships, 50);
+        for (let i = 0; i < batches.length; i++) {
+          setImportProgress({ phase: 'Enrolling students', current: i * 50, total: memberships.length });
+          const res = await sendBatch({
+            type: 'memberships',
+            batch: batches[i],
+            personIdMap,
+            groupIdMap,
+            options: { defaultInstructorRole: 'instructor' },
+          });
+          totals.enrollments_created += res.created || 0;
+          totals.enrollments_skipped += res.skipped || 0;
+          totals.enrollments_failed += res.failed || 0;
+          totals.instructors_assigned += res.instructors_assigned || 0;
+          if (res.errors?.length) totals.errors.push(...res.errors);
+        }
+        totals.memberships_processed = memberships.length;
+      }
+
+      // Determine overall status
+      const totalFailed = totals.persons_failed + totals.courses_failed + totals.enrollments_failed;
+      const totalProcessed = totals.persons_processed + totals.groups_processed + totals.memberships_processed;
+      totals.status = totalFailed === 0 ? 'success' : totalFailed < totalProcessed ? 'partial' : 'failed';
+
+      // Cap errors
+      if (totals.errors.length > 50) {
+        const total = totals.errors.length;
+        totals.errors = totals.errors.slice(0, 50);
+        totals.errors.push(`... and ${total - 50} more errors`);
+      }
+
+      setXmlResult(totals);
     } catch (err) {
-      setXmlResult({
-        status: 'failed',
-        persons_processed: 0, persons_created: 0, persons_skipped: 0, persons_failed: 0,
-        groups_processed: 0, courses_created: 0, courses_skipped: 0, courses_failed: 0,
-        memberships_processed: 0, enrollments_created: 0, enrollments_skipped: 0, enrollments_failed: 0,
-        instructors_assigned: 0,
-        errors: ['Network error: Could not reach the server'],
-      });
+      totals.status = 'failed';
+      totals.errors.push(err instanceof Error ? err.message : 'Unexpected error');
+      setXmlResult(totals);
     } finally {
       setXmlImporting(false);
+      setImportProgress(null);
     }
   };
 
@@ -255,8 +386,9 @@ export default function SonisWebAdminPage() {
               required
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Mode</label>
+              <label htmlFor="sonis-api-mode" className="block text-sm font-medium text-gray-700 mb-1">API Mode</label>
               <select
+                id="sonis-api-mode"
                 className="w-full border rounded-lg px-3 py-2"
                 value={formData.api_mode}
                 onChange={(e) => setFormData(p => ({ ...p, api_mode: e.target.value }))}
@@ -267,8 +399,9 @@ export default function SonisWebAdminPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Auth Flow</label>
+              <label htmlFor="sonis-auth-flow" className="block text-sm font-medium text-gray-700 mb-1">Auth Flow</label>
               <select
+                id="sonis-auth-flow"
                 className="w-full border rounded-lg px-3 py-2"
                 value={formData.auth_flow}
                 onChange={(e) => setFormData(p => ({ ...p, auth_flow: e.target.value }))}
@@ -297,8 +430,9 @@ export default function SonisWebAdminPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">XML File</label>
+              <label htmlFor="sonis-xml-file" className="block text-sm font-medium text-gray-700 mb-1">XML File</label>
               <input
+                id="sonis-xml-file"
                 ref={xmlFileRef}
                 type="file"
                 accept=".xml"
@@ -345,8 +479,9 @@ export default function SonisWebAdminPage() {
                 <span className="text-sm">Publish Courses Immediately</span>
               </label>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Course Modality</label>
+                <label htmlFor="sonis-modality" className="block text-xs font-medium text-gray-600 mb-1">Course Modality</label>
                 <select
+                  id="sonis-modality"
                   className="w-full border rounded-lg px-3 py-1.5 text-sm"
                   value={xmlOptions.defaultModality}
                   onChange={(e) => setXmlOptions(p => ({ ...p, defaultModality: e.target.value }))}
@@ -357,8 +492,9 @@ export default function SonisWebAdminPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">User Auth Flow</label>
+                <label htmlFor="sonis-xml-auth-flow" className="block text-xs font-medium text-gray-600 mb-1">User Auth Flow</label>
                 <select
+                  id="sonis-xml-auth-flow"
                   className="w-full border rounded-lg px-3 py-1.5 text-sm"
                   value={xmlOptions.authFlow}
                   onChange={(e) => setXmlOptions(p => ({ ...p, authFlow: e.target.value }))}
@@ -383,8 +519,30 @@ export default function SonisWebAdminPage() {
                   </>
                 )}
               </Button>
-              <Button variant="secondary" onClick={() => { setShowXMLImport(false); setXmlResult(null); }}>Cancel</Button>
+              <Button variant="secondary" onClick={() => { setShowXMLImport(false); setXmlResult(null); }} disabled={xmlImporting}>Cancel</Button>
             </div>
+
+            {importProgress && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon icon="mdi:loading" className="animate-spin text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">{importProgress.phase}</span>
+                  {importProgress.total > 0 && (
+                    <span className="text-sm text-blue-600 ml-auto">
+                      {importProgress.current.toLocaleString()} / {importProgress.total.toLocaleString()}
+                    </span>
+                  )}
+                </div>
+                {importProgress.total > 0 && (
+                  <div className="w-full bg-blue-200 rounded-full h-2.5">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(100, (importProgress.current / importProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {xmlResult && (
@@ -431,13 +589,13 @@ export default function SonisWebAdminPage() {
                   </div>
                 </div>
               </div>
-              {xmlResult.errors.length > 0 && (
+              {xmlResult.errors && xmlResult.errors.length > 0 && (
                 <details className="mt-3">
                   <summary className="text-sm text-red-600 cursor-pointer font-medium">
                     {xmlResult.errors.length} error{xmlResult.errors.length > 1 ? 's' : ''} (click to expand)
                   </summary>
                   <div className="mt-2 max-h-40 overflow-y-auto text-xs text-red-700 bg-red-100 rounded p-2 space-y-1">
-                    {xmlResult.errors.map((err, i) => <div key={i}>{err}</div>)}
+                    {xmlResult.errors.map((err, i) => <div key={`err-${i}-${err.slice(0, 20)}`}>{err}</div>)}
                   </div>
                 </details>
               )}

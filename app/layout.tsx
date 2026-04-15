@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, DM_Serif_Display } from "next/font/google";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import "./globals.css";
@@ -7,25 +7,32 @@ import "./styles/custom.css";
 import "./styles/accessibility.css";
 import "./styles/mobile.css";
 import "./styles/rtl.css";
-import Navbar from "@/app/components/Navbar";
-import LogoHeader from "@/app/components/LogoHeader";
-import { Footer } from "@/app/components/Footer";
+import Navbar from "@/app/components/layout/Navbar";
+import LogoHeader from "@/app/components/layout/LogoHeader";
+import { Footer } from "@/app/components/layout/Footer";
 import { SupabaseProvider } from "@/lib/supabase-provider";
-import { HelpProvider } from "@/app/components/HelpContext";
-import HelpButton from "@/app/components/HelpButton";
-import AIChatWidget from "@/app/components/AIChatWidget";
-import ThemeProvider from "@/app/components/ThemeProvider";
-import SkipToContent from "@/app/components/SkipToContent";
-import PerformanceTracker from "@/app/components/PerformanceTracker";
-import PWARegistration from "@/app/components/PWARegistration";
-import PWAInstallPrompt from "@/app/components/PWAInstallPrompt";
-import OfflineIndicator from "@/app/components/OfflineIndicator";
+import { HelpProvider } from "@/app/components/help/HelpContext";
+import HelpButton from "@/app/components/help/HelpButton";
+import AIChatWidget from "@/app/components/ai/AIChatWidget";
+import ThemeProvider from "@/app/components/layout/ThemeProvider";
+import SkipToContent from "@/app/components/ui/SkipToContent";
+import PerformanceTracker from "@/app/components/pwa/PerformanceTracker";
+import PWARegistration from "@/app/components/pwa/PWARegistration";
+import PWAInstallPrompt from "@/app/components/pwa/PWAInstallPrompt";
+import OfflineIndicator from "@/app/components/pwa/OfflineIndicator";
 import BottomNavigation from "@/app/components/mobile/BottomNavigation";
 import MobileHeader from "@/app/components/mobile/MobileHeader";
 
 const primaryFont = Inter({
   weight: ["400", "500", "600", "700"],
-  subsets: ["latin"]
+  subsets: ["latin"],
+  variable: "--font-body",
+});
+
+const displayFont = DM_Serif_Display({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display",
 });
 
 // RTL languages for future expansion
@@ -66,13 +73,12 @@ export default async function RootLayout({
   const dir = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
 
   return (
-    <html data-editor-id="app/layout.tsx:27:5" lang={locale} dir={dir} className={primaryFont.className}>
+    <html data-editor-id="app/layout.tsx:27:5" lang={locale} dir={dir} className={`${primaryFont.variable} ${displayFont.variable} ${primaryFont.className}`}>
       <head>
         <link rel="icon" type="image/png" href="/oecs-logo.png" />
         <link rel="shortcut icon" href="/oecs-logo.png" />
         <link rel="apple-touch-icon" href="/oecs-logo.png" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#2563eb" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -93,7 +99,7 @@ export default async function RootLayout({
               <main
                 id="main-content"
                 data-editor-id="app/layout.tsx:33:11"
-                className="min-h-[calc(100vh-64px)] pb-16 lg:pb-0"
+                className="min-h-[calc(100vh-64px)] has-bottom-nav lg:!pb-0"
                 tabIndex={-1}
               >
                 {children}

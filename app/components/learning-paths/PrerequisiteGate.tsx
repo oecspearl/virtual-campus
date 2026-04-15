@@ -101,7 +101,7 @@ export default function PrerequisiteGate({
 
   // Default locked state UI
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8">
+    <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-8">
       <div className="max-w-md mx-auto text-center">
         <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
           <Lock className="w-8 h-8 text-amber-600 dark:text-amber-400" />

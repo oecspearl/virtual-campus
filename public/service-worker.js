@@ -63,6 +63,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip SCORM serve proxy — these must not be cached or intercepted
+  if (url.pathname.startsWith('/api/scorm/serve/')) {
+    return;
+  }
+
   // API calls - Network first, fallback to cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstStrategy(request));

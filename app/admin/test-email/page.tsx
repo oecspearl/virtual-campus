@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 
 export default function TestEmailPage() {
   const [email, setEmail] = useState("");

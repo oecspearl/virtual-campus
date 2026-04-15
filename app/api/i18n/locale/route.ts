@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 
 // Supported locales
 const SUPPORTED_LOCALES = ['en', 'es', 'fr'];
@@ -14,7 +15,11 @@ export async function GET(request: NextRequest) {
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user } } = await tq.raw.auth.getUser();
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
+    }
+    const user = authResult.user;
 
     // If user is authenticated, get their locale from the database
     if (user) {
@@ -100,7 +105,11 @@ export async function PUT(request: NextRequest) {
 
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user } } = await tq.raw.auth.getUser();
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
+    }
+    const user = authResult.user;
 
     // Set cookie for locale (works for both authenticated and unauthenticated users)
     const cookieStore = await cookies();

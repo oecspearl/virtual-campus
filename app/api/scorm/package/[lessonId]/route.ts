@@ -1,28 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ lessonId: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const { lessonId } = await params;
     if (!lessonId) {
       return NextResponse.json({ error: "lessonId is required" }, { status: 400 });
     }
 
-    // Use service client to avoid RLS infinite recursion issues
-    // The service client bypasses RLS policies
     const serviceSupabase = createServiceSupabaseClient();
     const supabase = await createServerSupabaseClient();
 
-    // Get SCORM package for this lesson using service client to avoid RLS recursion
+    // Verify user has access: must be enrolled in the course or be staff
+    const isStaff = ['instructor', 'curriculum_designer', 'admin', 'super_admin', 'tenant_admin'].includes(user.role);
+    if (!isStaff) {
+      // Get the course_id for this lesson
+      const { data: lesson } = await serviceSupabase
+        .from('lessons')
+        .select('course_id')
+        .eq('id', lessonId)
+        .single();
+
+      if (lesson?.course_id) {
+        const { data: enrollment } = await serviceSupabase
+          .from('enrollments')
+          .select('id')
+          .eq('student_id', user.id)
+          .eq('course_id', lesson.course_id)
+          .single();
+
+        if (!enrollment) {
+          return NextResponse.json({ error: "Not enrolled in this course" }, { status: 403 });
+        }
+      }
+    }
+
+    // Get SCORM package for this lesson
     const { data: scormPackage, error: packageError } = await serviceSupabase
       .from('scorm_packages')
       .select('*')
@@ -37,16 +58,15 @@ export async function GET(
       throw packageError;
     }
 
-    // Get public URL for the package
+    // Return a same-origin proxy URL so the SCORM iframe can access window.parent.API.
+    // Direct Supabase URLs are cross-origin and block SCORM API communication.
     if (scormPackage.package_url) {
-      const { data: urlData } = supabase.storage
-        .from('course-materials')
-        .getPublicUrl(scormPackage.package_url);
+      const proxyUrl = `/api/scorm/serve/${scormPackage.package_url}`;
 
       return NextResponse.json({
         scormPackage: {
           ...scormPackage,
-          package_url: urlData.publicUrl
+          package_url: proxyUrl
         }
       });
     }

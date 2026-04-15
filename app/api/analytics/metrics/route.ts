@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 
 // Cache configuration (simple in-memory cache for development)
 // TODO: Replace with Redis for production
@@ -23,17 +23,16 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only admins, instructors, and curriculum designers can access analytics
     const allowedRoles = ['admin', 'super_admin', 'instructor', 'curriculum_designer'];
     if (!allowedRoles.includes(user.role)) {
-      return NextResponse.json({ 
-        error: "Forbidden", 
-        message: "Analytics access requires admin, instructor, or curriculum designer role" 
+      return NextResponse.json({
+        error: "Forbidden",
+        message: "Analytics access requires admin, instructor, or curriculum designer role"
       }, { status: 403 });
     }
 

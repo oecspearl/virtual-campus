@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 
 interface LibraryResource {
   id: string;

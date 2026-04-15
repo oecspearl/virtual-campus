@@ -2,11 +2,13 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Icon } from '@iconify/react';
 import { useBranding } from '@/lib/hooks/useBranding';
 import { useSupabase } from '@/lib/supabase-provider';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { stripHtml } from '@/lib/utils';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 
 interface FeaturedCourse {
   id: string;
@@ -84,41 +86,15 @@ export default function Home() {
     fetchFeaturedCourses();
   }, []);
 
-  // Handle escape key to close modal
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isModalOpen) {
-        setIsModalOpen(false);
-      }
-    };
-
-    if (isModalOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-    };
-  }, [isModalOpen]);
-
   // Helper function to convert hex to rgba
-  const hexToRgba = (hex: string, alpha: number = 1) => {
+  const hexToRgba = useCallback((hex: string, alpha: number = 1) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     if (!result) return `rgba(0, 0, 0, ${alpha})`;
     const r = parseInt(result[1], 16);
     const g = parseInt(result[2], 16);
     const b = parseInt(result[3], 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
-
-  // Helper function to get theme color as rgba
-  const getThemeColorRgba = (colorVar: string, alpha: number = 1) => {
-    if (typeof window === 'undefined') return `rgba(59, 130, 246, ${alpha})`; // fallback
-    const hex = getComputedStyle(document.documentElement).getPropertyValue(colorVar).trim();
-    return hexToRgba(hex, alpha);
-  };
+  }, []);
 
   // Helper function to get gradient color based on index using theme colors
   const getGradientColor = (index: number) => {
@@ -144,24 +120,21 @@ export default function Home() {
       const primary = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary').trim();
       const secondary = getComputedStyle(document.documentElement).getPropertyValue('--theme-secondary').trim();
       const accent = getComputedStyle(document.documentElement).getPropertyValue('--theme-accent').trim();
-      
+
       const gradient = `linear-gradient(to bottom right, ${hexToRgba(primary, 0.8)}, ${hexToRgba(secondary, 0.8)}, ${hexToRgba(accent, 0.8)})`;
       setOverlayGradient(gradient);
     };
 
     updateOverlay();
-    
-    // Listen for theme changes
+
+    // Listen for theme changes only — no polling interval
     if (typeof window !== 'undefined') {
       window.addEventListener('branding-settings-updated', updateOverlay);
-      // Also check periodically in case CSS variables update
-      const interval = setInterval(updateOverlay, 500);
       return () => {
         window.removeEventListener('branding-settings-updated', updateOverlay);
-        clearInterval(interval);
       };
     }
-  }, []);
+  }, [hexToRgba]);
 
   // Helper function to get icon based on subject
   const getCourseIcon = (subject?: string | null) => {
@@ -272,15 +245,15 @@ export default function Home() {
           >
             <Link
               href={user ? "/dashboard" : "/auth/signup"}
-              className="group relative px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold text-base sm:text-lg rounded-2xl shadow-2xl hover:shadow-yellow-500/25 transition-all duration-300 hover:scale-105 flex items-center justify-center w-full sm:w-auto"
+              className="group relative px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold text-base sm:text-lg rounded-lg hover:shadow-yellow-500/25 transition-all duration-300  flex items-center justify-center w-full sm:w-auto"
             >
               <span className="relative z-10">{user ? "Go to Dashboard" : homepageHeroCtaPrimaryText}</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-orange-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-orange-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Link>
             
             <Link 
               href="/courses" 
-              className="group px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-white/10 backdrop-blur-sm text-white font-semibold text-base sm:text-lg rounded-2xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105 flex items-center justify-center w-full sm:w-auto"
+              className="group px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-white/10 backdrop-blur-sm text-white font-semibold text-base sm:text-lg rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300  flex items-center justify-center w-full sm:w-auto"
             >
               <span className="flex items-center gap-2">
                 <Icon icon="material-symbols:play-arrow" className="w-5 h-5" />
@@ -294,18 +267,18 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="grid grid-cols-2 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+            className="grid grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto"
           >
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">{homepageHeroStatStudents}</div>
+              <div className="text-3xl md:text-2xl font-medium text-white mb-2">{homepageHeroStatStudents}</div>
               <div className="text-white/70 text-sm">Students</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">{homepageHeroStatEducators}</div>
+              <div className="text-3xl md:text-2xl font-medium text-white mb-2">{homepageHeroStatEducators}</div>
               <div className="text-white/70 text-sm">Educators</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white mb-2">{homepageHeroStatCountries}</div>
+              <div className="text-3xl md:text-2xl font-medium text-white mb-2">{homepageHeroStatCountries}</div>
               <div className="text-white/70 text-sm">Countries</div>
             </div>
           </motion.div>
@@ -373,7 +346,7 @@ export default function Home() {
                 icon: "material-symbols:analytics",
                 title: "Advanced Analytics",
                 description: "Comprehensive progress tracking, performance analytics, and personalized learning recommendations.",
-                color: "from-purple-500 to-violet-600"
+                color: "from-blue-600 to-blue-700"
               },
               {
                 icon: "material-symbols:smart-toy",
@@ -385,7 +358,7 @@ export default function Home() {
                 icon: "material-symbols:mobile-friendly",
                 title: "Mobile First Design",
                 description: "Seamless learning experience across all devices with offline capabilities and sync functionality.",
-                color: "from-indigo-500 to-blue-600"
+                color: "from-blue-600 to-blue-700"
               },
               {
                 icon: "material-symbols:support-agent",
@@ -400,10 +373,10 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-gray-100"
+                className="group relative bg-white rounded-lg p-8 shadow-lg transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
                 <div 
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300"
+                  className="w-16 h-16 rounded-lg flex items-center justify-center mb-6 group- transition-transform duration-300"
                   style={{
                     background: `linear-gradient(to bottom right, var(--theme-primary), var(--theme-secondary))`
                   }}
@@ -413,7 +386,7 @@ export default function Home() {
                 <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
                 <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                 <div 
-                  className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"
+                  className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"
                   style={{
                     background: `linear-gradient(to bottom right, var(--theme-primary)15, var(--theme-accent)15)`
                   }}
@@ -468,19 +441,11 @@ export default function Home() {
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               {homepageCoursesDescription}
             </p>
-            <Link 
-              href="/courses" 
-              className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+            <Link
+              href="/courses"
+              className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-lg transition-all duration-200 shadow-lg hover:brightness-90"
               style={{
                 background: `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`
-              }}
-              onMouseEnter={(e) => {
-                const primary = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary');
-                const secondary = getComputedStyle(document.documentElement).getPropertyValue('--theme-secondary');
-                e.currentTarget.style.background = `linear-gradient(to right, ${primary}DD, ${secondary}DD)`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`;
               }}
             >
               <span>{homepageCoursesCtaText}</span>
@@ -492,7 +457,7 @@ export default function Home() {
             {loadingCourses ? (
               // Loading skeleton
               [...Array(6)].map((_, index) => (
-                <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 animate-pulse">
+                <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-100 animate-pulse">
                   <div className="h-48 bg-gray-200"></div>
                   <div className="p-6">
                     <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
@@ -512,29 +477,35 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden border border-gray-100"
+                  className="group bg-white rounded-lg cursor-pointer transition-all duration-300 hover:shadow-xl overflow-hidden border border-gray-100"
+                  onClick={() => {
+                    setSelectedCourse(course);
+                    setIsModalOpen(true);
+                  }}
                 >
-                  <div 
+                  <div
                     className="h-48 relative overflow-hidden"
                     style={{
                       background: getGradientColor(index)
                     }}
                   >
                     {course.thumbnail ? (
-                      <img 
-                        src={course.thumbnail} 
+                      <Image
+                        src={course.thumbnail}
                         alt={course.title}
-                        className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-500"
                       />
                     ) : (
-                      <div 
+                      <div
                         className="h-full w-full opacity-90"
                         style={{
                           background: getGradientColor(index)
                         }}
                       ></div>
                     )}
-                    <div 
+                    <div
                       className="absolute inset-0"
                       style={{
                         background: `linear-gradient(to bottom, transparent, var(--theme-primary)40)`
@@ -546,40 +517,29 @@ export default function Home() {
                       </span>
                     </div>
                     <div className="absolute bottom-4 left-4">
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
                         <Icon icon={getCourseIcon(course.subject_area)} className="w-6 h-6 text-white" />
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="p-6">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide capitalize">
                         {course.difficulty || 'Beginner'}
                       </span>
-                      <span className="text-gray-300">•</span>
+                      <span className="text-gray-300">&bull;</span>
                       <span className="text-xs text-gray-500">{course.duration}</span>
                     </div>
-                    
-                    <h3 
-                      className="text-xl font-bold text-gray-900 mb-3 group-hover:transition-colors line-clamp-2"
-                      style={{
-                        '--hover-color': 'var(--theme-primary)'
-                      } as React.CSSProperties & { '--hover-color': string }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = 'var(--theme-primary)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = '';
-                      }}
-                    >
+
+                    <h3 className="text-xl font-bold text-gray-900 mb-3 transition-colors duration-200 group-hover:text-[var(--theme-primary)] line-clamp-2">
                       {course.title}
                     </h3>
-                    
+
                     <p className="text-gray-600 mb-4 leading-relaxed line-clamp-3">
                       {stripHtml(course.description || '') || 'Explore this comprehensive course designed for Caribbean learners.'}
                     </p>
-                    
+
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-1">
                         <Icon icon="material-symbols:star" className="w-4 h-4 text-yellow-400" />
@@ -589,23 +549,16 @@ export default function Home() {
                         </span>
                       </div>
                     </div>
-                    
+
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedCourse(course);
                         setIsModalOpen(true);
                       }}
-                      className="w-full text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 text-center block group-hover:shadow-lg"
+                      className="w-full text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 text-center hover:brightness-90"
                       style={{
                         background: `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`
-                      }}
-                      onMouseEnter={(e) => {
-                        const primary = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary');
-                        const secondary = getComputedStyle(document.documentElement).getPropertyValue('--theme-secondary');
-                        e.currentTarget.style.background = `linear-gradient(to right, ${primary}DD, ${secondary}DD)`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`;
                       }}
                     >
                       Enroll Now
@@ -628,18 +581,8 @@ export default function Home() {
 
       {/* Testimonials Section */}
       {homepageTestimonialsEnabled && (
-      <section 
-        className="py-20 relative overflow-hidden bg-white"
-      >
-        {/* Background Pattern */}
-        <div 
-          className="absolute inset-0" 
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}
-        ></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -735,7 +678,7 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100"
+                className="group bg-white rounded-lg p-8 shadow-lg transition-all duration-300 hover:shadow-xl border border-gray-100"
               >
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
@@ -805,21 +748,20 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <Link
                 href={user ? "/dashboard" : "/auth/signup"}
-                className="group relative px-8 py-4 bg-white font-bold text-lg rounded-2xl shadow-2xl hover:shadow-white/25 transition-all duration-300 hover:scale-105"
+                className="group relative px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-white font-bold text-lg rounded-lg hover:bg-gradient-to-r hover:from-yellow-400 hover:to-orange-400 hover:text-black transition-all duration-300 flex items-center justify-center"
                 style={{
                   color: 'var(--theme-primary)'
                 }}
               >
-                <span className="relative z-10 flex items-center gap-2">
+                <span className="flex items-center gap-2">
                   <Icon icon="material-symbols:rocket-launch" className="w-5 h-5" />
                   {user ? "Go to Dashboard" : homepageCtaPrimaryText}
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </Link>
-              
-              <Link 
-                href="/courses" 
-                className="group px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-semibold text-lg rounded-2xl border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105"
+
+              <Link
+                href="/courses"
+                className="group px-6 sm:px-8 py-3 sm:py-4 min-h-[44px] bg-white/10 backdrop-blur-sm text-white font-semibold text-lg rounded-lg border border-white/20 hover:bg-white/20 transition-all duration-300 flex items-center justify-center"
               >
                 <span className="flex items-center gap-2">
                   <Icon icon="material-symbols:explore" className="w-5 h-5" />
@@ -833,93 +775,75 @@ export default function Home() {
       )}
 
       {/* Course Enrollment Modal */}
-      {isModalOpen && selectedCourse && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          >
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-              <h2 className="text-2xl font-bold text-gray-900">{selectedCourse.title}</h2>
+      <AccessibleModal
+        isOpen={isModalOpen && !!selectedCourse}
+        onClose={() => setIsModalOpen(false)}
+        title={selectedCourse?.title || 'Course Details'}
+        description="Course enrollment details"
+        size="lg"
+      >
+        {selectedCourse && (
+          <>
+            {/* Course Info */}
+            <div className="flex flex-wrap items-center gap-3 mb-4 text-sm text-gray-600">
+              <span className="px-3 py-1 rounded-full font-semibold capitalize" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' }}>
+                {selectedCourse.difficulty || 'Beginner'}
+              </span>
+              <span className="text-gray-300">&bull;</span>
+              <span>{selectedCourse.duration}</span>
+              <span className="text-gray-300">&bull;</span>
+              <div className="flex items-center gap-1">
+                <Icon icon="material-symbols:star" className="w-4 h-4 text-yellow-400" />
+                <span className="font-semibold">{selectedCourse.rating.toFixed(1)}</span>
+                <span className="text-gray-500">
+                  ({selectedCourse.student_count > 0 ? `${selectedCourse.student_count.toLocaleString()}+` : '0'} students)
+                </span>
+              </div>
+            </div>
+
+            {/* Course Description */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">About This Course</h3>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {stripHtml(selectedCourse.description || '') || 'This course provides comprehensive learning materials designed for Caribbean learners. Explore engaging content, interactive lessons, and expert instruction to enhance your skills and knowledge.'}
+              </p>
+            </div>
+
+            {/* Enrollment Notice */}
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-lg mb-6">
+              <div className="flex items-start gap-3">
+                <Icon icon="material-symbols:info" className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-amber-900 mb-2">Self-Enrollment Not Available</h4>
+                  <p className="text-amber-800 text-sm leading-relaxed">
+                    This organization does not allow self-enrollment in courses. To enroll in this course, please contact your administrator or course coordinator. They will be able to add you to the course.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                aria-label="Close modal"
+                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-all duration-200"
               >
-                <Icon icon="material-symbols:close" className="w-6 h-6 text-gray-500" />
+                Close
               </button>
+              <Link
+                href={`/courses/${selectedCourse.id}`}
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 px-6 py-3 text-white font-semibold rounded-lg transition-all duration-200 text-center hover:brightness-90"
+                style={{
+                  background: `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`
+                }}
+              >
+                View Course Details
+              </Link>
             </div>
-
-            {/* Modal Content */}
-            <div className="px-6 py-6">
-              {/* Course Info */}
-              <div className="flex items-center gap-3 mb-4 text-sm text-gray-600">
-                <span className="px-3 py-1 rounded-full font-semibold capitalize" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' }}>
-                  {selectedCourse.difficulty || 'Beginner'}
-                </span>
-                <span className="text-gray-300">•</span>
-                <span>{selectedCourse.duration}</span>
-                <span className="text-gray-300">•</span>
-                <div className="flex items-center gap-1">
-                  <Icon icon="material-symbols:star" className="w-4 h-4 text-yellow-400" />
-                  <span className="font-semibold">{selectedCourse.rating.toFixed(1)}</span>
-                  <span className="text-gray-500">
-                    ({selectedCourse.student_count > 0 ? `${selectedCourse.student_count.toLocaleString()}+` : '0'} students)
-                  </span>
-                </div>
-              </div>
-
-              {/* Course Description */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">About This Course</h3>
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {stripHtml(selectedCourse.description || '') || 'This course provides comprehensive learning materials designed for Caribbean learners. Explore engaging content, interactive lessons, and expert instruction to enhance your skills and knowledge.'}
-                </p>
-              </div>
-
-              {/* Enrollment Notice */}
-              <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-lg mb-6">
-                <div className="flex items-start gap-3">
-                  <Icon icon="material-symbols:info" className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold text-amber-900 mb-2">Self-Enrollment Not Available</h4>
-                    <p className="text-amber-800 text-sm leading-relaxed">
-                      This organization does not allow self-enrollment in courses. To enroll in this course, please contact your administrator or course coordinator. They will be able to add you to the course.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200"
-                >
-                  Close
-                </button>
-                <Link
-                  href={`/courses/${selectedCourse.id}`}
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-6 py-3 text-white font-semibold rounded-xl transition-all duration-200 text-center"
-                  style={{
-                    background: `linear-gradient(to right, var(--theme-primary), var(--theme-secondary))`
-                  }}
-                >
-                  View Course Details
-                </Link>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+          </>
+        )}
+      </AccessibleModal>
     </div>
   );
 }

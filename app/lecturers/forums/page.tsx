@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
 import { hasRole } from '@/lib/rbac';
 import { useRouter } from 'next/navigation';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 
@@ -162,7 +163,7 @@ export default function LecturerForumsPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -182,7 +183,7 @@ export default function LecturerForumsPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl font-normal text-slate-900 tracking-tight mb-2">
                 Lecturer Forums
               </h1>
               <p className="text-gray-600">
@@ -231,18 +232,18 @@ export default function LecturerForumsPage() {
         {loading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+              <div key={i} className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
                 <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               </div>
             ))}
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <div className="bg-red-50 border border-red-200 rounded-md p-6 text-red-700">
             {error}
           </div>
         ) : forums.length === 0 ? (
-          <div className="bg-white rounded-xl p-12 text-center shadow-sm">
+          <div className="bg-white rounded-lg p-12 text-center shadow-sm">
             <Icon icon="mdi:forum-outline" className="text-6xl text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No forums yet</h3>
             <p className="text-gray-500 mb-6">Be the first to create a forum!</p>
@@ -260,7 +261,7 @@ export default function LecturerForumsPage() {
                 key={forum.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => router.push(`/lecturers/forums/${forum.id}`)}
               >
                 <div className="flex items-start justify-between">
@@ -304,103 +305,90 @@ export default function LecturerForumsPage() {
         )}
 
         {/* Create Forum Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Create New Forum</h2>
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <Icon icon="mdi:close" className="text-2xl" />
-                </button>
+        <AccessibleModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Create New Forum"
+          size="xl"
+        >
+          <form onSubmit={handleCreateForum} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Forum Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={newForum.title}
+                onChange={(e) => setNewForum({ ...newForum, title: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+                placeholder="e.g., Mathematics Teaching Strategies"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <textarea
+                value={newForum.description}
+                onChange={(e) => setNewForum({ ...newForum, description: e.target.value })}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+                placeholder="Describe what this forum is about..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category *
+              </label>
+              <select
+                required
+                value={newForum.category}
+                onChange={(e) => setNewForum({ ...newForum, category: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+              >
+                {FORUM_CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {newForum.category === 'subject-specific' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject Area
+                </label>
+                <input
+                  type="text"
+                  value={newForum.subject_area}
+                  onChange={(e) => setNewForum({ ...newForum, subject_area: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+                  placeholder="e.g., Mathematics, Science, History"
+                />
               </div>
+            )}
 
-              <form onSubmit={handleCreateForum} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Forum Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newForum.title}
-                    onChange={(e) => setNewForum({ ...newForum, title: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-                    placeholder="e.g., Mathematics Teaching Strategies"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={newForum.description}
-                    onChange={(e) => setNewForum({ ...newForum, description: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-                    placeholder="Describe what this forum is about..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    required
-                    value={newForum.category}
-                    onChange={(e) => setNewForum({ ...newForum, category: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-                  >
-                    {FORUM_CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {newForum.category === 'subject-specific' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject Area
-                    </label>
-                    <input
-                      type="text"
-                      value={newForum.subject_area}
-                      onChange={(e) => setNewForum({ ...newForum, subject_area: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-                      placeholder="e.g., Mathematics, Science, History"
-                    />
-                  </div>
-                )}
-
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
-                  >
-                    Create Forum
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
+              >
+                Create Forum
+              </Button>
+            </div>
+          </form>
+        </AccessibleModal>
       </div>
     </div>
   );

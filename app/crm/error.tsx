@@ -31,13 +31,13 @@ export default function CRMError({
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="px-5 py-2.5 bg-oecs-navy-blue text-white rounded-xl hover:bg-blue-900 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+            className="px-5 py-2.5 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
           >
             Try Again
           </button>
           <Link
             href="/crm"
-            className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-all duration-200 text-sm font-medium"
+            className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-all duration-200 text-sm font-medium"
           >
             CRM Dashboard
           </Link>

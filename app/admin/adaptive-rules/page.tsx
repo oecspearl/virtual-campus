@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 
 interface AdaptiveRule {
   id: string;
@@ -292,7 +293,7 @@ export default function AdaptiveRulesPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <div className="flex items-start gap-3">
           <Icon icon="material-symbols:psychology" className="w-6 h-6 text-blue-600 mt-0.5" />
           <div>
@@ -323,14 +324,14 @@ export default function AdaptiveRulesPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-6 animate-pulse">
               <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
             </div>
           ))}
         </div>
       ) : rules.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <Icon icon="material-symbols:psychology-outline" className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">No adaptive rules yet</h3>
           <p className="text-gray-500 mb-4">Create rules to generate personalized learning recommendations</p>
@@ -346,7 +347,7 @@ export default function AdaptiveRulesPage() {
           {rules.map(rule => (
             <div
               key={rule.id}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-300 transition-all"
+              className="bg-white rounded-lg border border-gray-200 p-6 hover:border-blue-300 transition-all"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -409,16 +410,13 @@ export default function AdaptiveRulesPage() {
       )}
 
       {/* Create/Edit Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingRule ? 'Edit Rule' : 'Create Adaptive Rule'}
-              </h2>
-            </div>
-
-            <div className="p-6 space-y-4">
+      <AccessibleModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title={editingRule ? 'Edit Rule' : 'Create Adaptive Rule'}
+        size="lg"
+      >
+            <div className="space-y-4">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                   {error}
@@ -552,7 +550,7 @@ export default function AdaptiveRulesPage() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-4">
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
@@ -567,9 +565,7 @@ export default function AdaptiveRulesPage() {
                 {saving ? 'Saving...' : editingRule ? 'Update Rule' : 'Create Rule'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </AccessibleModal>
     </div>
   );
 }

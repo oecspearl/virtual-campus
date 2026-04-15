@@ -20,7 +20,7 @@ export default function ClassCard({ cls }: { cls: ClassInfo }) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-gray-200/60 bg-white/70 backdrop-blur p-4 shadow-sm hover:shadow-md transition">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-gray-200/60 bg-white/70 backdrop-blur p-4 shadow-sm hover:shadow-md transition">
       <Link href={`/class/${cls.id}`} className="block">
         <h3 className="text-base font-medium text-gray-900 mb-1">{cls.name}</h3>
         <p className="text-xs text-gray-500">{cls.term}{cls.section ? ` • ${cls.section}` : ""}</p>

@@ -118,7 +118,7 @@ export default function AtRiskDashboard({ courseId }: { courseId?: string }) {
         </div>
         <button
           onClick={loadRiskScores}
-          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
           <Icon icon="material-symbols:refresh" className="w-5 h-5" />
           Refresh
@@ -129,7 +129,7 @@ export default function AtRiskDashboard({ courseId }: { courseId?: string }) {
       <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setSelectedRiskLevel('all')}
-          className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             selectedRiskLevel === 'all'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -139,7 +139,7 @@ export default function AtRiskDashboard({ courseId }: { courseId?: string }) {
         </button>
         <button
           onClick={() => setSelectedRiskLevel('critical')}
-          className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             selectedRiskLevel === 'critical'
               ? 'bg-red-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -149,7 +149,7 @@ export default function AtRiskDashboard({ courseId }: { courseId?: string }) {
         </button>
         <button
           onClick={() => setSelectedRiskLevel('high')}
-          className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             selectedRiskLevel === 'high'
               ? 'bg-orange-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -159,7 +159,7 @@ export default function AtRiskDashboard({ courseId }: { courseId?: string }) {
         </button>
         <button
           onClick={() => setSelectedRiskLevel('medium')}
-          className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             selectedRiskLevel === 'medium'
               ? 'bg-yellow-600 text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -171,7 +171,7 @@ export default function AtRiskDashboard({ courseId }: { courseId?: string }) {
 
       {/* Risk Scores List */}
       {riskScores.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-8 text-center">
+        <div className="bg-gray-50 rounded-lg p-8 text-center">
           <Icon icon="material-symbols:check-circle" className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">No at-risk students found</p>
         </div>
@@ -182,7 +182,7 @@ export default function AtRiskDashboard({ courseId }: { courseId?: string }) {
             return (
               <div
                 key={`${risk.student_id}-${risk.course_id || 'all'}`}
-                className={`border-2 rounded-xl p-6 ${getRiskColor(risk.risk_level)}`}
+                className={`border-2 rounded-lg p-6 ${getRiskColor(risk.risk_level)}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

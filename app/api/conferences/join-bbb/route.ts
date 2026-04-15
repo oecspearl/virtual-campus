@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 import crypto from 'crypto';
 
 export async function GET(request: NextRequest) {
     try {
         const tenantId = getTenantIdFromRequest(request);
         const tq = createTenantQuery(tenantId);
-        const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-        if (authError || !user) {
-            // Redirect to login if not authenticated
+        const authResult = await authenticateUser(request);
+        if (!authResult.success) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
+        const user = authResult.user;
 
         const { searchParams } = new URL(request.url);
         const meetingID = searchParams.get('meetingID');

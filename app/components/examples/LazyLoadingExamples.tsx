@@ -13,13 +13,13 @@ import {
     DashboardSkeleton,
     QuizSkeleton,
     GradebookSkeleton
-} from '@/app/components/LoadingSkeleton';
+} from '@/app/components/ui/LoadingSkeleton';
 
 // Lazy load heavy components
-const VideoPlayer = lazy(() => import('@/app/components/VideoPlayer'));
+const VideoPlayer = lazy(() => import('@/app/components/media/VideoPlayer'));
 // @ts-expect-error - module may not exist yet
 const RichTextEditor = lazy(() => import('@/app/components/RichTextEditor'));
-const CodeSandbox = lazy(() => import('@/app/components/CodeSandbox'));
+const CodeSandbox = lazy(() => import('@/app/components/media/CodeSandbox'));
 // @ts-expect-error - module may not exist yet
 const ChartComponent = lazy(() => import('@/app/components/ChartComponent'));
 // @ts-expect-error - module may not exist yet

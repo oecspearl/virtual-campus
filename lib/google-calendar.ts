@@ -1,8 +1,20 @@
 import { google } from 'googleapis';
+import { createServiceSupabaseClient } from './supabase-server';
 
 /**
- * Creates a Google Calendar event with a Google Meet link
- * Returns the Meet link if successful, null otherwise
+ * Creates a Google Meet link using OAuth2 (user-consented refresh token).
+ *
+ * Flow:
+ * 1. Admin connects Google account once via /api/auth/google-meet/authorize
+ * 2. Refresh token is stored in site_settings
+ * 3. This function uses that token to create calendar events with Meet links
+ *
+ * Required env vars:
+ *   NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ *   GOOGLE_CLIENT_SECRET
+ *
+ * Required DB setup:
+ *   site_settings row with key='google_meet_refresh_token'
  */
 export async function createGoogleMeetLink(
   title: string,
@@ -10,28 +22,32 @@ export async function createGoogleMeetLink(
   startTime: Date,
   endTime: Date,
   timezone: string = 'America/New_York'
-): Promise<string | null> {
+): Promise<{ link: string } | { error: string }> {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return { error: 'Google OAuth credentials not configured (NEXT_PUBLIC_GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)' };
+  }
+
+  // Get the stored refresh token from site_settings
+  const supabase = createServiceSupabaseClient();
+  const { data: tokenSetting } = await supabase
+    .from('site_settings')
+    .select('setting_value')
+    .eq('setting_key', 'google_meet_refresh_token')
+    .single();
+
+  if (!tokenSetting?.setting_value) {
+    return { error: 'Google account not connected. An admin must connect their Google account in Admin Settings.' };
+  }
+
   try {
-    // Check if Google API credentials are configured
-    const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    const calendarId = process.env.GOOGLE_CALENDAR_ID || 'primary';
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2Client.setCredentials({ refresh_token: tokenSetting.setting_value });
 
-    if (!clientEmail || !privateKey) {
-      console.log('Google Calendar API credentials not configured');
-      return null;
-    }
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-    // Create JWT auth client
-    const auth = new google.auth.JWT({
-      email: clientEmail,
-      key: privateKey,
-      scopes: ['https://www.googleapis.com/auth/calendar'],
-    });
-
-    const calendar = google.calendar({ version: 'v3', auth });
-
-    // Create calendar event with Google Meet
     const event = {
       summary: title,
       description: description,
@@ -54,40 +70,49 @@ export async function createGoogleMeetLink(
     };
 
     const response = await calendar.events.insert({
-      calendarId: calendarId,
+      calendarId: 'primary',
       requestBody: event,
       conferenceDataVersion: 1,
     });
 
-    // Extract the Meet link from the response
     const meetLink = response.data.conferenceData?.entryPoints?.find(
       (entry: any) => entry.entryPointType === 'video'
     )?.uri;
 
     if (meetLink) {
-      return meetLink;
+      console.log('[Google Meet] Successfully created Meet link:', meetLink);
+      return { link: meetLink };
     }
 
-    // Fallback: try to get link from hangoutLink
     if (response.data.hangoutLink) {
-      return response.data.hangoutLink;
+      return { link: response.data.hangoutLink };
     }
 
-    console.error('No Meet link found in calendar event response');
-    return null;
-  } catch (error) {
-    console.error('Error creating Google Meet link via Calendar API:', error);
-    return null;
+    return { error: 'Calendar event created but no Meet link was returned.' };
+  } catch (error: any) {
+    const message = error?.response?.data?.error?.message
+      || error?.errors?.[0]?.message
+      || error?.message
+      || 'Unknown error';
+    const status = error?.response?.status || error?.code;
+    console.error(`[Google Meet] Error (${status}):`, message);
+
+    // If token is invalid/expired, suggest re-connecting
+    if (status === 401 || status === 403) {
+      return { error: `Google authorization expired or invalid. Please re-connect your Google account in Admin Settings. (${message})` };
+    }
+
+    return { error: `Google API error (${status}): ${message}` };
   }
 }
 
 /**
- * Check if Google Calendar API is configured
+ * Check if Google Meet auto-generation is configured.
+ * Returns true if OAuth credentials exist (actual token check happens at creation time).
  */
 export function isGoogleCalendarConfigured(): boolean {
   return !!(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-    process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET
   );
 }
-

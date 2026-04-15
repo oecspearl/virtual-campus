@@ -78,7 +78,7 @@ export default function ContactPage() {
       description: 'Come see us in person',
       value: 'Morne Fortune, Castries, St. Lucia',
       action: '#',
-      color: 'from-purple-500 to-purple-600'
+      color: 'from-blue-600 to-blue-700'
     },
     {
       icon: 'material-symbols:schedule',
@@ -110,10 +110,10 @@ export default function ContactPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-700 to-purple-800"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700"></div>
         <div 
           className="absolute inset-0 opacity-20"
           style={{
@@ -138,7 +138,7 @@ export default function ContactPage() {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-3 text-white"
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-6 py-3 text-white"
               >
                 <Icon icon="material-symbols:schedule" className="inline w-5 h-5 mr-2" />
                 <span className="font-medium">24/7 Support Available</span>
@@ -146,7 +146,7 @@ export default function ContactPage() {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-3 text-white"
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-6 py-3 text-white"
               >
                 <Icon icon="material-symbols:verified" className="inline w-5 h-5 mr-2" />
                 <span className="font-medium">Quick Response Time</span>
@@ -169,9 +169,9 @@ export default function ContactPage() {
               key={index}
               href={method.action}
               whileHover={{ y: -5, scale: 1.02 }}
-              className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
+              className="group bg-white rounded-lg p-6 shadow-lg  transition-all duration-300 border border-gray-100"
             >
-              <div className={`w-12 h-12 bg-gradient-to-r ${method.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+              <div className={`w-12 h-12 bg-gradient-to-r ${method.color} rounded-lg flex items-center justify-center mb-4 group- transition-transform duration-300`}>
                 <Icon icon={method.icon} className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{method.title}</h3>
@@ -189,10 +189,10 @@ export default function ContactPage() {
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
+            className="bg-white rounded-lg p-8 border border-gray-100"
           >
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Send us a Message</h2>
+              <h2 className="text-xl font-normal text-slate-900 tracking-tight mb-4">Send us a Message</h2>
               <p className="text-gray-600">Fill out the form below and we'll get back to you as soon as possible.</p>
             </div>
 
@@ -208,7 +208,7 @@ export default function ContactPage() {
                     value={formData.name}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 min-h-[44px] border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-base"
+                    className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-base"
                     placeholder="Your full name"
                   />
                 </div>
@@ -222,7 +222,7 @@ export default function ContactPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 min-h-[44px] border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-base"
+                    className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-base"
                     placeholder="your.email@example.com"
                   />
                 </div>
@@ -238,7 +238,7 @@ export default function ContactPage() {
                   value={formData.subject}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 min-h-[44px] border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-base"
+                  className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-base"
                   placeholder="What can we help you with?"
                 />
               </div>
@@ -253,7 +253,7 @@ export default function ContactPage() {
                   onChange={handleInputChange}
                   required
                   rows={6}
-                  className="w-full px-4 py-3 min-h-[120px] border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-base"
+                  className="w-full px-4 py-3 min-h-[120px] border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-base"
                   placeholder="Tell us more about your inquiry..."
                 />
               </div>
@@ -262,7 +262,7 @@ export default function ContactPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center"
+                  className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center"
                 >
                   <Icon icon="material-symbols:check-circle" className="w-5 h-5 text-green-600 mr-3" />
                   <span className="text-green-800 font-medium">Message sent successfully! We'll get back to you soon.</span>
@@ -273,7 +273,7 @@ export default function ContactPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center"
+                  className="bg-red-50 border border-red-200 rounded-md p-4 flex items-center"
                 >
                   <Icon icon="material-symbols:error" className="w-5 h-5 text-red-600 mr-3" />
                   <span className="text-red-800 font-medium">Failed to send message. Please try again or contact us directly via email.</span>
@@ -285,7 +285,7 @@ export default function ContactPage() {
                 disabled={isSubmitting}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full min-h-[44px] bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-base"
+                className="w-full min-h-[44px] bg-slate-800 text-white font-medium py-2 px-4 rounded-md  transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-base"
               >
                 {isSubmitting ? (
                   <>
@@ -310,9 +310,9 @@ export default function ContactPage() {
             className="space-y-8"
           >
             {/* Office Hours */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="bg-white rounded-lg p-6 border border-gray-100">
               <div className="flex items-center mb-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center mr-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mr-3">
                   <Icon icon="material-symbols:schedule" className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900">Office Hours</h3>
@@ -334,9 +334,9 @@ export default function ContactPage() {
             </div>
 
             {/* FAQ Section */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="bg-white rounded-lg p-6 border border-gray-100">
               <div className="flex items-center mb-6">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mr-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center mr-3">
                   <Icon icon="material-symbols:help" className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900">Frequently Asked Questions</h3>
@@ -352,9 +352,9 @@ export default function ContactPage() {
             </div>
 
             {/* Social Links */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="bg-white rounded-lg p-6 border border-gray-100">
               <div className="flex items-center mb-4">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center mr-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center mr-3">
                   <Icon icon="material-symbols:share" className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900">Follow Us</h3>
@@ -364,28 +364,28 @@ export default function ContactPage() {
                 <motion.a
                   href="#"
                   whileHover={{ scale: 1.1 }}
-                  className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
+                  className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
                 >
                   <Icon icon="mdi:facebook" className="w-5 h-5" />
                 </motion.a>
                 <motion.a
                   href="#"
                   whileHover={{ scale: 1.1 }}
-                  className="w-10 h-10 bg-blue-400 rounded-xl flex items-center justify-center text-white hover:bg-blue-500 transition-colors"
+                  className="w-10 h-10 bg-blue-400 rounded-lg flex items-center justify-center text-white hover:bg-blue-500 transition-colors"
                 >
                   <Icon icon="mdi:twitter" className="w-5 h-5" />
                 </motion.a>
                 <motion.a
                   href="#"
                   whileHover={{ scale: 1.1 }}
-                  className="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center text-white hover:bg-blue-800 transition-colors"
+                  className="w-10 h-10 bg-blue-700 rounded-lg flex items-center justify-center text-white hover:bg-blue-800 transition-colors"
                 >
                   <Icon icon="mdi:linkedin" className="w-5 h-5" />
                 </motion.a>
                 <motion.a
                   href="#"
                   whileHover={{ scale: 1.1 }}
-                  className="w-10 h-10 bg-pink-600 rounded-xl flex items-center justify-center text-white hover:bg-pink-700 transition-colors"
+                  className="w-10 h-10 bg-pink-600 rounded-lg flex items-center justify-center text-white hover:bg-pink-700 transition-colors"
                 >
                   <Icon icon="mdi:instagram" className="w-5 h-5" />
                 </motion.a>

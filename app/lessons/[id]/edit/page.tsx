@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Button from '@/app/components/Button';
-import TextEditor from '@/app/components/TextEditor';
-import FileUpload, { UploadResult } from '@/app/components/FileUpload';
+import Button from '@/app/components/ui/Button';
+import TextEditor from '@/app/components/editor/TextEditor';
+import FileUpload, { UploadResult } from '@/app/components/file-upload/FileUpload';
 import RoleGuard from '@/app/components/RoleGuard';
-import QuizSelectorModal from '@/app/components/QuizSelectorModal';
+import QuizSelectorModal from '@/app/components/quiz/QuizSelectorModal';
 import SurveySelectorModal from '@/app/components/SurveySelectorModal';
 import LibraryResourcePicker from '@/app/components/LibraryResourcePicker';
 import { Icon } from '@iconify/react';

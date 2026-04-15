@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 
 interface GradeConfig {
   id: string;
@@ -139,7 +140,7 @@ export default function GradeSyncConfigPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-gray-500">Loading...</div>;
+  if (loading) return <div className="p-6"><LoadingIndicator variant="books" text="Loading grade config..." fullCenter /></div>;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

@@ -59,9 +59,10 @@ export default function BottomNavigation() {
               href={item.href}
               className={`relative flex flex-col items-center justify-center flex-1 h-full min-w-0 px-1 transition-all duration-200 ${
                 isActive
-                  ? 'text-blue-600'
+                  ? ''
                   : 'text-gray-600 hover:text-gray-900'
               }`}
+              style={isActive ? { color: 'var(--theme-primary)' } : undefined}
             >
               <Icon
                 icon={isActive ? item.activeIcon : item.icon}
@@ -73,7 +74,7 @@ export default function BottomNavigation() {
                 {item.label}
               </span>
               {isActive && (
-                <div className="absolute bottom-0 left-1 right-1 h-1 bg-blue-600 rounded-t-full" />
+                <div className="absolute bottom-0 left-1 right-1 h-1 rounded-t-full" style={{ backgroundColor: 'var(--theme-primary)' }} />
               )}
             </Link>
           );

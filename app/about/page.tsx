@@ -30,10 +30,10 @@ export default function AboutPage() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-700 to-purple-800"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700"></div>
         <div 
           className="absolute inset-0 opacity-20"
           style={{
@@ -58,7 +58,7 @@ export default function AboutPage() {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-3 text-white"
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-6 py-3 text-white"
               >
                 <Icon icon="material-symbols:public" className="inline w-5 h-5 mr-2" />
                 <span className="font-medium">12 Member States</span>
@@ -66,7 +66,7 @@ export default function AboutPage() {
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-3 text-white"
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-6 py-3 text-white"
               >
                 <Icon icon="material-symbols:school" className="inline w-5 h-5 mr-2" />
                 <span className="font-medium">60K+ Students</span>
@@ -86,7 +86,7 @@ export default function AboutPage() {
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+              <h2 className="text-3xl md:text-2xl font-normal text-slate-900 tracking-tight mb-6">
                 Our <span className="text-blue-600">Mission</span>
               </h2>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
@@ -98,14 +98,14 @@ export default function AboutPage() {
               <div className="flex flex-wrap gap-4">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
-                  className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 flex items-center"
+                  className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 flex items-center"
                 >
                   <Icon icon="material-symbols:verified" className="w-5 h-5 text-blue-600 mr-2" />
                   <span className="text-blue-800 font-medium">Official OECS Platform</span>
                 </motion.div>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
-                  className="bg-green-50 border border-green-200 rounded-xl px-4 py-2 flex items-center"
+                  className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 flex items-center"
                 >
                   <Icon icon="material-symbols:security" className="w-5 h-5 text-green-600 mr-2" />
                   <span className="text-green-800 font-medium">Secure & Reliable</span>
@@ -113,7 +113,7 @@ export default function AboutPage() {
               </div>
             </div>
             <div className="relative">
-              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-8 text-white">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-8 text-white">
                 <h3 className="text-2xl font-bold mb-4">Our Vision</h3>
                 <p className="text-blue-100 text-lg leading-relaxed">
                   To become the leading digital education platform in the Caribbean, fostering regional integration and educational excellence while ensuring every citizen has access to world-class learning opportunities.
@@ -138,7 +138,7 @@ export default function AboutPage() {
           className="mb-20"
         >
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-2xl font-normal text-slate-900 tracking-tight mb-4">
               Our <span className="text-blue-600">Values</span>
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -153,10 +153,10 @@ export default function AboutPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.8 + index * 0.1 }}
                 whileHover={{ y: -5 }}
-                className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
+                className="bg-white rounded-lg p-8 shadow-lg  transition-all duration-300 border border-gray-100"
               >
                 <div className="flex items-start">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4 flex-shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
                     <Icon icon={value.icon} className="w-6 h-6 text-white" />
                   </div>
                   <div>
@@ -178,7 +178,7 @@ export default function AboutPage() {
           className="mb-20"
         >
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-2xl font-normal text-slate-900 tracking-tight mb-4">
               Meet Our <span className="text-blue-600">Team</span>
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -197,10 +197,10 @@ export default function AboutPage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.0 }}
-          className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 md:p-12 text-white"
+          className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-8 md:p-12 text-white"
         >
           <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Get in Touch</h2>
+            <h2 className="text-xl md:text-2xl font-normal text-slate-900 tracking-tight mb-4">Get in Touch</h2>
             <p className="text-blue-100 text-lg max-w-2xl mx-auto">
               Ready to join our mission? Contact us to learn more about OECS Virtual Campus and how we can support your educational goals.
             </p>
@@ -237,7 +237,7 @@ function TeamCard({ name, role, id }: { name: string; role: string; id: string }
   return (
     <motion.div
       whileHover={{ y: -10, scale: 1.02 }}
-      className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-center border border-gray-100 group"
+      className="bg-white rounded-lg p-8 shadow-lg  transition-all duration-300 text-center border border-gray-100 group"
     >
       <div className="relative mb-6">
         <img 

@@ -40,8 +40,8 @@ function SkeletonRow() {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0" />
           <div className="space-y-2">
-            <div className="h-4 w-36 bg-gray-200 rounded-none" />
-            <div className="h-3 w-48 bg-gray-100 rounded-none" />
+            <div className="h-4 w-36 bg-gray-200 rounded-lg" />
+            <div className="h-3 w-48 bg-gray-100 rounded-lg" />
           </div>
         </div>
       </td>
@@ -52,7 +52,7 @@ function SkeletonRow() {
         <div className="h-6 w-24 bg-gray-200 rounded-full" />
       </td>
       <td className="px-6 py-4 text-right">
-        <div className="h-4 w-16 bg-gray-200 rounded-none ml-auto" />
+        <div className="h-4 w-16 bg-gray-200 rounded-lg ml-auto" />
       </td>
     </tr>
   );
@@ -163,22 +163,22 @@ export default function CRMStudentsPage() {
           {/* Skeleton Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-40 bg-gray-200 rounded-none animate-pulse" />
+              <div className="h-8 w-40 bg-gray-200 rounded-lg animate-pulse" />
               <div className="h-6 w-12 bg-gray-100 rounded-full animate-pulse" />
             </div>
           </div>
 
           {/* Skeleton Filters */}
-          <div className="rounded-none border border-gray-100 bg-white p-5 mb-6 shadow-sm">
+          <div className="rounded-lg border border-gray-100 bg-white p-5 mb-6 shadow-sm">
             <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px] h-11 bg-gray-100 rounded-none animate-pulse" />
-              <div className="w-40 h-11 bg-gray-100 rounded-none animate-pulse" />
-              <div className="w-40 h-11 bg-gray-100 rounded-none animate-pulse" />
+              <div className="flex-1 min-w-[200px] h-11 bg-gray-100 rounded-lg animate-pulse" />
+              <div className="w-40 h-11 bg-gray-100 rounded-lg animate-pulse" />
+              <div className="w-40 h-11 bg-gray-100 rounded-lg animate-pulse" />
             </div>
           </div>
 
           {/* Skeleton Table */}
-          <div className="rounded-none border border-gray-100 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-lg border border-gray-100 bg-white shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
@@ -207,14 +207,14 @@ export default function CRMStudentsPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">All Students</h1>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-oecs-navy-blue">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-600">
               {total}
             </span>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-none border border-gray-100 p-5 mb-6 shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="bg-white rounded-lg border border-gray-100 p-5 mb-6 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex flex-wrap gap-4">
             <div className="relative flex-1 min-w-[200px]">
               <Icon icon="mdi:magnify" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -223,13 +223,13 @@ export default function CRMStudentsPage() {
                 placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-200 text-sm"
+                className="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-200 text-sm"
               />
             </div>
             <select
               value={stageFilter}
               onChange={(e) => handleStageChange(e.target.value)}
-              className="px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-200 text-sm"
+              className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-200 text-sm"
             >
               <option value="">All Stages</option>
               {Object.entries(STAGE_BADGES).map(([key, { label }]) => (
@@ -239,7 +239,7 @@ export default function CRMStudentsPage() {
             <select
               value={riskFilter}
               onChange={(e) => handleRiskChange(e.target.value)}
-              className="px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-200 text-sm"
+              className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all duration-200 text-sm"
             >
               <option value="">All Risk Levels</option>
               <option value="low">Low</option>
@@ -251,7 +251,7 @@ export default function CRMStudentsPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-none border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -296,11 +296,11 @@ export default function CRMStudentsPage() {
                     <tr key={student.student_id} className="hover:bg-blue-50/40 transition-colors duration-150">
                       <td className="px-6 py-4">
                         <Link href={`/crm/students/${student.student_id}`} className="flex items-center gap-3 group">
-                          <div className="w-10 h-10 bg-gradient-to-br from-oecs-navy-blue to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-700 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
                             {student.student_name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900 group-hover:text-oecs-navy-blue transition-colors">{student.student_name}</div>
+                            <div className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{student.student_name}</div>
                             <div className="text-xs text-gray-500">{student.email}</div>
                           </div>
                         </Link>
@@ -326,7 +326,7 @@ export default function CRMStudentsPage() {
                       <td className="px-6 py-4 text-right">
                         <Link
                           href={`/crm/students/${student.student_id}`}
-                          className="text-oecs-navy-blue hover:text-blue-900 text-sm font-semibold transition-colors"
+                          className="text-blue-600 hover:text-blue-900 text-sm font-semibold transition-colors"
                         >
                           View 360
                         </Link>
@@ -347,7 +347,7 @@ export default function CRMStudentsPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-none hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
@@ -357,7 +357,7 @@ export default function CRMStudentsPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-none hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next
               </button>

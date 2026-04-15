@@ -233,17 +233,17 @@ export default function CRMTasksPage() {
           {/* Skeleton header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-32 h-7 rounded-none bg-gray-200 animate-pulse" />
+              <div className="w-32 h-7 rounded-lg bg-gray-200 animate-pulse" />
             </div>
-            <div className="w-28 h-9 rounded-none bg-gray-200 animate-pulse" />
+            <div className="w-28 h-9 rounded-lg bg-gray-200 animate-pulse" />
           </div>
 
           {/* Skeleton filter bar */}
-          <div className="bg-white rounded-none border border-gray-100 p-4 mb-6 shadow-sm">
+          <div className="bg-white rounded-lg border border-gray-100 p-4 mb-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-20 h-8 rounded-none bg-gray-100 animate-pulse" />
+                  <div key={i} className="w-20 h-8 rounded-lg bg-gray-100 animate-pulse" />
                 ))}
               </div>
               <div className="w-24 h-8 rounded-full bg-gray-100 animate-pulse" />
@@ -253,7 +253,7 @@ export default function CRMTasksPage() {
           {/* Skeleton task cards */}
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="bg-white rounded-none border border-gray-100 shadow-sm p-4 border-l-4 border-l-gray-200">
+              <div key={i} className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 border-l-4 border-l-gray-200">
                 <div className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded border-2 border-gray-200 animate-pulse mt-0.5 flex-shrink-0" />
                   <div className="flex-1 space-y-2">
@@ -265,7 +265,7 @@ export default function CRMTasksPage() {
                     <div className="flex items-center gap-3 mt-2">
                       <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
                       <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
-                      <div className="h-5 w-16 bg-gray-100 rounded-none animate-pulse" />
+                      <div className="h-5 w-16 bg-gray-100 rounded-lg animate-pulse" />
                     </div>
                   </div>
                 </div>
@@ -287,7 +287,7 @@ export default function CRMTasksPage() {
           </div>
           <button
             onClick={() => { setEditingTask(null); setShowCreateModal(true); }}
-            className="px-4 py-2 bg-oecs-navy-blue hover:bg-blue-900 text-white rounded-none transition-all duration-300 text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-900 text-white rounded-lg transition-all duration-300 text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
           >
             <Icon icon="mdi:plus" className="w-4 h-4" />
             New Task
@@ -295,16 +295,16 @@ export default function CRMTasksPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-none border border-gray-100 p-4 mb-6 shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="bg-white rounded-lg border border-gray-100 p-4 mb-6 shadow-sm hover:shadow-md transition-all duration-300">
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
               {STATUS_TABS.map(tab => (
                 <button
                   key={tab.key}
                   onClick={() => setStatusFilter(tab.key)}
-                  className={`px-3 py-1.5 rounded-none text-sm font-medium transition-all duration-300 ${
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${
                     statusFilter === tab.key
-                      ? 'bg-oecs-navy-blue text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -316,7 +316,7 @@ export default function CRMTasksPage() {
               onClick={() => setMineOnly(!mineOnly)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${
                 mineOnly
-                  ? 'bg-oecs-navy-blue text-white shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -328,7 +328,7 @@ export default function CRMTasksPage() {
         {/* Tasks List */}
         <div className="space-y-3">
           {tasks.length === 0 ? (
-            <div className="bg-white rounded-none border border-gray-100 p-12 text-center shadow-sm">
+            <div className="bg-white rounded-lg border border-gray-100 p-12 text-center shadow-sm">
               <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
                 <Icon icon="mdi:clipboard-check-outline" className="w-10 h-10 text-blue-400" />
               </div>
@@ -344,7 +344,7 @@ export default function CRMTasksPage() {
               return (
                 <div
                   key={task.id}
-                  className={`bg-white rounded-none border shadow-sm hover:shadow-md transition-all duration-300 p-4 border-l-4 ${priorityBorder} ${
+                  className={`bg-white rounded-lg border shadow-sm hover:shadow-md transition-all duration-300 p-4 border-l-4 ${priorityBorder} ${
                     overdue
                       ? 'bg-red-50/50 border-red-200'
                       : 'border-gray-100'
@@ -391,7 +391,7 @@ export default function CRMTasksPage() {
                         {task.student_name && (
                           <span className="flex items-center gap-1">
                             <Icon icon="mdi:account" className="w-3.5 h-3.5" />
-                            <Link href={`/crm/students/${task.student_id}`} className="text-oecs-navy-blue hover:text-blue-900 font-semibold">
+                            <Link href={`/crm/students/${task.student_id}`} className="text-blue-600 hover:text-blue-900 font-semibold">
                               {task.student_name}
                             </Link>
                           </span>
@@ -409,7 +409,7 @@ export default function CRMTasksPage() {
                             {new Date(task.due_date).toLocaleDateString()}
                           </span>
                         )}
-                        <span className="capitalize bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-none text-xs font-medium">{task.source}</span>
+                        <span className="capitalize bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-lg text-xs font-medium">{task.source}</span>
                       </div>
                     </div>
 
@@ -417,7 +417,7 @@ export default function CRMTasksPage() {
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         onClick={() => openEditModal(task)}
-                        className="p-1.5 text-gray-400 hover:text-oecs-navy-blue hover:bg-blue-50 rounded-none transition-all duration-200"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
                         title="Edit task"
                       >
                         <Icon icon="mdi:pencil-outline" className="w-4 h-4" />
@@ -425,7 +425,7 @@ export default function CRMTasksPage() {
                       <button
                         onClick={() => handleDelete(task.id)}
                         disabled={deletingTaskId === task.id}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-none transition-all duration-200 disabled:opacity-50"
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-50"
                         title="Delete task"
                       >
                         {deletingTaskId === task.id ? (
@@ -450,7 +450,7 @@ export default function CRMTasksPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
@@ -458,7 +458,7 @@ export default function CRMTasksPage() {
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next
               </button>
@@ -469,7 +469,7 @@ export default function CRMTasksPage() {
         {/* Create/Edit Task Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-none border border-gray-100 shadow-2xl w-full max-w-md">
+            <div className="bg-white rounded-lg border border-gray-100 w-full max-w-md">
               <div className="p-6">
                 <h2 className="text-lg font-bold tracking-tight text-gray-900 mb-4">
                   {editingTask ? 'Edit Task' : 'New Task'}
@@ -482,7 +482,7 @@ export default function CRMTasksPage() {
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
                       placeholder="Follow up with student..."
-                      className="w-full px-3 py-2 border border-gray-200 rounded-none bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
                     />
                   </div>
                   <div>
@@ -491,7 +491,7 @@ export default function CRMTasksPage() {
                       value={newDescription}
                       onChange={(e) => setNewDescription(e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-none bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
                     />
                   </div>
                   <div className="flex gap-3">
@@ -500,7 +500,7 @@ export default function CRMTasksPage() {
                       <select
                         value={newPriority}
                         onChange={(e) => setNewPriority(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-none bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -514,7 +514,7 @@ export default function CRMTasksPage() {
                         type="date"
                         value={newDueDate}
                         onChange={(e) => setNewDueDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-none bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 text-sm transition-all duration-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white outline-none"
                       />
                     </div>
                   </div>
@@ -523,14 +523,14 @@ export default function CRMTasksPage() {
               <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
                 <button
                   onClick={closeModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-none transition-all duration-300"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-300"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={editingTask ? handleEdit : handleCreate}
                   disabled={creating || !newTitle.trim()}
-                  className="px-4 py-2 text-sm font-medium bg-oecs-navy-blue text-white rounded-none hover:bg-blue-900 transition-all duration-300 disabled:opacity-50 shadow-sm hover:shadow-md"
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-all duration-300 disabled:opacity-50 shadow-sm hover:shadow-md"
                 >
                   {creating
                     ? (editingTask ? 'Saving...' : 'Creating...')

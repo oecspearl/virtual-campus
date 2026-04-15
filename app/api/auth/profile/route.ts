@@ -61,6 +61,7 @@ export async function GET(request: Request) {
       
       const defaultProfile = {
         user_id: user.id,
+        tenant_id: userProfile.tenant_id || '00000000-0000-0000-0000-000000000001',
         bio: "",
         avatar: "",
         learning_preferences: {},
@@ -176,6 +177,7 @@ export async function PUT(request: Request) {
     // Update user_profiles table
     const profilePayload = {
       user_id: user.id,
+      tenant_id: userProfile.tenant_id || '00000000-0000-0000-0000-000000000001',
       bio: sanitizedBio,
       avatar: sanitizedAvatar,
       learning_preferences: sanitizedLearningPreferences,

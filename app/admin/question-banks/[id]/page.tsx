@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 
 interface Question {
   id: string;
@@ -220,7 +220,7 @@ export default function QuestionBankDetailPage() {
         
         {bank && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{bank.name}</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">{bank.name}</h1>
             {bank.description && (
               <p className="mt-2 text-gray-600">{bank.description}</p>
             )}

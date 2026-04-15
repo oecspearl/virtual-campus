@@ -365,7 +365,7 @@ export default function ChatWindow({ roomId, currentUserId }: ChatWindowProps) {
 
                         {/* Message Bubble */}
                         <div
-                          className={`px-4 py-2 rounded-2xl ${
+                          className={`px-4 py-2 rounded-lg ${
                             isOwnMessage
                               ? "bg-[#0066CC] text-white rounded-br-md"
                               : "bg-white border border-gray-200 text-gray-900 rounded-bl-md"
@@ -521,7 +521,7 @@ export default function ChatWindow({ roomId, currentUserId }: ChatWindowProps) {
               }}
               placeholder="Type a message..."
               rows={1}
-              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0066CC] focus:border-transparent resize-none"
+              className="w-full px-4 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-[#0066CC] focus:border-transparent resize-none"
               style={{ maxHeight: "120px" }}
             />
           </div>
@@ -530,7 +530,7 @@ export default function ChatWindow({ roomId, currentUserId }: ChatWindowProps) {
           <button
             type="submit"
             disabled={isSending || (!messageContent.trim() && !selectedFile)}
-            className="p-2 bg-[#0066CC] text-white rounded-xl hover:bg-[#0052a3] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-[#0066CC] text-white rounded-lg hover:bg-[#0052a3] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSending ? (
               <Icon icon="mdi:loading" className="w-5 h-5 animate-spin" />

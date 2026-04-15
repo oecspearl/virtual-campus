@@ -73,7 +73,7 @@ export default function EditSurveyPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50/50">
         <Icon icon="material-symbols:progress-activity" className="w-8 h-8 text-gray-400 animate-spin" />
       </div>
     );
@@ -81,7 +81,7 @@ export default function EditSurveyPage() {
 
   if (error || !survey) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50/50">
         <Icon icon="material-symbols:error" className="w-16 h-16 text-red-400 mb-4" />
         <p className="text-gray-600">{error || 'Survey not found'}</p>
       </div>

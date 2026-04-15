@@ -1,10 +1,10 @@
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentUser } from "@/lib/database-helpers";
 import { hasRole } from "@/lib/rbac";
-import StreamlinedGradebook from "@/app/components/StreamlinedGradebook";
-import StudentGradebook from "@/app/components/StudentGradebook";
+import StreamlinedGradebook from "@/app/components/gradebook/StreamlinedGradebook";
+import StudentGradebook from "@/app/components/gradebook/StudentGradebook";
 import { notFound } from "next/navigation";
-import Breadcrumb from "@/app/components/Breadcrumb";
+import Breadcrumb from "@/app/components/ui/Breadcrumb";
 import { stripHtml } from "@/lib/utils";
 
 export default async function CourseGradebookPage({ 
@@ -338,7 +338,7 @@ export default async function CourseGradebookPage({
             className="mb-6"
           />
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">{course.title}</h1>
             <p className="mt-2 text-gray-600">{stripHtml(course.description || '')}</p>
           </div>
           

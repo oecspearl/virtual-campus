@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { getCurrentUser } from '@/lib/database-helpers';
+import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 
 /**
@@ -13,14 +13,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only admins can view templates
     if (!hasRole(user.role, ['admin', 'super_admin', 'curriculum_designer'])) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createAuthResponse("Forbidden", 403);
     }
 
     const { id } = await params;
@@ -61,14 +60,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only admins can update templates
     if (!hasRole(user.role, ['admin', 'super_admin', 'curriculum_designer'])) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createAuthResponse("Forbidden", 403);
     }
 
     const { id } = await params;
@@ -142,14 +140,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only admins can delete templates
     if (!hasRole(user.role, ['admin', 'super_admin', 'curriculum_designer'])) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createAuthResponse("Forbidden", 403);
     }
 
     const { id } = await params;

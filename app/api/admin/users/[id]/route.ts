@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { hasRole } from "@/lib/database-helpers";
+import { hasRole } from '@/lib/rbac';
+import { userUpdateSchema, validateBody } from "@/lib/validations";
+import { deleteUserCascade } from "@/lib/delete-user-cascade";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -68,11 +70,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const { 
-      name, 
-      email, 
-      role, 
+    const body = await request.json();
+
+    // Validate input
+    const validation = validateBody(userUpdateSchema, body);
+    if (!validation.success) return validation.response;
+
+    const {
+      name,
+      email,
+      role,
       gender,
+      student_id,
       password,
       bio,
       avatar,
@@ -83,7 +92,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       difficulty_preference,
       parent_email,
       school_id
-    } = await request.json();
+    } = validation.data;
 
     // Authenticate user
     const authResult = await authenticateUser(request);
@@ -113,6 +122,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       // Only set gender if it's a valid value, otherwise set to null
       const validGenders = ['male', 'female', 'other', 'prefer_not_to_say'];
       userUpdateData.gender = gender && validGenders.includes(gender) ? gender : null;
+    }
+
+    // Add student_id if provided
+    if (student_id !== undefined) {
+      userUpdateData.student_id = student_id || null;
     }
 
     // Add school_id if provided (null to unassign, UUID to assign)
@@ -258,27 +272,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    // Delete user from our database first
-    const { error: userError } = await tq
-      .from('users')
-      .delete()
-      .eq('id', id);
+    // Delete user and all dependent records
+    const result = await deleteUserCascade(tq, id);
 
-    if (userError) {
-      console.error('Database error:', userError);
-      return NextResponse.json({ error: userError.message }, { status: 500 });
+    if (!result.success) {
+      console.error('Delete error:', result.error);
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    // Delete user from Supabase Auth
-    const { error: authError } = await tq.raw.auth.admin.deleteUser(id);
-
-    if (authError) {
-      console.error('Auth delete error:', authError);
-      return NextResponse.json({ error: authError.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ 
-      message: "User deleted successfully" 
+    return NextResponse.json({
+      message: "User deleted successfully"
     });
 
   } catch (error) {

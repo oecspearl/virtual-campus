@@ -11,6 +11,7 @@ import {
   Globe,
   FileText,
 } from 'lucide-react';
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 
 interface Caption {
   id: string;
@@ -331,8 +332,7 @@ export default function CaptionManager({
       <div className="divide-y divide-gray-100">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">
-            <div className="animate-spin w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full mx-auto mb-3" />
-            Loading captions...
+            <LoadingIndicator variant="dots" size="sm" text="Loading captions..." />
           </div>
         ) : captions.length === 0 ? (
           <div className="p-8 text-center text-gray-500">

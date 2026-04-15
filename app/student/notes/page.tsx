@@ -189,7 +189,7 @@ export default function NotesPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex flex-wrap gap-4">
             {/* Search */}
             <div className="flex-1 min-w-[200px]">
@@ -231,7 +231,7 @@ export default function NotesPage() {
 
         {/* New Note Form */}
         {showNewNote && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">New Note</h2>
               <button
@@ -306,14 +306,14 @@ export default function NotesPage() {
           {loading ? (
             <div className="space-y-4">
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
                 </div>
               ))}
             </div>
           ) : notes.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
               <StickyNote className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 No notes yet
@@ -337,7 +337,7 @@ export default function NotesPage() {
             notes.map(note => (
               <div
                 key={note.id}
-                className={`rounded-xl border-l-4 p-4 ${getHighlightColor(note.highlight_color)} border border-gray-200 dark:border-gray-700`}
+                className={`rounded-lg border-l-4 p-4 ${getHighlightColor(note.highlight_color)} border border-gray-200 dark:border-gray-700`}
               >
                 {editingNote?.id === note.id ? (
                   // Edit mode

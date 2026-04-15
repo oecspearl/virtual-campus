@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 
 export async function GET(
   request: NextRequest,
@@ -8,11 +9,11 @@ export async function GET(
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { id: conferenceId } = await params;
 
@@ -69,11 +70,11 @@ export async function PUT(
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { id: conferenceId } = await params;
 
@@ -165,11 +166,11 @@ export async function DELETE(
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { id: conferenceId } = await params;
     console.log('Delete conference request:', { conferenceId, userId: user.id });
@@ -275,7 +276,7 @@ export async function DELETE(
 
     if (error) {
       console.error('Error deleting conference:', error);
-      return NextResponse.json({ error: 'Failed to delete conference', details: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to delete conference' }, { status: 500 });
     }
 
     console.log('Conference deleted successfully:', { conferenceId });

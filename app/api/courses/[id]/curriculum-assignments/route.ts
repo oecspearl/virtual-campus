@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { getCurrentUser } from '@/lib/database-helpers';
+import { authenticateUser } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 
 export async function GET(
@@ -9,7 +9,8 @@ export async function GET(
 ) {
   try {
     const { id: courseId } = await params;
-    const user = await getCurrentUser();
+    const authResult = await authenticateUser(request as any);
+    const user = authResult.success ? authResult.userProfile! : null;
 
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);

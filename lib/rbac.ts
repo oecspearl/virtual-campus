@@ -25,9 +25,9 @@ export function canAccessAdmin(role: string | null | undefined): boolean {
   return isAdminRole(role);
 }
 
-export function hasRole(userRole: string | null | undefined, required: UserRole | UserRole[]): boolean {
+export function hasRole(userRole: string | null | undefined, required: UserRole | readonly UserRole[]): boolean {
   if (!userRole) return false;
-  const list = Array.isArray(required) ? required : [required];
+  const list: readonly UserRole[] = Array.isArray(required) ? required : [required];
   return list.includes(userRole as UserRole);
 }
 

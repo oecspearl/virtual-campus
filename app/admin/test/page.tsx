@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
 import RoleGuard from '@/app/components/RoleGuard';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 
 export default function AdminTestPage() {
   const { supabase } = useSupabase();
@@ -50,7 +50,7 @@ export default function AdminTestPage() {
     <RoleGuard roles={['admin', 'super_admin']}>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Test Page</h1>
+          <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-8">Admin Test Page</h1>
           
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Test Admin Functionality</h2>

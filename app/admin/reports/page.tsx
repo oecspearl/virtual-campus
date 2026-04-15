@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 import Link from 'next/link';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 
 interface CustomReport {
   id: string;
@@ -77,7 +78,7 @@ export default function CustomReportsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Custom Reports</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">Custom Reports</h1>
             <p className="mt-2 text-sm text-gray-600">
               Create and execute custom reports with flexible filtering and visualization
             </p>
@@ -181,22 +182,16 @@ export default function CustomReportsPage() {
       )}
 
       {/* Results Modal */}
-      {selectedReport && results.length > 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">{selectedReport.name}</h2>
-              <button
-                onClick={() => {
-                  setSelectedReport(null);
-                  setResults([]);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <Icon icon="material-symbols:close" className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-6">
+      <AccessibleModal
+        isOpen={!!(selectedReport && results.length > 0)}
+        onClose={() => {
+          setSelectedReport(null);
+          setResults([]);
+        }}
+        title={selectedReport?.name || 'Report Results'}
+        size="full"
+      >
+            <div className="max-h-[70vh] overflow-auto">
               <div className="mb-4 text-sm text-gray-600">
                 {results.length} results
               </div>
@@ -204,7 +199,7 @@ export default function CustomReportsPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      {selectedReport.columns.map((col) => (
+                      {selectedReport?.columns.map((col) => (
                         <th
                           key={col}
                           className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -217,12 +212,12 @@ export default function CustomReportsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {results.map((row, idx) => (
                       <tr key={idx}>
-                        {selectedReport.columns.map((col) => (
+                        {selectedReport?.columns.map((col) => (
                           <td
                             key={col}
                             className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
                           >
-                            {typeof row[col] === 'object' 
+                            {typeof row[col] === 'object'
                               ? JSON.stringify(row[col])
                               : String(row[col] || '')}
                           </td>
@@ -233,7 +228,7 @@ export default function CustomReportsPage() {
                 </table>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <div className="flex justify-end pt-4 border-t border-gray-200 mt-4">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -244,9 +239,7 @@ export default function CustomReportsPage() {
                 Close
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+      </AccessibleModal>
     </div>
   );
 }

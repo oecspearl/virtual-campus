@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
@@ -26,18 +27,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         hint: error.hint,
         quizId: id
       });
-      return NextResponse.json({ 
-        error: "Quiz not found",
-        details: error.message,
-        code: error.code
+      return NextResponse.json({
+        error: "Quiz not found"
       }, { status: 404 });
     }
     
     if (!quiz) {
       console.warn('[Quiz GET] Quiz not found (no data returned). Quiz ID:', id);
-      return NextResponse.json({ 
-        error: "Quiz not found",
-        details: `No quiz found with ID: ${id}`
+      return NextResponse.json({
+        error: "Quiz not found"
       }, { status: 404 });
     }
     
@@ -47,12 +45,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     console.error('[Quiz GET] Unexpected error:', {
       message: e.message,
       stack: e.stack,
-      error: e,
       name: e.name
     });
-    return NextResponse.json({ 
-      error: "Internal server error",
-      details: e.message || 'Unknown error occurred'
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }
@@ -60,11 +56,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) return createAuthResponse("Forbidden", 403);
+
     const data = await request.json();
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
@@ -127,8 +123,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       available_until: data.available_until ?? null,
       points: Number(data.points ?? 0),
       published: Boolean(data.published),
-      proctored_mode: Boolean(data.proctored_mode),
-      proctor_settings: data.proctored_mode ? (data.proctor_settings ?? null) : null,
+      proctored_mode: ['none', 'basic', 'strict'].includes(data.proctored_mode) ? data.proctored_mode : 'none',
+      proctor_settings: data.proctored_mode && data.proctored_mode !== 'none' ? (data.proctor_settings ?? null) : null,
       show_in_curriculum: data.show_in_curriculum !== undefined ? Boolean(data.show_in_curriculum) : undefined,
       curriculum_order: data.curriculum_order ?? undefined,
       updated_at: new Date().toISOString()
@@ -144,9 +140,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     if (error) {
       console.error('Quiz update error:', error);
-      return NextResponse.json({ 
-        error: "Failed to update quiz",
-        details: error.message 
+      return NextResponse.json({
+        error: "Failed to update quiz"
       }, { status: 500 });
     }
 
@@ -205,10 +200,10 @@ async function checkCourseInstructor(supabase: any, userId: string, courseId: st
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) return createAuthResponse("Forbidden", 403);
 
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
@@ -223,16 +218,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (fetchError) {
       console.error('[Quiz DELETE] Error fetching quiz:', fetchError);
       return NextResponse.json({
-        error: "Failed to fetch quiz",
-        details: fetchError.message
+        error: "Failed to fetch quiz"
       }, { status: 500 });
     }
 
     if (!quizToDelete) {
       console.warn('[Quiz DELETE] Quiz not found:', id);
       return NextResponse.json({
-        error: "Quiz not found",
-        details: `No quiz found with ID: ${id}`
+        error: "Quiz not found"
       }, { status: 404 });
     }
 
@@ -282,8 +275,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (error) {
       console.error('[Quiz DELETE] Quiz delete error:', error);
       return NextResponse.json({
-        error: "Failed to delete quiz",
-        details: error.message
+        error: "Failed to delete quiz"
       }, { status: 500 });
     }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 
 /**
  * GET /api/conferences/[id]/attendance
@@ -12,11 +13,11 @@ export async function GET(
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { id: conferenceId } = await params;
 
@@ -99,17 +100,53 @@ export async function GET(
       }
     }
 
+    // For ended/cancelled conferences, determine the end time
+    const conferenceEnded = conference.status === 'ended' || conference.status === 'cancelled';
+
+    // Backfill left_at for ended conferences — set left_at = now for participants
+    // who never had their leave recorded (tab close, etc.)
+    if (conferenceEnded && participants) {
+      const staleParticipantIds = participants
+        .filter(p => !p.left_at)
+        .map(p => p.id);
+
+      if (staleParticipantIds.length > 0) {
+        const now = new Date().toISOString();
+        await tq
+          .from('conference_participants')
+          .update({ left_at: now })
+          .in('id', staleParticipantIds);
+
+        // Update local data to reflect the backfill
+        for (const p of participants) {
+          if (!p.left_at) {
+            p.left_at = now;
+          }
+        }
+      }
+    }
+
     // Calculate attendance statistics
     const attendanceReport = (participants || []).map(p => {
       const joinedAt = p.joined_at ? new Date(p.joined_at) : null;
       const leftAt = p.left_at ? new Date(p.left_at) : null;
 
       let durationMinutes = 0;
+      const effectiveLeftAt = leftAt;
+      let status: 'active' | 'left' = p.left_at ? 'left' : 'active';
+
       if (joinedAt && leftAt) {
         durationMinutes = Math.round((leftAt.getTime() - joinedAt.getTime()) / 60000);
       } else if (joinedAt && !leftAt) {
-        // Still in session or didn't click leave
-        durationMinutes = Math.round((Date.now() - joinedAt.getTime()) / 60000);
+        if (conferenceEnded) {
+          // Conference has ended — user didn't explicitly leave (tab close, etc.)
+          // Use the current time as a reasonable end marker, but mark them as "left"
+          durationMinutes = Math.round((Date.now() - joinedAt.getTime()) / 60000);
+          status = 'left';
+        } else {
+          // Conference is still live — user is genuinely active
+          durationMinutes = Math.round((Date.now() - joinedAt.getTime()) / 60000);
+        }
       }
 
       const userRecord = p.user as unknown as { id: string; email: string; name: string } | null;
@@ -124,7 +161,7 @@ export async function GET(
         joined_at: p.joined_at,
         left_at: p.left_at,
         duration_minutes: durationMinutes,
-        status: p.left_at ? 'left' : 'active'
+        status
       };
     });
 

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
   try {
     const { id, attemptId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    
+    const authResult = await authenticateUser(_request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+
     const supabase = await createServerSupabaseClient();
-    
+
     const { data: attempt, error } = await supabase
       .from("quiz_attempts")
       .select("*")
@@ -38,11 +39,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
   try {
     const { id, attemptId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+
     const supabase = await createServerSupabaseClient();
-    
+
     // Get current attempt
     const { data: currentAttempt, error: fetchError } = await supabase
       .from("quiz_attempts")

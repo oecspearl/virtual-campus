@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { authenticateUser } from '@/lib/api-auth';
+import { authenticateUser, checkRateLimit } from '@/lib/api-auth';
 
 function getOpenAIClient(): OpenAI | null {
   if (!process.env.OPENAI_API_KEY) {
@@ -49,7 +49,7 @@ or for different colors:
 
 ### Numbered Step Cards
 <div style="display:flex; gap:14px; align-items:flex-start; margin:14px 0;">
-  <div style="min-width:32px; height:32px; background:#3b82f6; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;">1</div>
+  <div style="width:32px; height:32px; min-width:32px; background:#3b82f6; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; line-height:1;">1</div>
   <div style="flex:1;">
     <strong style="display:block; margin-bottom:4px;">Step Title</strong>
     <p style="margin:0; color:#475569; font-size:15px;">Step description here.</p>
@@ -219,15 +219,34 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
+
+    // Rate limit: 10 AI requests per minute
+    if (!checkRateLimit(`ai:${user.id}`, 10, 60000)) {
+      return NextResponse.json({ error: 'Too many AI requests. Please wait a moment.' }, { status: 429 });
+    }
+
     const { html, mode, instructions }: EnhanceRequest = await request.json();
 
     if (!html || html.trim().length === 0) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
+    // Rough token estimate: ~4 chars per token. Reserve ~4K for system prompt + response.
+    // gpt-4o has 128K context, so allow ~100K tokens (~400K chars) for user content.
+    const MAX_INPUT_CHARS = 400_000;
+    let trimmedHtml = html;
+    if (html.length > MAX_INPUT_CHARS) {
+      trimmedHtml = html.slice(0, MAX_INPUT_CHARS);
+      // Try to cut at a tag boundary to avoid broken HTML
+      const lastClose = trimmedHtml.lastIndexOf('>');
+      if (lastClose > MAX_INPUT_CHARS * 0.9) {
+        trimmedHtml = trimmedHtml.slice(0, lastClose + 1);
+      }
+    }
+
     const modePrompt = MODE_PROMPTS[mode] || MODE_PROMPTS.beautify;
 
-    let userPrompt = `${modePrompt}\n\nContent to enhance:\n${html}`;
+    let userPrompt = `${modePrompt}\n\nContent to enhance:\n${trimmedHtml}`;
     if (instructions && instructions.trim()) {
       userPrompt += `\n\nAdditional instructions: ${instructions.trim()}`;
     }
@@ -267,18 +286,27 @@ export async function POST(request: NextRequest) {
       tokens_used: tokensUsed,
     });
 
-  } catch (error) {
-    console.error('AI Content Enhance Error:', error);
+  } catch (error: any) {
+    console.error('AI Content Enhance Error:', error?.message || error);
+    console.error('Error details:', JSON.stringify({
+      status: error?.status,
+      code: error?.code,
+      type: error?.type,
+      message: error?.message,
+    }));
 
-    if (error instanceof Error) {
-      if (error.message.includes('API key') || error.message.includes('OpenAI')) {
-        return NextResponse.json({ error: 'AI service configuration error' }, { status: 500 });
-      }
-      if (error.message.includes('rate limit') || error.message.includes('quota')) {
-        return NextResponse.json({ error: 'AI service temporarily unavailable - rate limit exceeded' }, { status: 429 });
-      }
+    if (error?.status === 401 || error?.code === 'invalid_api_key') {
+      return NextResponse.json({ error: 'AI service configuration error - invalid API key' }, { status: 500 });
+    }
+    if (error?.status === 429) {
+      return NextResponse.json({ error: 'AI service temporarily unavailable - rate limit or quota exceeded' }, { status: 429 });
+    }
+    if (error?.status === 402 || error?.code === 'insufficient_quota') {
+      return NextResponse.json({ error: 'AI service unavailable - OpenAI billing quota exceeded' }, { status: 402 });
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({
+      error: `AI enhancement failed: ${error?.message || 'Internal server error'}`
+    }, { status: 500 });
   }
 }

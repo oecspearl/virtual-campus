@@ -2,10 +2,10 @@
 
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
-import QuizBuilder from "@/app/components/QuizBuilder";
+import QuizBuilder from "@/app/components/quiz/QuizBuilder";
 import { useSupabase } from "@/lib/supabase-provider";
 import RoleGuard from "@/app/components/RoleGuard";
-import Breadcrumb from "@/app/components/Breadcrumb";
+import Breadcrumb from "@/app/components/ui/Breadcrumb";
 
 export default function EditQuizPage() {
   const params = useParams<{ id: string }>();
@@ -119,7 +119,7 @@ export default function EditQuizPage() {
         </div>
       </div>
     }>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gray-50/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
           <Breadcrumb
             items={[

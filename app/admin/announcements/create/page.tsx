@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 
 const ANNOUNCEMENT_TYPES = [
   { value: 'info', label: 'Info' },
@@ -120,7 +120,7 @@ export default function CreateAnnouncementPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Create Announcement</h1>
+        <h1 className="text-xl font-normal text-slate-900 tracking-tight">Create Announcement</h1>
         <p className="mt-2 text-sm text-gray-600">
           Create a system-wide announcement that will be shown to users
         </p>

@@ -176,7 +176,7 @@ export default function NotesPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white dark:bg-gray-800 shadow-xl z-40 flex flex-col">
+    <div className="fixed inset-y-0 right-0 w-96 bg-white dark:bg-gray-800 shadow-sm z-40 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">

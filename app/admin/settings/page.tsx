@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import RoleGuard from '@/app/components/RoleGuard';
-import { clearEditorPreferenceCache } from '@/app/components/TextEditor';
+import { clearEditorPreferenceCache } from '@/app/components/editor/TextEditor';
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 
 export default function AdminSettingsPage() {
   const { user } = useSupabase();
@@ -168,7 +169,7 @@ export default function AdminSettingsPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">System Settings</h1>
+                <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-2">System Settings</h1>
                 <p className="text-gray-600">Manage application-wide settings and preferences</p>
               </div>
             </div>
@@ -179,10 +180,10 @@ export default function AdminSettingsPage() {
             {/* User Management Card */}
             <Link 
               href="/admin/users/manage"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:people" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -200,13 +201,37 @@ export default function AdminSettingsPage() {
               </div>
             </Link>
 
+            {/* Authentication / SSO Card */}
+            <Link
+              href="/admin/settings/oauth"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center group- transition-transform duration-200">
+                  <Icon icon="material-symbols:shield-lock" className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+                    Authentication / SSO
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Configure OAuth 2.0, Azure AD, and OIDC single sign-on providers
+                  </p>
+                  <div className="flex items-center text-blue-600 text-sm font-medium">
+                    <span>Manage providers</span>
+                    <Icon icon="material-symbols:arrow-forward" className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
             {/* Course Management Card */}
             <Link
               href="/admin/courses/manage"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:school" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -227,10 +252,10 @@ export default function AdminSettingsPage() {
             {/* Course Categories Card */}
             <Link
               href="/admin/categories"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:folder" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -251,10 +276,10 @@ export default function AdminSettingsPage() {
             {/* Programmes Card */}
             <Link
               href="/admin/programmes"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:school" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -275,10 +300,10 @@ export default function AdminSettingsPage() {
             {/* Test Email Card */}
             <Link 
               href="/admin/test-email"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:mail" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -299,10 +324,10 @@ export default function AdminSettingsPage() {
             {/* Certificate Templates Card */}
             <Link 
               href="/admin/certificates/templates"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:workspace-premium" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -323,10 +348,10 @@ export default function AdminSettingsPage() {
             {/* Manage Certificates Card */}
             <Link 
               href="/admin/certificates/manage"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:verified" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -347,10 +372,10 @@ export default function AdminSettingsPage() {
             {/* Branding Settings Card */}
             <Link
               href="/admin/settings/branding"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:palette" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -371,10 +396,10 @@ export default function AdminSettingsPage() {
             {/* Proctoring Services Card */}
             <Link
               href="/admin/proctoring-services"
-              className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center group- transition-transform duration-200">
                   <Icon icon="material-symbols:security" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -393,7 +418,7 @@ export default function AdminSettingsPage() {
             </Link>
 
             {/* Editor Settings Summary Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                   <Icon icon="material-symbols:edit-note" className="w-6 h-6 text-white" />
@@ -413,7 +438,7 @@ export default function AdminSettingsPage() {
             </div>
 
             {/* Resource Upload Summary Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
                   <Icon icon="material-symbols:upload-file" className="w-6 h-6 text-white" />
@@ -434,7 +459,7 @@ export default function AdminSettingsPage() {
           </div>
 
           {/* Editor Settings Card - Detailed Configuration */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                 <Icon icon="material-symbols:edit-note" className="w-6 h-6 text-white" />
@@ -447,10 +472,7 @@ export default function AdminSettingsPage() {
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Loading settings...</p>
-                </div>
+                <LoadingIndicator variant="pencil" text="Loading settings..." />
               </div>
             ) : (
               <div className="space-y-6">
@@ -693,7 +715,7 @@ export default function AdminSettingsPage() {
           </div>
 
           {/* Resource Upload Settings Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
                 <Icon icon="material-symbols:upload-file" className="w-6 h-6 text-white" />
@@ -706,10 +728,7 @@ export default function AdminSettingsPage() {
 
             {loadingUploadSize ? (
               <div className="flex items-center justify-center py-8">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Loading settings...</p>
-                </div>
+                <LoadingIndicator variant="pencil" text="Loading settings..." />
               </div>
             ) : (
               <div className="space-y-6">

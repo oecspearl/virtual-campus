@@ -1,6 +1,6 @@
 "use client";
 
-import AssignmentBuilder from "@/app/components/AssignmentBuilder";
+import AssignmentBuilder from "@/app/components/assignment/AssignmentBuilder";
 import RoleGuard from "@/app/components/RoleGuard";
 
 export default function Page() {

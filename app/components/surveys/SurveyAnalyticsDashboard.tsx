@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Icon } from "@iconify/react";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 
 interface SurveyAnalyticsDashboardProps {
   surveyId: string;

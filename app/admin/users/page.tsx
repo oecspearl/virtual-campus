@@ -2,7 +2,7 @@
 
 import React from "react";
 import RoleGuard from "@/app/components/RoleGuard";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 import { ALL_ROLES, UserRole } from "@/lib/rbac";
 
 type UserItem = {
@@ -10,6 +10,7 @@ type UserItem = {
   email: string;
   name: string;
   role: string;
+  student_id?: string;
 };
 
 export default function AdminUsersPage() {
@@ -73,15 +74,16 @@ function UsersInner() {
             <tr>
               <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2">Email</th>
+              <th className="px-3 py-2">Student ID</th>
               <th className="px-3 py-2">Role</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="px-3 py-3" colSpan={4}><span className="text-gray-500">Loading…</span></td></tr>
+              <tr><td className="px-3 py-3" colSpan={5}><span className="text-gray-500">Loading…</span></td></tr>
             ) : items.length === 0 ? (
-              <tr><td className="px-3 py-3" colSpan={4}><span className="text-gray-500">No users found</span></td></tr>
+              <tr><td className="px-3 py-3" colSpan={5}><span className="text-gray-500">No users found</span></td></tr>
             ) : items.map((u) => (
               <UserRow key={u.id} user={u} onChanged={load} />
             ))}
@@ -172,6 +174,9 @@ function UserRow({ user, onChanged }: { user: UserItem; onChanged: () => void })
         ) : (
           <span className="text-gray-700">{user.email}</span>
         )}
+      </td>
+      <td className="px-3 py-2 align-top">
+        <span className="text-gray-500 text-xs">{user.student_id || '—'}</span>
       </td>
       <td className="px-3 py-2 align-top">
         {editing ? (

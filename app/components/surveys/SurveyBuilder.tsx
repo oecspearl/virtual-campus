@@ -3,8 +3,9 @@
 import React from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@iconify/react";
-import DateTimePicker from "@/app/components/DateTimePicker";
-import Button from "@/app/components/Button";
+import DateTimePicker from "@/app/components/ui/DateTimePicker";
+import Button from "@/app/components/ui/Button";
+import LoadingIndicator from "@/app/components/ui/LoadingIndicator";
 import SurveyQuestionEditor, { type SurveyQuestion } from "./SurveyQuestionEditor";
 import AISurveyGenerator from "./AISurveyGenerator";
 import SurveyCSVUpload from "./SurveyCSVUpload";
@@ -403,7 +404,7 @@ export default function SurveyBuilder({
     return (
       <div className="mx-auto max-w-5xl p-4">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-600">Loading survey...</div>
+          <LoadingIndicator variant="dots" text="Loading survey..." />
         </div>
       </div>
     );

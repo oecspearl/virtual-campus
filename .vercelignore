@@ -1,0 +1,8 @@
+database/
+docs/
+md/
+scripts/
+*.md
+!README.md
+public/LMS_Moodle.xml
+public/LMS_Moodle_test.xml

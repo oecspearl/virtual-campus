@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/api-auth';
 import { createGlobalAnnouncement, getActiveAnnouncementsForUser } from '@/lib/announcements/global';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
-import { hasRole } from '@/lib/database-helpers';
+import { hasRole } from '@/lib/rbac';
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only admins can create announcements
-    if (!hasRole(authResult.userProfile, ['admin', 'super_admin'])) {
+    if (!hasRole(authResult.userProfile?.role, ['admin', 'super_admin'])) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

@@ -12,7 +12,9 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "npm rebuild @tailwindcss/postcss || true",
-    "heroku-postbuild": "next build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && rm -rf .next/cache .next/server .next/types app lib components database docs md"
+    "heroku-postbuild": "next build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && rm -rf .next/cache .next/server .next/types app lib components database docs md",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -32,6 +34,7 @@
     "@editorjs/quote": "^2.7.6",
     "@editorjs/table": "^2.4.5",
     "@editorjs/warning": "^1.4.1",
+    "@excalidraw/excalidraw": "^0.18.0",
     "@iconify/react": "5.2.1",
     "@jitsi/react-sdk": "^1.4.4",
     "@lexical/code": "^0.38.2",
@@ -101,6 +104,7 @@
     "playwright": "^1.40.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.1",
+    "react-doctor": "^0.0.30",
     "react-dom": "^19.2.1",
     "react-markdown": "^9.1.0",
     "react-swipeable": "^7.0.2",
@@ -121,7 +125,8 @@
     "twilio": "^5.10.6",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.5",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "zod": "^4.3.6"
   },
   "optionalDependencies": {
     "@parcel/watcher-linux-x64-glibc": "^2.5.6",
@@ -148,11 +153,13 @@
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.11",
     "@types/xml2js": "^0.4.14",
+    "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.1.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",
     "glob": "^11.0.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.2"
   }
 }

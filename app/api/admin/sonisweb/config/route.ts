@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { hasRole } from '@/lib/database-helpers';
+import { hasRole } from '@/lib/rbac';
 import { authenticateUser } from '@/lib/api-auth';
 import { encryptCredential } from '@/lib/sonisweb/client';
 import { seedDefaultMappings } from '@/lib/sonisweb/field-mapping';
 
-const ALLOWED_ROLES = ['admin', 'super_admin', 'tenant_admin'];
+const ALLOWED_ROLES = ['admin', 'super_admin', 'tenant_admin'] as const;
 
 export async function GET(request: NextRequest) {
   try {

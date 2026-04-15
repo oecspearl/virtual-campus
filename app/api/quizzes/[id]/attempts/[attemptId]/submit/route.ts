@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { generateAdaptiveRecommendations, updateCompetenciesFromQuiz } from "@/lib/adaptive-learning";
 import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extensions";
 
@@ -251,8 +251,9 @@ function grade(quiz: any, questions: any[], attemptAnswers: { question_id: strin
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
   try {
     const { id, attemptId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
     
     // Use service client to bypass RLS for all database reads
     const supabase = createServiceSupabaseClient();

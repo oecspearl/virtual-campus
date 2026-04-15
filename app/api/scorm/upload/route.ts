@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { parseStringPromise } from 'xml2js';
 import JSZip from 'jszip';
 
@@ -21,6 +21,10 @@ interface SCORMManifest {
       organization?: Array<{
         $?: { identifier?: string };
         title?: Array<{ _?: string } | string>;
+        item?: Array<{
+          $?: { identifier?: string; identifierref?: string };
+          identifierref?: string[];
+        }>;
       }>;
     }>;
     resources?: Array<{
@@ -30,6 +34,8 @@ interface SCORMManifest {
           type?: string;
           href?: string;
         };
+        href?: string[];
+        identifier?: string[];
         metadata?: Array<{
           title?: Array<{ _?: string } | string>;
         }>;
@@ -40,10 +46,9 @@ interface SCORMManifest {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Check user role
     const allowedRoles = ['instructor', 'curriculum_designer', 'admin', 'super_admin'];
@@ -106,31 +111,35 @@ export async function POST(request: NextRequest) {
       console.log('[SCORM Upload] ZIP file loaded successfully, size:', file.size, 'bytes');
     } catch (error) {
       console.error('[SCORM Upload] ZIP parsing error:', error);
-      return NextResponse.json({ 
-        error: "Invalid ZIP file format",
-        details: error instanceof Error ? error.message : String(error)
+      return NextResponse.json({
+        error: "Invalid ZIP file format"
       }, { status: 400 });
     }
 
-    // Find manifest file (usually imsmanifest.xml in root)
+    // Find manifest file (usually imsmanifest.xml in root, but may be in a subfolder)
     let manifestFile = zipContent.file('imsmanifest.xml');
-    
+    let manifestPrefix = ''; // directory prefix of the manifest (e.g. "subfolder/")
+
     // If not in root, search for it
     if (!manifestFile) {
-      const manifestPaths = Object.keys(zipContent.files).filter(path => 
+      const manifestPaths = Object.keys(zipContent.files).filter(path =>
         path.toLowerCase().endsWith('imsmanifest.xml')
       );
       if (manifestPaths.length > 0) {
         manifestFile = zipContent.file(manifestPaths[0]);
+        // Extract directory prefix: "subfolder/imsmanifest.xml" → "subfolder/"
+        const lastSlash = manifestPaths[0].lastIndexOf('/');
+        if (lastSlash >= 0) {
+          manifestPrefix = manifestPaths[0].substring(0, lastSlash + 1);
+        }
       }
     }
 
     if (!manifestFile) {
       const allFiles = Object.keys(zipContent.files).slice(0, 20); // First 20 for logging
       console.error('[SCORM Upload] Manifest file not found. Files in package:', allFiles);
-      return NextResponse.json({ 
-        error: "SCORM package must contain imsmanifest.xml file",
-        details: `Could not find imsmanifest.xml in package. Found ${Object.keys(zipContent.files).length} files total.`
+      return NextResponse.json({
+        error: "SCORM package must contain imsmanifest.xml file"
       }, { status: 400 });
     }
 
@@ -149,9 +158,8 @@ export async function POST(request: NextRequest) {
       console.error('[SCORM Upload] Manifest parsing error:', error);
       const manifestPreview = manifestXml.substring(0, 500); // First 500 chars for debugging
       console.error('[SCORM Upload] Manifest XML preview:', manifestPreview);
-      return NextResponse.json({ 
-        error: "Failed to parse SCORM manifest XML",
-        details: error instanceof Error ? error.message : String(error)
+      return NextResponse.json({
+        error: "Failed to parse SCORM manifest XML"
       }, { status: 400 });
     }
 
@@ -271,21 +279,67 @@ export async function POST(request: NextRequest) {
     if (uploadedFiles.length === 0) {
       console.error('[SCORM Upload] No files were successfully uploaded to storage');
       console.error('[SCORM Upload] File paths attempted:', filePaths.length);
-      return NextResponse.json({ 
-        error: "No files extracted from SCORM package",
-        details: `Attempted to upload ${filePaths.length} files but none succeeded. Check storage bucket permissions.`
+      return NextResponse.json({
+        error: "No files extracted from SCORM package"
       }, { status: 400 });
     }
 
-    // Find the launch file (typically index.html or the first HTML file)
-    const htmlFiles = Object.keys(zipContent.files).filter(path => 
-      path.toLowerCase().endsWith('.html') || path.toLowerCase().endsWith('.htm')
-    );
-    const launchFile = htmlFiles.find(path => 
-      path.toLowerCase() === 'index.html' || 
-      path.toLowerCase() === 'index.htm' ||
-      path.toLowerCase().includes('launch')
-    ) || htmlFiles[0] || 'index.html'; // Default fallback
+    // Find the launch file from the manifest
+    // The manifest specifies which resource to launch via:
+    //   <organization> → <item identifierref="X"> → <resource identifier="X" href="file.html">
+    let launchFile = '';
+
+    // Strategy 1: Find the first item's identifierref, then look up the resource's href
+    const items = organization?.item || [];
+    const firstItem = Array.isArray(items) ? items[0] : items;
+    const identifierRef = firstItem?.$?.identifierref || firstItem?.identifierref?.[0];
+
+    if (identifierRef && resources.length > 0) {
+      const launchResource = resources.find((r: any) => {
+        const rid = r.$?.identifier || r.identifier?.[0];
+        return rid === identifierRef;
+      });
+      if (launchResource) {
+        launchFile = launchResource.$?.href || launchResource.href?.[0] || '';
+      }
+    }
+
+    // Strategy 2: First resource with an href attribute
+    if (!launchFile && resources.length > 0) {
+      for (const r of resources) {
+        const href = r.$?.href || r.href?.[0];
+        if (href && (href.endsWith('.html') || href.endsWith('.htm'))) {
+          launchFile = href;
+          break;
+        }
+      }
+    }
+
+    // Strategy 3: Fallback to finding HTML files in the ZIP
+    if (!launchFile) {
+      const htmlFiles = Object.keys(zipContent.files).filter(path =>
+        path.toLowerCase().endsWith('.html') || path.toLowerCase().endsWith('.htm')
+      );
+      launchFile = htmlFiles.find(path =>
+        path.toLowerCase().includes('launch') ||
+        path.toLowerCase() === 'index.html' ||
+        path.toLowerCase() === 'index.htm'
+      ) || htmlFiles[0] || 'index.html';
+    }
+
+    // Prepend manifest directory prefix if the launch file href is relative to the manifest
+    // e.g. manifest is at "scorm_data_defined/imsmanifest.xml", href is "index.html"
+    // → actual path is "scorm_data_defined/index.html"
+    if (manifestPrefix && launchFile && !launchFile.startsWith(manifestPrefix)) {
+      // Only prepend if the file doesn't already include the prefix
+      const prefixedPath = manifestPrefix + launchFile;
+      // Verify the prefixed path actually exists in the ZIP
+      if (zipContent.file(prefixedPath)) {
+        launchFile = prefixedPath;
+      }
+    }
+
+    console.log(`[SCORM Upload] Launch file resolved: ${launchFile} (manifest prefix: "${manifestPrefix}")`);
 
     const packageUrl = `${packageFolder}/${launchFile}`;
 
@@ -419,10 +473,8 @@ export async function POST(request: NextRequest) {
       stack: error?.stack,
       errorObject: JSON.stringify(error, Object.getOwnPropertyNames(error))
     });
-    return NextResponse.json({ 
-      error: error?.message || "Failed to upload SCORM package",
-      code: error?.code,
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    return NextResponse.json({
+      error: "Failed to upload SCORM package"
     }, { status: 500 });
   }
 }

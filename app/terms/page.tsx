@@ -9,7 +9,7 @@ export default function TermsOfUsePage() {
   const { siteName, siteShortName } = useBranding();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -41,7 +41,7 @@ export default function TermsOfUsePage() {
                 <Icon icon="mdi:file-document-check" className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Terms of Use</h1>
+                <h1 className="text-xl font-normal text-slate-900 tracking-tight">Terms of Use</h1>
                 <p className="text-gray-500 mt-1">Last updated: February 2026</p>
               </div>
             </div>

@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
-import AIChatWidget from '@/app/components/AIChatWidget';
-import AIHelpEnhancement from '@/app/components/AIHelpEnhancement';
-import AISearchBox from '@/app/components/AISearchBox';
+import AIChatWidget from '@/app/components/ai/AIChatWidget';
+import AIHelpEnhancement from '@/app/components/ai/AIHelpEnhancement';
+import AISearchBox from '@/app/components/ai/AISearchBox';
 
 interface HelpSection {
   id: string;
@@ -18,6 +18,8 @@ export default function StudentHelpPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState<string>('getting-started');
   const [showAIChat, setShowAIChat] = useState(false);
+  const [aiInitialMessage, setAiInitialMessage] = useState('');
+  const [aiMessageKey, setAiMessageKey] = useState(0);
 
   const selectSection = (sectionId: string) => {
     setActiveSection(sectionId);
@@ -29,6 +31,8 @@ export default function StudentHelpPage() {
       const firstMatch = helpSections.find(s => s.title.toLowerCase().includes(q));
       if (firstMatch) setActiveSection(firstMatch.id);
     }
+    setAiInitialMessage(query || '');
+    setAiMessageKey(k => k + 1);
     setShowAIChat(true);
   };
 
@@ -395,7 +399,7 @@ export default function StudentHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">📥 Accessing Certificates</h4>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Go to "Profile" → "My Certificates" - Navigate to your profile page by clicking your name or avatar in the top navigation, then select the "My Certificates" tab to see all certificates you've earned across different courses.</li>
+                <li>Go to "Profile" → "Certificates" - Navigate to your profile page by clicking your name or avatar in the top navigation, then select the "Certificates" tab to see all certificates you've earned across different courses.</li>
                 <li>Download certificates as PDF files - Each certificate can be downloaded as a professional PDF document that you can save to your computer, print, or attach to job applications. The PDF includes course details and your verification code.</li>
                 <li>Share certificates on LinkedIn - Use the "Share on LinkedIn" button to create a professional post highlighting your achievement. This helps showcase your learning accomplishments to your professional network and potential employers.</li>
                 <li>Verify certificate authenticity using verification codes - Each certificate includes a unique verification code that employers or others can use to confirm the certificate is legitimate. Share this code along with your certificate when needed.</li>
@@ -900,6 +904,143 @@ export default function StudentHelpPage() {
       )
     },
     {
+      id: 'adaptive-learning',
+      title: 'Adaptive Learning',
+      icon: <Icon icon="mdi:brain" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Adaptive Learning</h3>
+          <p className="text-gray-600">The platform personalizes your learning experience based on your performance and preferences.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">How It Works</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Adaptive Learning</strong> from your dashboard</li>
+              <li>The system analyzes your quiz scores, assignment grades, and engagement</li>
+              <li>Personalized recommendations appear based on areas where you need support</li>
+              <li>Recommendations update automatically as your performance improves</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Getting the Most from Recommendations</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Review recommended supplementary lessons and materials</li>
+              <li>Set your difficulty preference in your profile for better recommendations</li>
+              <li>Complete recommended content to strengthen weak areas before moving on</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'profile',
+      title: 'Your Profile',
+      icon: <Icon icon="mdi:account-circle" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Your Profile</h3>
+          <p className="text-gray-600">Manage your personal information, avatar, and learning preferences.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Editing Your Profile</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Click your avatar or name in the navigation bar, then select <strong>Profile</strong></li>
+              <li>Update your name, bio, and profile picture</li>
+              <li>Set your learning preferences (difficulty level, subject interests)</li>
+              <li>View your Student ID if one has been assigned</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Notification Preferences</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Go to <strong>Profile → Notifications</strong></li>
+              <li>Choose which notifications you receive (email and in-app)</li>
+              <li>Options include: grade alerts, assignment reminders, announcements, discussion replies</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Your Certificates</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Go to <strong>Profile → Certificates</strong> to view all earned certificates</li>
+              <li>Download certificates as PDF</li>
+              <li>Share certificates using the unique verification link</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'courses-subjects',
+      title: 'Courses & Subjects',
+      icon: <Icon icon="mdi:school" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Courses & Subjects</h3>
+          <p className="text-gray-600">Courses are structured learning experiences with lessons, assessments, attendance tracking, and their own gradebook.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Viewing Your Courses</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>My Courses</strong> to see all courses you are enrolled in</li>
+              <li>Each course shows the instructor, schedule, and progress</li>
+              <li>Click a course to view details, curriculum, and gradebook</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Attendance</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Your instructor tracks attendance for each live session</li>
+              <li>View your attendance record in the course detail page</li>
+              <li>Consistent attendance may affect your grade in some courses</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">My Subjects</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>My Subjects</strong> for an alternative view of your academic subjects</li>
+              <li>Group your courses by subject area for easier navigation</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'admissions',
+      title: 'Admissions & Applications',
+      icon: <Icon icon="mdi:clipboard-text" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Admissions & Applications</h3>
+          <p className="text-gray-600">Apply to programmes and track your application status.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Applying</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Application links are shared by your institution</li>
+              <li>Fill in the application form with required information</li>
+              <li>Upload any supporting documents as requested</li>
+              <li>Submit your application and note your application reference</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Checking Application Status</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Visit the <strong>Admissions Status</strong> page</li>
+              <li>Enter your email or application reference to check status</li>
+              <li>Statuses include: pending, under review, accepted, rejected</li>
+              <li>You will also receive email notifications when your status changes</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
       id: 'troubleshooting',
       title: 'Troubleshooting',
       icon: <Icon icon="mdi:alert-circle" className="w-5 h-5" />,
@@ -968,7 +1109,7 @@ export default function StudentHelpPage() {
   const currentSection = helpSections.find(section => section.id === activeSection);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1035,10 +1176,11 @@ export default function StudentHelpPage() {
           {/* Main Content */}
           <div className="flex-1">
             <div className="bg-white rounded-lg shadow-sm p-8">
-              <AIHelpEnhancement 
+              <AIHelpEnhancement
                 onAISearch={handleAISearch}
                 currentPage="/help/student"
                 userRole="student"
+                activeSection={activeSection}
               />
               
               {currentSection ? (
@@ -1050,7 +1192,7 @@ export default function StudentHelpPage() {
                         {currentSection.icon}
                       </div>
                       <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{currentSection.title}</h1>
+                        <h1 className="text-xl font-normal text-slate-900 tracking-tight">{currentSection.title}</h1>
                       </div>
                     </div>
                   </div>
@@ -1074,9 +1216,11 @@ export default function StudentHelpPage() {
 
       {/* AI Chat Widget */}
       {showAIChat && (
-        <AIChatWidget 
+        <AIChatWidget
+          key={aiMessageKey}
           currentPage="/help/student"
           context={{ userRole: 'student', activeSection }}
+          initialMessage={aiInitialMessage}
         />
       )}
     </div>

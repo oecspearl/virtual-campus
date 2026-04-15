@@ -6,21 +6,21 @@ import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
 import { useSupabase } from '@/lib/supabase-provider';
-import CourseGroupsManager from '@/app/components/CourseGroupsManager';
-import CohortManager from '@/app/components/CohortManager';
-import { type CourseFormat } from '@/app/components/CourseFormatSelector';
-import SectionManager, { type Section } from '@/app/components/SectionManager';
+import CourseGroupsManager from '@/app/components/course/CourseGroupsManager';
+import CohortManager from '@/app/components/course/CohortManager';
+import { type CourseFormat } from '@/app/components/course/CourseFormatSelector';
+import SectionManager, { type Section } from '@/app/components/course/SectionManager';
 import { sanitizeHtml } from '@/lib/sanitize';
-import ResourceLinksSidebar from '@/app/components/ResourceLinksSidebar';
-import Breadcrumb from '@/app/components/Breadcrumb';
+import ResourceLinksSidebar from '@/app/components/lesson/ResourceLinksSidebar';
+import Breadcrumb from '@/app/components/ui/Breadcrumb';
 import ProgressVisualization from '@/app/components/ProgressVisualization';
 import { logCourseAccess } from '@/lib/activity-tracker';
-import CourseBackupButton from '@/app/components/CourseBackupButton';
-import CourseRestoreButton from '@/app/components/CourseRestoreButton';
-import SessionRecordingsCard from '@/app/components/SessionRecordingsCard';
-import DiscussionList from '@/app/components/DiscussionList';
-import StudentGradebook from '@/app/components/StudentGradebook';
-import StreamlinedGradebook from '@/app/components/StreamlinedGradebook';
+import CourseBackupButton from '@/app/components/course/CourseBackupButton';
+import CourseRestoreButton from '@/app/components/course/CourseRestoreButton';
+import SessionRecordingsCard from '@/app/components/conference/SessionRecordingsCard';
+import DiscussionList from '@/app/components/discussions/DiscussionList';
+import StudentGradebook from '@/app/components/gradebook/StudentGradebook';
+import StreamlinedGradebook from '@/app/components/gradebook/StreamlinedGradebook';
 import { formatModality, getModalityIcon } from '@/app/components/course/helpers';
 
 // Extracted shared components
@@ -51,6 +51,7 @@ export default function CourseDetailPage() {
   const [progress, setProgress] = React.useState<{total:number;completed:number;percentage:number}|null>(null);
   const [enrolling, setEnrolling] = React.useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = React.useState<'not_enrolled' | 'enrolled' | 'checking'>('checking');
+  const [enrolledSectionName, setEnrolledSectionName] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('overview');
   const [isReorderMode, setIsReorderMode] = React.useState(false);
   const [editMode, setEditMode] = React.useState(() => {
@@ -222,8 +223,9 @@ export default function CourseDetailPage() {
         if (res.ok) {
           const data = await res.json();
           const enrollments = Array.isArray(data.enrollments) ? data.enrollments : [];
-          const isEnrolled = enrollments.some((e: any) => e.course_id === courseId && e.status === 'active');
-          setEnrollmentStatus(isEnrolled ? 'enrolled' : 'not_enrolled');
+          const myEnrollment = enrollments.find((e: any) => e.course_id === courseId && e.status === 'active');
+          setEnrollmentStatus(myEnrollment ? 'enrolled' : 'not_enrolled');
+          setEnrolledSectionName(myEnrollment?.classes?.name || null);
         } else {
           setEnrollmentStatus('not_enrolled');
         }
@@ -513,6 +515,9 @@ export default function CourseDetailPage() {
               </svg>
               Create Lesson
             </Link>
+            <hr className="my-1 border-gray-100" />
+            <CourseBackupButton courseId={courseId} courseTitle={course.title} userRole={profile?.role || 'student'} variant="link" />
+            <CourseRestoreButton onRestoreComplete={(restoredId) => window.location.href = `/course/${restoredId}`} variant="link" />
           </RoleGuard>
         </div>
       </div>
@@ -526,7 +531,7 @@ export default function CourseDetailPage() {
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
       {/* Hero */}
-      <CourseHero course={course} lessonCount={lessons.length} />
+      <CourseHero course={course} lessonCount={lessons.length} sectionName={enrolledSectionName} />
 
       {/* Tab Bar */}
       <CourseTabBar
@@ -711,6 +716,10 @@ export default function CourseDetailPage() {
             )}
 
             {activeTab === 'curriculum' && curriculumBlock}
+
+            {activeTab === 'sections' && isInstructor && (
+              <CohortManager courseId={courseId} embedded />
+            )}
 
             {activeTab === 'discussions' && (
               <DiscussionList courseId={courseId} />

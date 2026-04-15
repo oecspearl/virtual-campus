@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import Link from 'next/link';
 
 interface AtRiskStudent {
@@ -133,7 +133,7 @@ export default function AtRiskStudentsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">At-Risk Students</h1>
+        <h1 className="text-xl font-normal text-slate-900 tracking-tight">At-Risk Students</h1>
         <p className="mt-2 text-sm text-gray-600">
           Students identified as at risk of failing based on engagement and performance metrics
         </p>

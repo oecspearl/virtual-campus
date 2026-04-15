@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import TextEditor from '@/app/components/TextEditor';
-import FileUpload from '@/app/components/FileUpload';
+import TextEditor from '@/app/components/editor/TextEditor';
+import FileUpload from '@/app/components/file-upload/FileUpload';
 
 interface VideoModeEditorProps {
   content: any[];

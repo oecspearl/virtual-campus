@@ -4,8 +4,8 @@ import React, { useState, useEffect, useCallback, use } from 'react';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
-import Button from '@/app/components/Button';
-import Breadcrumb from '@/app/components/Breadcrumb';
+import Button from '@/app/components/ui/Button';
+import Breadcrumb from '@/app/components/ui/Breadcrumb';
 import { stripHtml } from '@/lib/utils';
 
 interface ProgrammeDetails {
@@ -181,9 +181,9 @@ export default function ProgrammeDetailPage({ params }: { params: Promise<{ id: 
   const totalWeight = programme.courses.reduce((sum, c) => sum + c.weight, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
         <div className="container mx-auto px-4 max-w-7xl py-8">
           <Breadcrumb
             items={[
@@ -212,7 +212,7 @@ export default function ProgrammeDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               )}
 
-              <h1 className="text-4xl font-bold mb-4">{programme.title}</h1>
+              <h1 className="text-2xl font-normal text-slate-900 tracking-tight mb-4">{programme.title}</h1>
 
               {programme.description && (
                 <p className="text-xl text-white/80 mb-6">{programme.description}</p>
@@ -243,7 +243,7 @@ export default function ProgrammeDetailPage({ params }: { params: Promise<{ id: 
 
             {/* Right: Enrollment Card */}
             <div className="lg:w-80">
-              <div className="bg-white rounded-xl shadow-lg p-6 text-gray-900">
+              <div className="bg-white rounded-lg shadow-lg p-6 text-gray-900">
                 {programme.is_enrolled ? (
                   <>
                     <div className="text-center mb-4">
@@ -273,7 +273,7 @@ export default function ProgrammeDetailPage({ params }: { params: Promise<{ id: 
 
                         {progress.summary.weighted_score !== null && (
                           <div className="text-center py-3 bg-gray-50 rounded-lg">
-                            <div className="text-3xl font-bold text-gray-900">
+                            <div className="text-xl font-normal text-slate-900 tracking-tight">
                               {progress.summary.weighted_score?.toFixed(1)}%
                             </div>
                             <div className="text-sm text-gray-500">
@@ -301,7 +301,7 @@ export default function ProgrammeDetailPage({ params }: { params: Promise<{ id: 
                 ) : (
                   <>
                     <div className="text-center mb-4">
-                      <div className="text-3xl font-bold text-gray-900 mb-1">Free</div>
+                      <div className="text-xl font-normal text-slate-900 tracking-tight mb-1">Free</div>
                       <p className="text-sm text-gray-500">
                         Passing score: {programme.passing_score}%
                       </p>
@@ -343,7 +343,7 @@ export default function ProgrammeDetailPage({ params }: { params: Promise<{ id: 
             return (
               <div
                 key={course.id}
-                className={`bg-white rounded-xl shadow-sm border overflow-hidden ${
+                className={`bg-white rounded-lg shadow-sm border overflow-hidden ${
                   courseProgress?.is_completed ? 'border-green-200' : ''
                 }`}
               >
@@ -430,7 +430,7 @@ export default function ProgrammeDetailPage({ params }: { params: Promise<{ id: 
         </div>
 
         {/* Grade Calculation Info */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
+        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="font-semibold text-blue-900 mb-2">
             <Icon icon="material-symbols:info" className="w-5 h-5 inline mr-2" />
             How Your Final Score is Calculated

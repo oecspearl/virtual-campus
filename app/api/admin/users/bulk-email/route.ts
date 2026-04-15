@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { sendBulkEmail, wrapEmailTemplate } from '@/lib/email-service';
+import { authenticateUser, checkRateLimit } from '@/lib/api-auth';
 
 /**
  * POST /api/admin/users/bulk-email
@@ -11,10 +12,15 @@ export async function POST(request: NextRequest) {
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user } } = await tq.raw.auth.getUser();
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
+    }
+    const user = authResult.user;
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Rate limit: 3 bulk email sends per minute
+    if (!checkRateLimit(`bulk-email:${user.id}`, 3, 60000)) {
+      return NextResponse.json({ error: 'Too many bulk email requests. Please wait.' }, { status: 429 });
     }
 
     // Verify user is admin

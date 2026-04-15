@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { sendEmail } from "@/lib/email-service";
 
@@ -12,14 +12,13 @@ import { sendEmail } from "@/lib/email-service";
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     // Only admins and super admins can test emails
     if (!hasRole(user.role, ["admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 });
+      return createAuthResponse("Forbidden - Admin access required", 403);
     }
 
     const body = await request.json();

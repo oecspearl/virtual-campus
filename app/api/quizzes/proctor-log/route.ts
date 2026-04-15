@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('[ProctorLog] Failed to insert log:', insertError);
       return NextResponse.json(
-        { error: 'Failed to log violation', details: insertError.message },
+        { error: 'Failed to log violation' },
         { status: 500 }
       );
     }

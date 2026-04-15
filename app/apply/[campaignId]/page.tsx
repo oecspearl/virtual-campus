@@ -190,7 +190,7 @@ export default function PublicApplicationFormPage() {
             type="text"
             value={answers[field.id] || ''}
             onChange={(e) => updateAnswer(field.id, e.target.value)}
-            className={`w-full px-4 py-2.5 border rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
+            className={`w-full px-4 py-2.5 border rounded-md text-sm text-gray-900 bg-white transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
               hasError ? 'border-red-300 bg-red-50/30' : 'border-gray-200'
             }`}
             placeholder={`Enter ${field.label.toLowerCase()}`}
@@ -202,7 +202,7 @@ export default function PublicApplicationFormPage() {
             rows={4}
             value={answers[field.id] || ''}
             onChange={(e) => updateAnswer(field.id, e.target.value)}
-            className={`w-full px-4 py-2.5 border rounded-xl text-sm text-gray-900 bg-white transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-y ${
+            className={`w-full px-4 py-2.5 border rounded-md text-sm text-gray-900 bg-white transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-y ${
               hasError ? 'border-red-300 bg-red-50/30' : 'border-gray-200'
             }`}
             placeholder={`Enter your response`}
@@ -214,7 +214,7 @@ export default function PublicApplicationFormPage() {
             {field.options.map((option) => (
               <label
                 key={option.id}
-                className={`flex items-center gap-3 px-4 py-3 border rounded-xl cursor-pointer transition-all duration-200 ${
+                className={`flex items-center gap-3 px-4 py-3 border rounded-md cursor-pointer transition-all duration-200 ${
                   answers[field.id] === option.id
                     ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500/20'
                     : hasError
@@ -243,7 +243,7 @@ export default function PublicApplicationFormPage() {
               return (
                 <label
                   key={option.id}
-                  className={`flex items-center gap-3 px-4 py-3 border rounded-xl cursor-pointer transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-4 py-3 border rounded-md cursor-pointer transition-all duration-200 ${
                     checked
                       ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500/20'
                       : hasError
@@ -275,7 +275,7 @@ export default function PublicApplicationFormPage() {
               max={Number(field.options[1]?.id) || 10}
               value={answers[field.id] || ''}
               onChange={(e) => updateAnswer(field.id, e.target.value)}
-              className={`w-24 px-4 py-2.5 border rounded-xl text-sm text-gray-900 bg-white text-center transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
+              className={`w-24 px-4 py-2.5 border rounded-md text-sm text-gray-900 bg-white text-center transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
                 hasError ? 'border-red-300 bg-red-50/30' : 'border-gray-200'
               }`}
               placeholder="-"
@@ -298,12 +298,12 @@ export default function PublicApplicationFormPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50/50">
         <div className="max-w-2xl mx-auto px-4 py-12">
           <div className="text-center mb-8">
             <div className="h-6 w-48 bg-gray-200 rounded-lg animate-pulse mx-auto" />
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-6">
+          <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-8 space-y-6">
             <div className="h-8 w-3/4 bg-gray-200 rounded-lg animate-pulse" />
             <div className="h-4 w-full bg-gray-100 rounded-lg animate-pulse" />
             <div className="h-4 w-2/3 bg-gray-100 rounded-lg animate-pulse" />
@@ -311,11 +311,11 @@ export default function PublicApplicationFormPage() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="space-y-2">
                   <div className="h-4 w-32 bg-gray-200 rounded-lg animate-pulse" />
-                  <div className="h-10 w-full bg-gray-100 rounded-xl animate-pulse" />
+                  <div className="h-10 w-full bg-gray-100 rounded-lg animate-pulse" />
                 </div>
               ))}
             </div>
-            <div className="h-11 w-full bg-gray-200 rounded-xl animate-pulse" />
+            <div className="h-11 w-full bg-gray-200 rounded-lg animate-pulse" />
           </div>
         </div>
       </div>
@@ -326,7 +326,7 @@ export default function PublicApplicationFormPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+          <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
               <Icon icon="mdi:alert-circle-outline" className="w-8 h-8 text-red-500" />
             </div>
@@ -346,7 +346,7 @@ export default function PublicApplicationFormPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+          <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
               <Icon icon="mdi:information-outline" className="w-8 h-8 text-blue-500" />
             </div>
@@ -364,7 +364,7 @@ export default function PublicApplicationFormPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+          <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
               <Icon icon="mdi:check-circle" className="w-8 h-8 text-emerald-500" />
             </div>
@@ -385,7 +385,7 @@ export default function PublicApplicationFormPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
           <p className="text-sm font-medium text-gray-400 uppercase tracking-wider">
@@ -393,7 +393,7 @@ export default function PublicApplicationFormPage() {
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
           {formData.programme_thumbnail && (
             <div className="w-full h-48 bg-gray-100 overflow-hidden">
               <img
@@ -420,7 +420,7 @@ export default function PublicApplicationFormPage() {
           </div>
 
           {error && (
-            <div className="mx-8 mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+            <div className="mx-8 mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2">
               <Icon icon="mdi:alert-circle" className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-700">{error}</p>
             </div>
@@ -432,7 +432,7 @@ export default function PublicApplicationFormPage() {
             </div>
 
             {Object.keys(validationErrors).length > 0 && (
-              <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+              <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2">
                 <Icon icon="mdi:alert-circle" className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700">
                   Please fill in all required fields before submitting.
@@ -443,7 +443,7 @@ export default function PublicApplicationFormPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-6 w-full py-3 bg-oecs-navy-blue text-white rounded-xl hover:bg-blue-900 transition-all duration-300 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-6 w-full py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition-all duration-300 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>

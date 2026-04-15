@@ -88,7 +88,7 @@ export default function ReportBuilder({ onReportGenerated }: ReportBuilderProps)
       </div>
 
       {/* Configuration */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 space-y-6">
+      <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200 space-y-6">
         {/* Data Sources */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -129,7 +129,7 @@ export default function ReportBuilder({ onReportGenerated }: ReportBuilderProps)
           <input
             type="text"
             placeholder="Enter field names separated by commas (e.g., id, name, email)"
-            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={config.fields.join(', ')}
             onChange={(e) => {
               const fields = e.target.value
@@ -145,7 +145,7 @@ export default function ReportBuilder({ onReportGenerated }: ReportBuilderProps)
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 bg-slate-800 text-white font-medium rounded-lg  transition-all duration-200 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -163,27 +163,27 @@ export default function ReportBuilder({ onReportGenerated }: ReportBuilderProps)
 
       {/* Report Preview */}
       {reportData && (
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Report Preview</h3>
             <div className="flex gap-2">
               <button
                 onClick={() => handleExport('csv')}
-                className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
               >
                 <Icon icon="material-symbols:download" className="w-4 h-4" />
                 CSV
               </button>
               <button
                 onClick={() => handleExport('excel')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
               >
                 <Icon icon="material-symbols:download" className="w-4 h-4" />
                 Excel
               </button>
               <button
                 onClick={() => handleExport('pdf')}
-                className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
               >
                 <Icon icon="material-symbols:download" className="w-4 h-4" />
                 PDF

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import QuizBuilder from "@/app/components/QuizBuilder";
+import QuizBuilder from "@/app/components/quiz/QuizBuilder";
 
 function QuizBuilderWithSuspense() {
   return (

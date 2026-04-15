@@ -1,4 +1,4 @@
-import Gradebook from "@/app/components/Gradebook";
+import Gradebook from "@/app/components/gradebook/Gradebook";
 
 export default async function GradebookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

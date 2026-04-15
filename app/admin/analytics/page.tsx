@@ -7,6 +7,7 @@ import MetricCard from '@/components/analytics/MetricCard';
 import LineChart from '@/components/analytics/LineChart';
 import BarChart from '@/components/analytics/BarChart';
 import PieChart from '@/components/analytics/PieChart';
+import LoadingIndicator, { InlineLoader } from '@/app/components/ui/LoadingIndicator';
 
 interface MetricData {
   data: any[];
@@ -226,13 +227,10 @@ export default function AnalyticsPage() {
 
   if (loading && !overview) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gray-50/50">
         <div className="mx-auto max-w-7xl px-4 py-8">
           <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading analytics...</p>
-            </div>
+            <LoadingIndicator variant="blocks" text="Loading analytics..." />
           </div>
         </div>
       </div>
@@ -241,7 +239,7 @@ export default function AnalyticsPage() {
 
   if (error && !overview && loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gray-50/50">
         <div className="mx-auto max-w-7xl px-4 py-8">
           <div className="bg-white rounded-lg shadow-lg p-8 text-center">
             <div className="text-red-600 mb-4">
@@ -298,15 +296,15 @@ export default function AnalyticsPage() {
   }).filter((item: any) => item.value > 0) || []; // Only show courses with completion > 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
+          <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center flex-wrap gap-2">
+                  <h1 className="text-2xl sm:text-xl font-medium text-white flex items-center flex-wrap gap-2">
                     <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
@@ -366,7 +364,7 @@ export default function AnalyticsPage() {
               >
                 {refreshing ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <InlineLoader className="mr-1" />
                     Refreshing...
                   </>
                 ) : (

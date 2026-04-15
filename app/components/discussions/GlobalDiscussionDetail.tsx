@@ -265,7 +265,7 @@ export default function GlobalDiscussionDetail({
       </button>
 
       {/* Discussion Header */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
         {/* Badges */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           {discussion.is_pinned && (
@@ -355,7 +355,7 @@ export default function GlobalDiscussionDetail({
 
       {/* Reply Form */}
       {!discussion.is_locked && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h3 className="font-semibold text-gray-900 mb-4">
             {replyingTo ? "Reply to comment" : "Add a reply"}
           </h3>
@@ -396,7 +396,7 @@ export default function GlobalDiscussionDetail({
       )}
 
       {discussion.is_locked && (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center text-gray-500">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500">
           <Icon icon="mdi:lock" className="w-8 h-8 mx-auto mb-2" />
           <p>This discussion is locked. No new replies can be added.</p>
         </div>

@@ -34,8 +34,7 @@ export async function POST(request: NextRequest) {
     if (error || !data) {
       console.error('[Upload URL] Failed to create signed upload URL:', error);
       return NextResponse.json({
-        error: "Failed to create upload URL",
-        details: error?.message
+        error: "Failed to create upload URL"
       }, { status: 500 });
     }
 
@@ -48,8 +47,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[Upload URL] Error:', error);
     return NextResponse.json({
-      error: "Failed to generate upload URL",
-      details: error.message
+      error: "Failed to generate upload URL"
     }, { status: 500 });
   }
 }

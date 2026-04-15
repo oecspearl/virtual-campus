@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createBrowserSupabaseClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator'
 
 export default function AuthTestPage() {
   const [user, setUser] = useState<any>(null)
@@ -40,7 +41,7 @@ export default function AuthTestPage() {
   }
 
   if (loading) {
-    return <div className="p-8">Loading...</div>
+    return <div className="p-8"><LoadingIndicator variant="dots" size="sm" text="Loading..." /></div>
   }
 
   return (

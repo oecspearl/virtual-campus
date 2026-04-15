@@ -51,7 +51,7 @@ export default function MySubjectsPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         {filtered.map((s:any)=> (
-          <div key={s.id} className="rounded-xl border bg-white p-4">
+          <div key={s.id} className="rounded-lg border bg-white p-4">
             <h3 className="text-sm text-gray-900">{s.title}</h3>
             <p className="mt-1 text-xs text-gray-600">{s.description}</p>
             <Link href={`/course/${s.course_id}`} className="mt-2 inline-block text-xs text-[#3B82F6] underline"><span>View Course</span></Link>

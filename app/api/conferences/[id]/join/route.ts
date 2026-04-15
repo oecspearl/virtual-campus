@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 
 export async function POST(
   request: NextRequest,
@@ -8,11 +9,11 @@ export async function POST(
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { id: conferenceId } = await params;
 
@@ -81,12 +82,14 @@ export async function POST(
     }
 
     // Add or update participant record using tenant-scoped query
+    // Reset left_at to null on rejoin so the user is marked as active again
     const { data: participant, error: participantError } = await tq
       .from('conference_participants')
       .upsert([{
         conference_id: conferenceId,
         user_id: user.id,
         joined_at: new Date().toISOString(),
+        left_at: null,
         role: conference.instructor_id === user.id ? 'host' : 'participant'
       }], {
         onConflict: 'conference_id,user_id'

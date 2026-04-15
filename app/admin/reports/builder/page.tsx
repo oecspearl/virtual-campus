@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 
 const AVAILABLE_TABLES = [
   { value: 'users', label: 'Users' },
@@ -159,7 +159,7 @@ export default function ReportBuilderPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Create Custom Report</h1>
+        <h1 className="text-xl font-normal text-slate-900 tracking-tight">Create Custom Report</h1>
         <p className="mt-2 text-sm text-gray-600">
           Build a custom report by selecting data source, columns, and filters
         </p>

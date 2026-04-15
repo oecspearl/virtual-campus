@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { hasRole } from '@/lib/database-helpers';
+import { hasRole } from '@/lib/rbac';
 import { authenticateUser } from '@/lib/api-auth';
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!hasRole(authResult.userProfile, ['admin', 'super_admin'])) {
+    if (!hasRole(authResult.userProfile?.role, ['admin', 'super_admin'])) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!hasRole(authResult.userProfile, ['admin', 'super_admin'])) {
+    if (!hasRole(authResult.userProfile?.role, ['admin', 'super_admin'])) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

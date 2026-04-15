@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 
 interface Connection {
   id: string;
@@ -121,7 +122,7 @@ export default function SonisWebConnectionDetailPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-gray-500">Loading...</div>;
+  if (loading) return <div className="p-6"><LoadingIndicator variant="books" text="Loading connection..." fullCenter /></div>;
   if (!connection) return <div className="p-6 text-center text-red-500">Connection not found</div>;
 
   const tabs: { key: Tab; label: string; icon: string }[] = [

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Save, X, Loader2, Eye, Code } from 'lucide-react';
+import { Save, X, Loader2, Eye } from 'lucide-react';
 import Link from 'next/link';
-import CertificatePreview from '@/app/components/CertificatePreview';
-import TinyMCEEditor from '@/app/components/TinyMCEEditor';
+import Button from '@/app/components/ui/Button';
+import CertificatePreview from '@/app/components/certificate/CertificatePreview';
+import TextEditor from '@/app/components/editor/TextEditor';
 
 interface Template {
   id: string;
@@ -26,7 +27,6 @@ export default function EditTemplatePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [showCodeView, setShowCodeView] = useState(false);
   const [template, setTemplate] = useState<Template | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -133,7 +133,7 @@ export default function EditTemplatePage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-900">Edit Certificate Template</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">Edit Certificate Template</h1>
             <Link
               href="/admin/certificates/templates"
               className="text-gray-600 hover:text-gray-900"
@@ -179,43 +179,22 @@ export default function EditTemplatePage() {
 
             {/* Template HTML */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Template HTML *
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowCodeView(!showCodeView)}
-                  className="flex items-center gap-2 px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition"
-                >
-                  <Code className="h-4 w-4" />
-                  {showCodeView ? 'Visual Editor' : 'Code View'}
-                </button>
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Template HTML *
+              </label>
               <p className="text-sm text-gray-500 mb-2">
-                Use variables: <code className="bg-gray-100 px-1 rounded">{`{{student_name}}`}</code>, 
-                <code className="bg-gray-100 px-1 rounded">{`{{course_name}}`}</code>, 
+                Use variables: <code className="bg-gray-100 px-1 rounded">{`{{student_name}}`}</code>,
+                <code className="bg-gray-100 px-1 rounded">{`{{course_name}}`}</code>,
                 <code className="bg-gray-100 px-1 rounded">{`{{completion_date}}`}</code>, etc.
+                Use the editor&apos;s Source Code view (Edit menu) for raw HTML editing.
               </p>
-              {showCodeView ? (
-                <textarea
-                  required
-                  value={formData.template_html}
-                  onChange={(e) => setFormData({ ...formData, template_html: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-oecs-red focus:border-transparent font-mono text-sm"
-                  rows={15}
-                  placeholder="<div>Your HTML template here...</div>"
-                />
-              ) : (
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  <TinyMCEEditor
-                    value={formData.template_html}
-                    onChange={(html) => setFormData({ ...formData, template_html: html })}
-                    height={500}
-                    placeholder="Enter your certificate template HTML here..."
-                  />
-                </div>
-              )}
+              <TextEditor
+                value={formData.template_html}
+                onChange={(html) => setFormData({ ...formData, template_html: html })}
+                height={500}
+                placeholder="Design your certificate template here..."
+                editorType="proseforge"
+              />
             </div>
 
             {/* URLs */}
@@ -274,28 +253,21 @@ export default function EditTemplatePage() {
                 <Eye className="h-5 w-5" />
                 Preview
               </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex items-center gap-2 px-8 py-3 bg-oecs-red text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 font-semibold shadow-md hover:shadow-lg"
-              >
+              <Button type="submit" disabled={saving}>
                 {saving ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 mr-1.5 animate-spin" />
                     Saving...
                   </>
                 ) : (
                   <>
-                    <Save className="h-5 w-5" />
+                    <Save className="h-5 w-5 mr-1.5" />
                     Save Changes
                   </>
                 )}
-              </button>
-              <Link
-                href="/admin/certificates/templates"
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold"
-              >
-                Cancel
+              </Button>
+              <Link href="/admin/certificates/templates">
+                <Button variant="outline" type="button">Cancel</Button>
               </Link>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import RoleGuard from "@/app/components/RoleGuard";
+import AccessibleModal from "@/app/components/ui/AccessibleModal";
 
 interface ProctoringService {
   id: string;
@@ -212,10 +213,10 @@ export default function ProctoringServicesPage() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4">
           {/* Header */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
                   <Icon icon="material-symbols:security" className="w-6 h-6 text-indigo-600" />
                 </div>
                 <div>
@@ -234,7 +235,7 @@ export default function ProctoringServicesPage() {
           </div>
 
           {/* Quick Add Presets */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Add Popular Services</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {PRESET_SERVICES.map((preset) => {
@@ -276,7 +277,7 @@ export default function ProctoringServicesPage() {
           )}
 
           {/* Services List */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Configured Services</h2>
             </div>
@@ -362,7 +363,7 @@ export default function ProctoringServicesPage() {
           </div>
 
           {/* Help Section */}
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
             <div className="flex items-start gap-4">
               <Icon icon="material-symbols:info" className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
@@ -379,24 +380,13 @@ export default function ProctoringServicesPage() {
         </div>
 
         {/* Add/Edit Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {editingService ? "Edit Service" : "Add Proctoring Service"}
-                  </h2>
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                  >
-                    <Icon icon="material-symbols:close" className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <AccessibleModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          title={editingService ? "Edit Service" : "Add Proctoring Service"}
+          size="lg"
+        >
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Service Name (internal identifier)
@@ -506,9 +496,7 @@ export default function ProctoringServicesPage() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
+        </AccessibleModal>
       </div>
     </RoleGuard>
   );

@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { syncStudents } from '@/lib/sonisweb/student-sync';
 import { syncEnrollments } from '@/lib/sonisweb/enrollment-sync';
 import { pushAllGrades } from '@/lib/sonisweb/grade-passback';
+import { withCronLock } from '@/lib/cron-lock';
 
 /**
  * SonisWeb Sync Cron Job
@@ -10,20 +11,13 @@ import { pushAllGrades } from '@/lib/sonisweb/grade-passback';
  * GET/POST /api/cron/sonisweb-sync
  *
  * Runs scheduled sync for all active SonisWeb connections.
- * Protected by CRON_SECRET bearer token.
+ * Protected by CRON_SECRET and distributed lock.
+ * Lock timeout: 15 minutes (long-running sync).
  */
 export async function GET(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+  return withCronLock('sonisweb-sync', request, async () => {
     const serviceSupabase = createServiceSupabaseClient();
 
-    // Find all active SonisWeb connections with sync enabled
     const { data: connections, error } = await serviceSupabase
       .from('sonisweb_connections')
       .select('id, tenant_id, student_sync_enabled, enrollment_sync_enabled, grade_passback_enabled')
@@ -31,16 +25,11 @@ export async function GET(request: NextRequest) {
       .eq('connection_status', 'connected');
 
     if (error) {
-      console.error('Cron: Error fetching connections:', error);
-      return NextResponse.json({ error: 'Failed to fetch connections' }, { status: 500 });
+      throw new Error(`Failed to fetch connections: ${error.message}`);
     }
 
     if (!connections || connections.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'No active connections to sync',
-        connections_processed: 0,
-      });
+      return { message: 'No active connections to sync', connections_processed: 0 };
     }
 
     const results = [];
@@ -53,7 +42,6 @@ export async function GET(request: NextRequest) {
       };
 
       try {
-        // Student sync
         if (conn.student_sync_enabled) {
           const studentResult = await syncStudents(conn.id, conn.tenant_id, undefined, 'cron');
           connectionResult.syncs.students = {
@@ -64,7 +52,6 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // Enrollment sync
         if (conn.enrollment_sync_enabled) {
           const enrollResult = await syncEnrollments(conn.id, conn.tenant_id, undefined, 'cron');
           connectionResult.syncs.enrollments = {
@@ -75,7 +62,6 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // Grade passback
         if (conn.grade_passback_enabled) {
           const gradeResult = await pushAllGrades(conn.id, conn.tenant_id, undefined, 'cron');
           connectionResult.syncs.grades = {
@@ -92,16 +78,8 @@ export async function GET(request: NextRequest) {
       results.push(connectionResult);
     }
 
-    return NextResponse.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      connections_processed: connections.length,
-      results,
-    });
-  } catch (error: any) {
-    console.error('SonisWeb cron sync error:', error);
-    return NextResponse.json({ error: error.message || 'Cron failed' }, { status: 500 });
-  }
+    return { connections_processed: connections.length, results };
+  }, 15); // 15-minute lock timeout for long sync
 }
 
 export async function POST(request: NextRequest) {

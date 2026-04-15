@@ -183,7 +183,7 @@ export default function BookmarksPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex flex-wrap gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -225,7 +225,7 @@ export default function BookmarksPage() {
         </div>
 
         {/* Bookmarks list */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           {loading ? (
             <div className="p-8 animate-pulse space-y-4">
               {[1, 2, 3].map(i => (

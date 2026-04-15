@@ -1,26 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
+import { ensureUserExists } from "@/lib/user-provisioning";
 
-interface AuthResult {
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  tenant_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthResult {
   success: boolean;
-  user?: any;
-  userProfile?: any;
+  user?: User;
+  userProfile?: UserProfile;
   error?: string;
   status?: number;
 }
 
 export async function authenticateUser(request: NextRequest): Promise<AuthResult> {
   try {
-    // For API routes, we need to get the auth token from the request headers
-    const authHeader = request.headers.get('authorization');
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    
+
     let supabase;
-    
+
+    // Strategy 1: Bearer token in Authorization header
+    const authHeader = request.headers.get('authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      // If we have a Bearer token, use it
       const token = authHeader.substring(7);
       supabase = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
@@ -30,15 +40,61 @@ export async function authenticateUser(request: NextRequest): Promise<AuthResult
         }
       });
     } else {
-      // Fallback to server client with cookies
+      // Strategy 2: Cookie-based server client (works in most Next.js contexts)
       supabase = await createServerSupabaseClient();
     }
-    
+
     // Get user from Supabase auth
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    let { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    // Strategy 3: If cookie-based client failed, try extracting token from request cookies directly
+    if ((authError || !user) && !authHeader) {
+      const cookieHeader = request.headers.get('cookie') || '';
+      // Supabase stores the access token in a cookie like sb-<ref>-auth-token
+      const tokenMatch = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/);
+      if (tokenMatch) {
+        try {
+          // The cookie value may be base64-encoded JSON with the access_token inside
+          const decoded = decodeURIComponent(tokenMatch[1]);
+          let accessToken = decoded;
+
+          // Try parsing as JSON array (Supabase stores [base64_access, base64_refresh])
+          // or as a JSON object with access_token field
+          try {
+            const parsed = JSON.parse(decoded);
+            if (Array.isArray(parsed) && parsed[0]) {
+              // Supabase SSR stores as JSON array: ["base64_access_token", "base64_refresh_token"]
+              accessToken = parsed[0];
+            } else if (parsed.access_token) {
+              accessToken = parsed.access_token;
+            }
+          } catch {
+            // Not JSON — use the raw value as the token
+          }
+
+          if (accessToken && accessToken.length > 20) {
+            const tokenClient = createClient(supabaseUrl, supabaseAnonKey, {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`
+                }
+              }
+            });
+            const result = await tokenClient.auth.getUser();
+            if (result.data.user) {
+              user = result.data.user;
+              authError = null;
+              supabase = tokenClient;
+            }
+          }
+        } catch {
+          // Token extraction failed — fall through to auth failure
+        }
+      }
+    }
+
     if (authError || !user) {
-      console.error('API Auth: Authentication failed', authError);
+      console.error('API Auth: Authentication failed', authError?.message || 'No session');
       return {
         success: false,
         error: "Authentication required",
@@ -47,59 +103,23 @@ export async function authenticateUser(request: NextRequest): Promise<AuthResult
     }
 
     // Verify user exists in our database, create if not
-    // Use service client to bypass RLS on users table (prevents infinite recursion)
-    const serviceSupabase = createServiceSupabaseClient();
-    let { data: userProfile, error: profileError } = await serviceSupabase
-      .from('users')
-      .select('id, email, name, role, created_at, updated_at')
-      .eq('id', user.id)
-      .single();
+    const tenantId = request.headers.get('x-tenant-id') || '00000000-0000-0000-0000-000000000001';
+    const provisionResult = await ensureUserExists(
+      user.id,
+      user.email || '',
+      user.user_metadata || {},
+      tenantId,
+    );
 
-    if (profileError || !userProfile) {
-      console.log('API Auth: User profile not found, creating new user...', profileError);
-
-      // Resolve tenant from request headers (set by middleware)
-      const tenantId = request.headers.get('x-tenant-id') || '00000000-0000-0000-0000-000000000001';
-
-      // Create user in our database
-      const newUser = {
-        id: user.id,
-        email: user.email || '',
-        name: (user.user_metadata?.full_name || user.user_metadata?.name || '') as string,
-        role: 'student', // Default role
-        tenant_id: tenantId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+    if (provisionResult.success === false) {
+      return {
+        success: false,
+        error: provisionResult.error,
+        status: 500
       };
-
-      const { data: createdUser, error: createError } = await serviceSupabase
-        .from('users')
-        .insert([newUser])
-        .select('id, email, name, role, created_at, updated_at')
-        .single();
-
-      if (createError) {
-        console.error('API Auth: Failed to create user', createError);
-        return {
-          success: false,
-          error: "Failed to create user profile",
-          status: 500
-        };
-      }
-
-      // Create tenant membership for the new user
-      await serviceSupabase
-        .from('tenant_memberships')
-        .insert([{
-          tenant_id: tenantId,
-          user_id: user.id,
-          role: 'student',
-          is_primary: true,
-        }]);
-
-      userProfile = createdUser;
-      console.log('API Auth: User created with tenant membership', userProfile);
     }
+
+    const userProfile = provisionResult.userProfile;
 
     return {
       success: true,
@@ -117,7 +137,7 @@ export async function authenticateUser(request: NextRequest): Promise<AuthResult
   }
 }
 
-export async function authorizeUser(userProfile: any, requiredRoles?: string[]): Promise<AuthResult> {
+export async function authorizeUser(userProfile: UserProfile, requiredRoles?: string[]): Promise<AuthResult> {
   if (!requiredRoles || requiredRoles.length === 0) {
     return { success: true, userProfile };
   }
@@ -142,6 +162,21 @@ export function createAuthResponse(error: string, status: number) {
 }
 
 /**
+ * Create a safe error response that never leaks internal details to the client.
+ * Logs the full error server-side for debugging.
+ */
+export function createSafeErrorResponse(
+  userMessage: string,
+  status: number,
+  internalError?: unknown
+): NextResponse {
+  if (internalError) {
+    console.error(`API Error [${status}]: ${userMessage}`, internalError);
+  }
+  return NextResponse.json({ error: userMessage }, { status });
+}
+
+/**
  * Verifies that a user has a membership in the target tenant.
  * Used to ensure tenant_admin can only access their own tenant.
  */
@@ -156,50 +191,11 @@ export async function verifyTenantOwnership(userId: string, targetTenantId: stri
   return !!data;
 }
 
-// Rate limiting (improved for serverless environments)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-export function checkRateLimit(identifier: string, limit: number = 10, windowMs: number = 60000): boolean {
-  const now = Date.now();
-  const key = identifier;
-  const record = rateLimitStore.get(key);
-
-  // Clean up expired records periodically
-  if (rateLimitStore.size > 1000) {
-    for (const [k, v] of rateLimitStore.entries()) {
-      if (now > v.resetTime) {
-        rateLimitStore.delete(k);
-      }
-    }
-  }
-
-  if (!record || now > record.resetTime) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
-    return true;
-  }
-
-  if (record.count >= limit) {
-    return false;
-  }
-
-  record.count++;
-  return true;
-}
-
-// More lenient rate limiting for auth profile endpoint
-export function checkAuthProfileRateLimit(identifier: string): boolean {
-  // Allow 200 requests per minute for auth profile (very lenient since RoleGuard calls this frequently)
-  return checkRateLimit(identifier, 200, 60000);
-}
-
-export function getRateLimitHeaders(identifier: string, limit: number = 10, windowMs: number = 60000) {
-  const record = rateLimitStore.get(identifier);
-  const remaining = record ? Math.max(0, limit - record.count) : limit;
-  const resetTime = record ? record.resetTime : Date.now() + windowMs;
-  
-  return {
-    'X-RateLimit-Limit': limit.toString(),
-    'X-RateLimit-Remaining': remaining.toString(),
-    'X-RateLimit-Reset': new Date(resetTime).toISOString(),
-  };
-}
+// Re-export rate limiting from dedicated module
+export {
+  checkRateLimit,
+  checkAuthProfileRateLimit,
+  checkRateLimitWithMeta,
+  getRateLimitHeaders,
+  checkStrictRateLimit,
+} from '@/lib/rate-limit';

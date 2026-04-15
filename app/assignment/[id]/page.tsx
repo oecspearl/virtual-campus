@@ -2,12 +2,12 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import FileUploadZone, { type UploadedFile } from "@/app/components/FileUploadZone";
-import TextEditor from "@/app/components/TextEditor";
-import Button from "@/app/components/Button";
+import FileUploadZone, { type UploadedFile } from "@/app/components/file-upload/FileUploadZone";
+import TextEditor from "@/app/components/editor/TextEditor";
+import Button from "@/app/components/ui/Button";
 import { Icon } from "@iconify/react";
-import Breadcrumb from "@/app/components/Breadcrumb";
-import PeerReviewPanel from "@/app/components/PeerReviewPanel";
+import Breadcrumb from "@/app/components/ui/Breadcrumb";
+import PeerReviewPanel from "@/app/components/assignment/PeerReviewPanel";
 import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function Page() {
@@ -21,7 +21,7 @@ export default function Page() {
   const [loading, setLoading] = React.useState(true);
   const [userRole, setUserRole] = React.useState<string | null>(null);
   const [mySubmission, setMySubmission] = React.useState<any | null>(null);
-  const [showRubric, setShowRubric] = React.useState(false);
+  const [showRubric, setShowRubric] = React.useState(true);
 
   React.useEffect(() => {
     let active = true;
@@ -103,7 +103,7 @@ export default function Page() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-900">Loading Assignment...</h2>
@@ -115,7 +115,7 @@ export default function Page() {
 
   if (!assignment) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Icon icon="material-symbols:error-outline" className="w-8 h-8 text-red-600" />
@@ -134,7 +134,7 @@ export default function Page() {
   const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-6xl px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb
@@ -159,7 +159,7 @@ export default function Page() {
                 Back
               </Button>
               <div className="h-6 w-px bg-gray-300"></div>
-              <h1 className="text-3xl font-bold text-gray-900">{assignment.title}</h1>
+              <h1 className="text-xl font-normal text-slate-900 tracking-tight">{assignment.title}</h1>
             </div>
             {isInstructor && (
               <Button
@@ -200,7 +200,7 @@ export default function Page() {
           {/* Assignment Details */}
           <div className="space-y-6">
             {/* Description */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Icon icon="material-symbols:description" className="w-5 h-5" />
@@ -215,72 +215,123 @@ export default function Page() {
               </div>
             </div>
 
-            {/* View Rubric */}
-            {assignment.rubric && Array.isArray(assignment.rubric) && assignment.rubric.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowRubric(!showRubric)}
-                  className="w-full flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 transition-colors"
-                >
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Icon icon="material-symbols:rubric" className="w-5 h-5" />
-                    View Rubric
-                  </h2>
+            {/* Rubric Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowRubric(!showRubric)}
+                className="w-full flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 transition-colors"
+              >
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Icon icon="material-symbols:rubric" className="w-5 h-5" />
+                  Grading Rubric
+                </h2>
+                <div className="flex items-center gap-2">
+                  {assignment.rubric && Array.isArray(assignment.rubric) && assignment.rubric.length > 0 && (
+                    <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">
+                      {assignment.rubric.length} criteria
+                    </span>
+                  )}
                   <Icon
                     icon={showRubric ? "material-symbols:expand-less" : "material-symbols:expand-more"}
                     className="w-6 h-6 text-white"
                   />
-                </button>
-                {showRubric && (
-                  <div className="p-6">
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gray-50">
-                            <th className="text-left text-sm font-semibold text-gray-900 p-3 border border-gray-200 w-1/5">Criteria</th>
-                            {assignment.rubric[0]?.levels?.map((level: any, i: number) => (
-                              <th key={i} className="text-center text-sm font-semibold text-gray-900 p-3 border border-gray-200">
-                                {level.name}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {assignment.rubric.map((criterion: any, idx: number) => (
-                            <tr key={criterion.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                              <td className="text-sm font-medium text-gray-900 p-3 border border-gray-200 align-top">
-                                {criterion.criteria}
-                              </td>
-                              {criterion.levels?.map((level: any, j: number) => (
-                                <td key={j} className="text-xs text-gray-700 p-3 border border-gray-200 align-top">
-                                  <div className="mb-1">
-                                    <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                                      {level.points} pts
-                                    </span>
-                                  </div>
-                                  <div className="text-gray-600">{level.description}</div>
-                                </td>
+                </div>
+              </button>
+              {showRubric && (
+                <div className="p-6">
+                  {assignment.rubric && Array.isArray(assignment.rubric) && assignment.rubric.length > 0 ? (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table id="rubric-table" className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="text-left text-sm font-semibold text-gray-900 p-3 border border-gray-200 w-1/5">Criteria</th>
+                              {assignment.rubric[0]?.levels?.map((level: any, i: number) => (
+                                <th key={i} className="text-center text-sm font-semibold text-gray-900 p-3 border border-gray-200">
+                                  {level.name}
+                                </th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {assignment.rubric.map((criterion: any, idx: number) => (
+                              <tr key={criterion.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="text-sm font-medium text-gray-900 p-3 border border-gray-200 align-top">
+                                  {criterion.criteria}
+                                </td>
+                                {criterion.levels?.map((level: any, j: number) => (
+                                  <td key={j} className="text-xs text-gray-700 p-3 border border-gray-200 align-top">
+                                    <div className="mb-1">
+                                      <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                        {level.points} pts
+                                      </span>
+                                    </div>
+                                    <div className="text-gray-600">{level.description}</div>
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between">
+                        <div className="text-xs text-gray-500 flex items-center gap-4">
+                          <span>{assignment.rubric.length} criteria</span>
+                          <span>Max: {assignment.rubric.reduce((sum: number, c: any) => sum + Math.max(...(c.levels?.map((l: any) => l.points) || [0])), 0)} points</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const printWindow = window.open('', '_blank');
+                            if (!printWindow) return;
+                            const table = document.getElementById('rubric-table');
+                            if (!table) return;
+                            printWindow.document.write(`
+                              <!DOCTYPE html>
+                              <html><head><title>Rubric — ${assignment.title}</title>
+                              <style>
+                                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; color: #1a1a1a; }
+                                h1 { font-size: 18px; margin-bottom: 4px; }
+                                h2 { font-size: 14px; font-weight: normal; color: #666; margin-bottom: 16px; }
+                                table { width: 100%; border-collapse: collapse; }
+                                th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; font-size: 12px; }
+                                th { background: #f3f4f6; font-weight: 600; }
+                                tr:nth-child(even) { background: #f9fafb; }
+                                .pts { background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+                                @media print { body { padding: 0; } }
+                              </style></head><body>
+                              <h1>${assignment.title}</h1>
+                              <h2>Grading Rubric — ${assignment.points || 100} points total</h2>
+                              ${table.outerHTML.replace(/bg-blue-100 text-blue-800/g, 'pts')}
+                              </body></html>
+                            `);
+                            printWindow.document.close();
+                            printWindow.print();
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          <Icon icon="material-symbols:print" className="w-4 h-4" />
+                          Print / Save as PDF
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Icon icon="material-symbols:rubric" className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No rubric has been added to this assignment.</p>
+                      <p className="text-xs text-gray-400 mt-1">Contact your instructor for grading criteria details.</p>
                     </div>
-                    <div className="mt-3 text-xs text-gray-500 flex items-center gap-4">
-                      <span>{assignment.rubric.length} criteria</span>
-                      <span>Max: {assignment.rubric.reduce((sum: number, c: any) => sum + Math.max(...(c.levels?.map((l: any) => l.points) || [0])), 0)} points</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
 
           </div>
 
           {/* Grade and Feedback Display */}
           {mySubmission && mySubmission.status === 'graded' && mySubmission.grade !== null && (
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-lg border-2 border-green-200 overflow-hidden">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow-lg border-2 border-green-200 overflow-hidden">
               <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Icon icon="material-symbols:check-circle" className="w-6 h-6" />
@@ -291,7 +342,7 @@ export default function Page() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white rounded-lg p-4 border border-green-200">
                     <div className="text-sm text-gray-600 mb-1">Grade</div>
-                    <div className="text-3xl font-bold text-green-700">{mySubmission.grade} / {assignment.points || 100}</div>
+                    <div className="text-2xl font-medium text-green-700 tabular-nums">{mySubmission.grade} / {assignment.points || 100}</div>
                     <div className="text-xs text-gray-500 mt-1">
                       Percentage: {Math.round((mySubmission.grade / (assignment.points || 100)) * 100)}%
                     </div>
@@ -331,8 +382,8 @@ export default function Page() {
           )}
 
           {/* Submission Panel */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Icon icon="material-symbols:upload" className="w-5 h-5" />
                 Submit Assignment
@@ -428,7 +479,7 @@ export default function Page() {
                       </label>
                       <input 
                         type="url"
-                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-purple-500" 
                         placeholder="https://example.com/your-work" 
                         value={content} 
                         onChange={(e) => setContent(e.target.value)} 
@@ -455,7 +506,7 @@ export default function Page() {
                 <Button 
                   onClick={() => submit("submitted")} 
                   disabled={saving}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 flex-1"
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700  flex-1"
                 >
                   <Icon icon="material-symbols:send" className="w-4 h-4" />
                   {saving ? "Submitting..." : "Submit Assignment"}

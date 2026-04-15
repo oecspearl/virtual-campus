@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Button from './Button';
+import Button from './ui/Button';
 import { useSupabase } from '@/lib/supabase-provider';
-import TextEditor from './TextEditor';
+import TextEditor from '@/app/components/editor/TextEditor';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -177,7 +177,7 @@ export default function AnnouncementList({ courseId }: AnnouncementListProps) {
             onClick={() => setShowCreateForm(true)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+            className="bg-slate-800 hover:bg-slate-700 text-white font-medium px-4 py-2 rounded-md shadow-sm hover:shadow transition-all duration-200 flex items-center gap-2"
           >
             <Icon icon="material-symbols:add" className="w-5 h-5" />
             Create Announcement
@@ -202,7 +202,7 @@ export default function AnnouncementList({ courseId }: AnnouncementListProps) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300"
+          className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300"
         >
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Icon icon="material-symbols:campaign" className="w-8 h-8 text-blue-600" />
@@ -226,7 +226,7 @@ export default function AnnouncementList({ courseId }: AnnouncementListProps) {
               key={announcement.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`bg-white rounded-xl shadow-sm border-2 ${
+              className={`bg-white rounded-lg shadow-sm border-2 ${
                 announcement.is_pinned 
                   ? 'border-blue-500 bg-blue-50' 
                   : 'border-gray-200 hover:border-gray-300'
@@ -398,7 +398,7 @@ function CreateAnnouncementForm({ courseId, onSuccess, onCancel }: CreateAnnounc
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-xl shadow-lg border border-gray-200 p-6"
+      className="bg-white rounded-lg shadow-lg border border-gray-200 p-6"
     >
       <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
         <Icon icon="material-symbols:campaign" className="w-6 h-6 text-blue-600" />

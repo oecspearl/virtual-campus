@@ -252,7 +252,7 @@ DROP POLICY IF EXISTS "Admin can manage users" ON users;
 CREATE POLICY "Admin can manage users" ON users
   FOR ALL USING (
     tenant_id = current_tenant_id() AND
-    EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('super_admin', 'tenant_admin', 'admin'))
+    current_user_role() IN ('super_admin', 'tenant_admin', 'admin')
   );
 
 -- user_profiles

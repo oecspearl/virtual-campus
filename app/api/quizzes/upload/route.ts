@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 
@@ -39,12 +39,14 @@ interface QuizCsvRow {
 export async function POST(request: Request) {
   console.log('[Quiz Upload] ===== CSV UPLOAD STARTED =====');
   try {
-    const user = await getCurrentUser();
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
     console.log('[Quiz Upload] User authenticated:', user?.id, 'Role:', user?.role);
-    
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
+
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
       console.error('[Quiz Upload] Forbidden: User does not have required role');
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return createAuthResponse("Forbidden", 403);
     }
 
     const formData = await request.formData();

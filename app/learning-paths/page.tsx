@@ -139,7 +139,7 @@ export default function LearningPathsPage() {
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"
+                  className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg"
                 />
               ))}
             </div>
@@ -155,7 +155,7 @@ export default function LearningPathsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight dark:text-white flex items-center gap-3">
               <BookOpen className="w-8 h-8 text-blue-600" />
               Learning Paths
             </h1>
@@ -166,7 +166,7 @@ export default function LearningPathsPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
             <div className="relative flex-1">

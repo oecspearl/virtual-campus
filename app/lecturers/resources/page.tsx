@@ -4,7 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
 import { hasRole } from '@/lib/rbac';
 import { useRouter } from 'next/navigation';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 
@@ -200,11 +202,8 @@ export default function LecturerResourcesPage() {
   if (roleLoading || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          </div>
+        <div className="max-w-7xl mx-auto flex items-center justify-center py-24">
+          <LoadingIndicator variant="books" text="Loading resources..." />
         </div>
       </div>
     );
@@ -221,7 +220,7 @@ export default function LecturerResourcesPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              <h1 className="text-2xl font-normal text-slate-900 tracking-tight mb-2">
                 Resource Library
               </h1>
               <p className="text-gray-600">
@@ -238,7 +237,7 @@ export default function LecturerResourcesPage() {
           </div>
 
           {/* Search and Filters */}
-          <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
+          <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <input
@@ -292,21 +291,15 @@ export default function LecturerResourcesPage() {
 
         {/* Resources Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
-                <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-              </div>
-            ))}
+          <div className="flex items-center justify-center py-16">
+            <LoadingIndicator variant="books" text="Loading resources..." />
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <div className="bg-red-50 border border-red-200 rounded-md p-6 text-red-700">
             {error}
           </div>
         ) : resources.length === 0 ? (
-          <div className="bg-white rounded-xl p-12 text-center shadow-sm">
+          <div className="bg-white rounded-lg p-12 text-center shadow-sm">
             <Icon icon="mdi:folder-open-outline" className="text-6xl text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No resources found</h3>
             <p className="text-gray-500 mb-6">Try adjusting your filters or upload the first resource!</p>
@@ -327,7 +320,7 @@ export default function LecturerResourcesPage() {
                     key={resource.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                    className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -494,133 +487,122 @@ function ResourceUploadModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Upload Resource</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <Icon icon="mdi:close" className="text-2xl" />
-          </button>
+    <AccessibleModal
+      isOpen={true}
+      onClose={onClose}
+      title="Upload Resource"
+      size="xl"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            File *
+          </label>
+          <input
+            type="file"
+            required
+            onChange={handleFileChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+          />
+          {file && (
+            <div className="mt-2 text-sm text-gray-600">
+              Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+            </div>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Title *
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+            placeholder="Enter resource title..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Description
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={3}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+            placeholder="Describe the resource..."
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              File *
+              Resource Type *
             </label>
-            <input
-              type="file"
+            <select
               required
-              onChange={handleFileChange}
+              value={formData.resource_type}
+              onChange={(e) => setFormData({ ...formData, resource_type: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-            />
-            {file && (
-              <div className="mt-2 text-sm text-gray-600">
-                Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-              </div>
-            )}
+            >
+              {RESOURCE_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Title *
+              Subject Area
             </label>
             <input
               type="text"
-              required
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              value={formData.subject_area}
+              onChange={(e) => setFormData({ ...formData, subject_area: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-              placeholder="Enter resource title..."
+              placeholder="e.g., Mathematics"
             />
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-              placeholder="Describe the resource..."
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tags (comma-separated)
+          </label>
+          <input
+            type="text"
+            value={formData.tags}
+            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+            placeholder="e.g., algebra, worksheet, grade-9"
+          />
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Resource Type *
-              </label>
-              <select
-                required
-                value={formData.resource_type}
-                onChange={(e) => setFormData({ ...formData, resource_type: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-              >
-                {RESOURCE_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subject Area
-              </label>
-              <input
-                type="text"
-                value={formData.subject_area}
-                onChange={(e) => setFormData({ ...formData, subject_area: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-                placeholder="e.g., Mathematics"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tags (comma-separated)
-            </label>
-            <input
-              type="text"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-              placeholder="e.g., algebra, worksheet, grade-9"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
-              disabled={uploading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
-              disabled={uploading}
-            >
-              {uploading ? 'Uploading...' : 'Upload Resource'}
-            </Button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+        <div className="flex gap-3 pt-4">
+          <Button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
+            disabled={uploading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
+            disabled={uploading}
+          >
+            {uploading ? 'Uploading...' : 'Upload Resource'}
+          </Button>
+        </div>
+      </form>
+    </AccessibleModal>
   );
 }
 

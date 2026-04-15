@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 
 /**
  * GET /api/accessibility/captions/[id]
@@ -43,11 +44,11 @@ export async function PATCH(
     const { id } = await params;
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user } } = await tq.raw.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const body = await request.json();
     const { is_default, label } = body;
@@ -104,11 +105,11 @@ export async function DELETE(
     const { id } = await params;
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user } } = await tq.raw.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     // Check user role
     const { data: userData } = await tq.from('users')

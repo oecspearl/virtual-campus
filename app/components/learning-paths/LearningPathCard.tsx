@@ -138,7 +138,7 @@ export default function LearningPathCard({
 
   if (variant === 'detailed') {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Header with thumbnail */}
         <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600">
           {path.thumbnail && (

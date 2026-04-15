@@ -74,6 +74,7 @@ CREATE TABLE public.users (
   locale VARCHAR(10) DEFAULT 'en',
   timezone VARCHAR(50) DEFAULT 'America/New_York',
   gender VARCHAR CHECK (gender IN ('male', 'female', 'other', 'prefer_not_to_say')),
+  student_id VARCHAR(50),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT users_pkey PRIMARY KEY (id)
@@ -84,6 +85,7 @@ CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_locale ON users(locale);
 CREATE INDEX idx_users_tenant_role ON users(tenant_id, role);
+CREATE INDEX idx_users_student_id ON users(tenant_id, student_id);
 
 -- ============================================================================
 -- TENANT MEMBERSHIPS

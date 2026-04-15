@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import GradingSchemeEditor, { Category, Scale } from "@/app/components/GradingSchemeEditor";
+import GradingSchemeEditor, { Category, Scale } from "@/app/components/gradebook/GradingSchemeEditor";
 
 export default function CreateClassPage() {
   const router = useRouter();

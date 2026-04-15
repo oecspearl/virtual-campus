@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import Link from 'next/link';
 
 interface Announcement {
@@ -103,7 +103,7 @@ export default function AnnouncementsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Global Announcements</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">Global Announcements</h1>
             <p className="mt-2 text-sm text-gray-600">
               Manage system-wide announcements and alerts
             </p>

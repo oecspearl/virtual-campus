@@ -7,40 +7,60 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing required Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  const msg = 'FATAL: Missing required Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY'
+  console.error(msg)
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(msg)
+  }
 }
 
 // Server-side Supabase client for API routes and middleware
 export async function createServerSupabaseClient() {
   try {
     const cookieStore = await cookies()
-    
+
     return createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          cookieStore.set({ name, value, ...options })
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch {
+            // Cookie setting can fail in certain contexts (e.g. after response started)
+          }
         },
         remove(name: string, options: any) {
-          cookieStore.set({ name, value: '', ...options })
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch {
+            // Cookie removal can fail in certain contexts
+          }
         },
       },
     })
   } catch (error) {
-    // Fallback to basic client if cookies are not available
+    // cookies() threw — likely called outside a request context.
+    // Return an unauthenticated client; callers must handle auth failures.
+    console.warn('createServerSupabaseClient: cookies() unavailable, returning unauthenticated client')
     return createClient(supabaseUrl, supabaseAnonKey)
   }
 }
 
-// Service role client that bypasses RLS policies
+// Service role client that bypasses RLS policies.
+// Uses the connection pooler URL if available for better serverless performance.
 export function createServiceSupabaseClient() {
-  return createClient(supabaseUrl, supabaseServiceKey, {
+  const poolerUrl = process.env.SUPABASE_POOLER_URL;
+  return createClient(poolerUrl || supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
-    }
+    },
+    db: {
+      // Use the transaction pooler schema if available
+      schema: 'public',
+    },
   })
 }
 

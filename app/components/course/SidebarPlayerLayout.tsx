@@ -3,11 +3,11 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
-import LessonViewer from '@/app/components/LessonViewer';
-import VideoPlayer from '@/app/components/VideoPlayer';
-import VideoNotesPanel from '@/app/components/VideoNotesPanel';
-import SCORMPlayer from '@/app/components/SCORMPlayer';
-import AITutorWidget from '@/app/components/AITutorWidget';
+import LessonViewer from '@/app/components/lesson/LessonViewer';
+import VideoPlayer from '@/app/components/media/VideoPlayer';
+import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
+import SCORMPlayer from '@/app/components/media/SCORMPlayer';
+import AITutorWidget from '@/app/components/ai/AITutorWidget';
 import RoleGuard from '@/app/components/RoleGuard';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { logLessonView } from '@/lib/activity-tracker';

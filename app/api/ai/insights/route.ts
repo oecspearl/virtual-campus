@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { generateStudentInsights, generateCourseInsights, storeInsights } from '@/lib/ai/insights-generator';
 import { hasRole } from '@/lib/rbac';
+import { authenticateUser, checkRateLimit } from '@/lib/api-auth';
 
 /**
  * GET /api/ai/insights
@@ -11,11 +12,11 @@ export async function GET(request: NextRequest) {
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { data: userData } = await tq
       .from('users')
@@ -79,11 +80,11 @@ export async function POST(request: NextRequest) {
   try {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { data: userData } = await tq
       .from('users')

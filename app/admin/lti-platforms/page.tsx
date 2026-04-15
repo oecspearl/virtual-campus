@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 
 interface LTIExternalPlatform {
   id: string;
@@ -170,7 +170,7 @@ export default function LTIPlatformsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">LTI External Platforms</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">LTI External Platforms</h1>
             <p className="mt-2 text-sm text-gray-600">
               Manage external platforms that can launch this LMS as an LTI tool (Canvas, Blackboard, Moodle, etc.)
             </p>

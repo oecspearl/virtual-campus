@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { hasRole } from "@/lib/database-helpers";
+import { hasRole } from '@/lib/rbac';
+import { courseUpdateSchema, validateBody } from "@/lib/validations";
+import { CACHE_SHORT } from "@/lib/cache-headers";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -20,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
 
-    return NextResponse.json(course);
+    return NextResponse.json(course, { headers: CACHE_SHORT });
   } catch (e: any) {
     console.error('Course GET API error:', e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -70,23 +72,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const body = await request.json();
 
-    // Build update object only with provided fields (allows partial updates)
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
+    // Validate input
+    const validation = validateBody(courseUpdateSchema, body);
+    if (!validation.success) return validation.response;
 
-    // Add fields only if they are provided in the body
-    if (body.title !== undefined) updateData.title = body.title;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail;
-    if (body.grade_level !== undefined) updateData.grade_level = body.grade_level;
-    if (body.subject_area !== undefined) updateData.subject_area = body.subject_area;
-    if (body.difficulty !== undefined) updateData.difficulty = body.difficulty;
-    if (body.modality !== undefined) updateData.modality = body.modality;
-    if (body.estimated_duration !== undefined) updateData.estimated_duration = body.estimated_duration;
-    if (body.syllabus !== undefined) updateData.syllabus = body.syllabus;
-    if (body.published !== undefined) updateData.published = body.published;
-    if (body.featured !== undefined) updateData.featured = body.featured;
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+      ...validation.data,
+    };
 
     // Use tenant query to ensure update works with tenant scoping
     const { data: updatedCourse, error } = await tq
@@ -176,21 +169,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       'certificates',
       'ceu_credits',
       'student_activity_log',
+      'course_sections',
     ];
 
-    // Delete related records (ignore errors for tables that might not exist)
-    for (const tableName of deletionOrder) {
-      try {
-        await tq
-          .from(tableName)
-          .delete()
-          .eq('course_id', id);
-      } catch {
-        // Table might not exist or have different schema, continue
-      }
-    }
+    // Delete related records in parallel (ignore errors for tables that might not exist)
+    await Promise.allSettled(
+      deletionOrder.map(tableName =>
+        tq.from(tableName).delete().eq('course_id', id)
+      )
+    );
 
-    // Handle tables with ON DELETE SET NULL
+    // Handle tables with ON DELETE SET NULL (parallel)
     const setNullTables = [
       'student_risk_indicators',
       'learning_analytics_predictions',
@@ -203,16 +192,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       'files',
     ];
 
-    for (const tableName of setNullTables) {
-      try {
-        await tq
-          .from(tableName)
-          .update({ course_id: null })
-          .eq('course_id', id);
-      } catch {
-        // Table might not exist, continue
-      }
-    }
+    await Promise.allSettled(
+      setNullTables.map(tableName =>
+        tq.from(tableName).update({ course_id: null }).eq('course_id', id)
+      )
+    );
 
     // Delete the course
     const { error: deleteError } = await tq

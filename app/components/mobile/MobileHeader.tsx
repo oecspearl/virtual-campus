@@ -8,7 +8,7 @@ import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
 import { useBranding } from '@/lib/hooks/useBranding';
 import SmartSearch from '@/app/components/SmartSearch';
-import NotificationButton from '@/app/components/NotificationButton';
+import NotificationButton from '@/app/components/notification/NotificationButton';
 
 export default function MobileHeader() {
   const { user, signOut } = useSupabase();
@@ -50,7 +50,10 @@ export default function MobileHeader() {
               priority
             />
           </div>
-          <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <span
+            className="text-lg font-bold bg-clip-text text-transparent"
+            style={{ backgroundImage: 'linear-gradient(to right, var(--theme-primary), var(--theme-secondary))' }}
+          >
             {siteShortName}
           </span>
         </Link>
@@ -70,7 +73,7 @@ export default function MobileHeader() {
           {/* Menu button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-3 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200"
+            className="p-3 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all duration-200"
             aria-label="Menu"
           >
             <Icon
@@ -83,16 +86,17 @@ export default function MobileHeader() {
 
       {/* Mobile Menu */}
       {menuOpen && (
-        <div className="mobile-header-menu absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-xl max-h-[calc(100vh-64px)] overflow-y-auto" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="mobile-header-menu absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-sm max-h-[calc(100vh-64px)] overflow-y-auto" style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <div className="px-4 py-4 space-y-1">
             {/* Main Navigation */}
             <Link
               href="/"
-              className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+              className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                 pathname === '/'
-                  ? 'bg-blue-100 text-blue-700'
+                  ? ''
                   : 'text-gray-700 hover:bg-gray-100'
               }`}
+              {...(pathname === '/' ? { style: { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' } } : {})}
             >
               <div className="flex items-center gap-3">
                 <Icon icon="material-symbols:home" className="w-5 h-5" />
@@ -102,11 +106,12 @@ export default function MobileHeader() {
 
             <Link
               href="/courses"
-              className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+              className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                 pathname.startsWith('/courses')
-                  ? 'bg-blue-100 text-blue-700'
+                  ? ''
                   : 'text-gray-700 hover:bg-gray-100'
               }`}
+              {...(pathname.startsWith('/courses') ? { style: { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' } } : {})}
             >
               <div className="flex items-center gap-3">
                 <Icon icon="material-symbols:book" className="w-5 h-5" />
@@ -118,11 +123,12 @@ export default function MobileHeader() {
               <>
                 <Link
                   href="/dashboard"
-                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                  className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                     pathname.startsWith('/dashboard')
-                      ? 'bg-blue-100 text-blue-700'
+                      ? ''
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
+                  {...(pathname.startsWith('/dashboard') ? { style: { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' } } : {})}
                 >
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:dashboard" className="w-5 h-5" />
@@ -132,11 +138,12 @@ export default function MobileHeader() {
 
                 <Link
                   href="/my-courses"
-                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                  className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                     pathname.startsWith('/my-courses')
-                      ? 'bg-blue-100 text-blue-700'
+                      ? ''
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
+                  {...(pathname.startsWith('/my-courses') ? { style: { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' } } : {})}
                 >
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:school" className="w-5 h-5" />
@@ -146,11 +153,12 @@ export default function MobileHeader() {
 
                 <Link
                   href="/profile"
-                  className={`block px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                  className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                     pathname.startsWith('/profile')
-                      ? 'bg-blue-100 text-blue-700'
+                      ? ''
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
+                  {...(pathname.startsWith('/profile') ? { style: { backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, transparent)', color: 'var(--theme-primary)' } } : {})}
                 >
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:person" className="w-5 h-5" />
@@ -165,7 +173,7 @@ export default function MobileHeader() {
                     await signOut();
                     setMenuOpen(false);
                   }}
-                  className="w-full px-4 py-3 bg-red-50 text-red-600 font-medium rounded-xl hover:bg-red-100 transition-colors text-left"
+                  className="w-full px-4 py-3 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
                     <Icon icon="material-symbols:logout" className="w-5 h-5" />
@@ -180,13 +188,13 @@ export default function MobileHeader() {
                 <div className="border-t border-gray-200 my-2"></div>
                 <Link
                   href="/auth/signin"
-                  className="block w-full px-4 py-3 text-center text-gray-700 font-medium border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="block w-full px-4 py-3 text-center text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/auth/signup"
-                  className="block w-full px-4 py-3 text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
+                  className="block w-full px-4 py-3 text-center bg-slate-800 text-white font-medium rounded-lg  transition-all duration-200"
                 >
                   Sign Up
                 </Link>

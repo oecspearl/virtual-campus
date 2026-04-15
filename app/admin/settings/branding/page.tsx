@@ -7,6 +7,7 @@ import RoleGuard from '@/app/components/RoleGuard';
 import { stripHtml } from '@/lib/utils';
 import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 import { DEFAULT_COLOR_THEMES, CUSTOM_THEME_KEY, type ColorTheme as SharedColorTheme } from '@/lib/color-themes';
+import LoadingIndicator, { InlineLoader } from '@/app/components/ui/LoadingIndicator';
 
 interface Feature {
   icon: string;
@@ -288,17 +289,14 @@ export default function BrandingSettingsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading settings...</p>
-        </div>
+        <LoadingIndicator variant="books" text="Loading settings..." />
       </div>
     );
   }
 
   return (
     <RoleGuard roles={['admin', 'super_admin', 'tenant_admin', 'curriculum_designer']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
@@ -309,7 +307,7 @@ export default function BrandingSettingsPage() {
               <Icon icon="mdi:arrow-left" className="w-5 h-5 mr-2" />
               Back
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">Branding Settings</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">Branding Settings</h1>
             <p className="text-gray-600 mt-2">Manage your site's branding, logos, and visual identity</p>
           </div>
 
@@ -1253,11 +1251,11 @@ export default function BrandingSettingsPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
                 {saving ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <InlineLoader className="mr-2" />
                     Saving...
                   </>
                 ) : (
@@ -1497,8 +1495,7 @@ function FeaturedCourseSelector({
 
       {loading ? (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-500">Loading courses...</p>
+          <LoadingIndicator variant="dots" size="sm" text="Loading courses..." />
         </div>
       ) : filteredCourses.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
@@ -1740,7 +1737,7 @@ function ImageUploadSection({
           >
             {uploading ? (
               <>
-                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                <InlineLoader className="mr-2" />
                 Uploading...
               </>
             ) : (

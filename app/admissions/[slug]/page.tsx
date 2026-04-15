@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, use } from 'react';
+import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 
 interface FormField {
   id: string;
@@ -211,14 +212,8 @@ export default function PublicApplicationPage({ params }: { params: Promise<{ sl
 
   if (state === 'loading') {
     return (
-      <div className="space-y-4">
-        <div className="animate-pulse h-8 bg-gray-200 rounded w-64" />
-        <div className="animate-pulse h-4 bg-gray-200 rounded w-96" />
-        <div className="animate-pulse space-y-3 mt-6">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-200 rounded" />
-          ))}
-        </div>
+      <div className="flex items-center justify-center py-16">
+        <LoadingIndicator variant="pulse" text="Loading application form..." />
       </div>
     );
   }
@@ -500,7 +495,11 @@ export default function PublicApplicationPage({ params }: { params: Promise<{ sl
                       />
                       {uploading[field.id] && (
                         <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                          <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+                          <span className="inline-flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.15s' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                          </span>
                         </div>
                       )}
                     </div>

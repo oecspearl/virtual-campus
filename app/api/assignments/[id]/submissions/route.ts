@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 
 export async function POST(
   request: Request,
@@ -8,10 +8,9 @@ export async function POST(
 ) {
   try {
     const { id: assignmentId } = await params;
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const supabase = await createServerSupabaseClient();
     const serviceSupabase = createServiceSupabaseClient();
@@ -150,10 +149,9 @@ export async function GET(
 ) {
   try {
     const { id: assignmentId } = await params;
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const supabase = await createServerSupabaseClient();
     const serviceSupabase = createServiceSupabaseClient();

@@ -87,7 +87,7 @@ export default function EnhancedDashboard({ courseId }: { courseId?: string }) {
     <div className="space-y-6">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Students</p>
@@ -97,7 +97,7 @@ export default function EnhancedDashboard({ courseId }: { courseId?: string }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Average Progress</p>
@@ -107,7 +107,7 @@ export default function EnhancedDashboard({ courseId }: { courseId?: string }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Assignments</p>
@@ -117,7 +117,7 @@ export default function EnhancedDashboard({ courseId }: { courseId?: string }) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Avg Quiz Score</p>
@@ -130,7 +130,7 @@ export default function EnhancedDashboard({ courseId }: { courseId?: string }) {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -153,7 +153,7 @@ export default function EnhancedDashboard({ courseId }: { courseId?: string }) {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Assignment Status</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={assignmentData}>
@@ -173,7 +173,7 @@ export default function EnhancedDashboard({ courseId }: { courseId?: string }) {
 
       {/* At-Risk Students */}
       {courseId && (
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-lg p-6 shadow-lg border border-gray-200">
           <AtRiskDashboard courseId={courseId} />
         </div>
       )}

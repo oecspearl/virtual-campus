@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { hasRole } from '@/lib/database-helpers';
+import { hasRole } from '@/lib/rbac';
 import { authenticateUser } from '@/lib/api-auth';
 import { createSonisWebClient } from '@/lib/sonisweb/client';
 import type { SonisWebConnection } from '@/lib/sonisweb/types';
 
-const ALLOWED_ROLES = ['admin', 'super_admin', 'tenant_admin'];
+const ALLOWED_ROLES = ['admin', 'super_admin', 'tenant_admin'] as const;
 
 export async function POST(
   request: NextRequest,

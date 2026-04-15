@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 export async function GET(
@@ -9,8 +9,9 @@ export async function GET(
 ) {
   try {
     const { id: courseId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);
@@ -52,8 +53,7 @@ export async function GET(
       console.error('Error message:', error.message);
       console.error('Query details - courseId:', courseId, 'studentId:', studentId, 'isInstructor:', isInstructor, 'isAdmin:', isAdmin);
       return NextResponse.json({
-        error: "Failed to fetch grades",
-        details: error.message || String(error)
+        error: "Failed to fetch grades"
       }, { status: 500 });
     }
 
@@ -72,8 +72,9 @@ export async function POST(
 ) {
   try {
     const { id: courseId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);
@@ -156,8 +157,7 @@ export async function POST(
       console.error('Error details:', error.details);
       console.error('Error hint:', error.hint);
       return NextResponse.json({
-        error: "Failed to create grades",
-        details: error.message || String(error)
+        error: "Failed to create grades"
       }, { status: 500 });
     }
 
@@ -167,9 +167,7 @@ export async function POST(
     console.error('Grades POST API error:', e);
     console.error('Error stack:', e.stack);
     return NextResponse.json({
-      error: "Internal server error",
-      message: e.message || String(e),
-      details: process.env.NODE_ENV === 'development' ? e.stack : undefined
+      error: "Internal server error"
     }, { status: 500 });
   }
 }
@@ -180,8 +178,9 @@ export async function PUT(
 ) {
   try {
     const { id: courseId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);

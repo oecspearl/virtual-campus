@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
-import { cleanupStudentCourseData } from '@/lib/database-helpers';
+import { cleanupStudentCourseData } from '@/lib/enrollment-cleanup';
 
 interface RouteParams {
   params: Promise<{ id: string }>;

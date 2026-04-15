@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { hasRole, cleanupStudentCourseData } from "@/lib/database-helpers";
+import { hasRole } from "@/lib/rbac";
+import { cleanupStudentCourseData } from "@/lib/enrollment-cleanup";
 
 export async function GET(request: NextRequest) {
   try {

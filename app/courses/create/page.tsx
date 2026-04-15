@@ -3,11 +3,11 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import TextEditor from '@/app/components/TextEditor';
-import FileUpload, { UploadResult } from '@/app/components/FileUpload';
+import Button from '@/app/components/ui/Button';
+import TextEditor from '@/app/components/editor/TextEditor';
+import FileUpload, { UploadResult } from '@/app/components/file-upload/FileUpload';
 import RoleGuard from '@/app/components/RoleGuard';
-import MoodleImportButton from '@/app/components/MoodleImportButton';
+import MoodleImportButton from '@/app/components/file-upload/MoodleImportButton';
 
 interface Category {
   id: string;

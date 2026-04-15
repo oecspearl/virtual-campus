@@ -4,7 +4,7 @@ import React from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 import { useSupabase } from "@/lib/supabase-provider";
 
 export default function SurveyDetailPage() {
@@ -144,7 +144,7 @@ export default function SurveyDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-2xl mx-auto px-4">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-200/80 overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-6 py-8 text-center">
               <Icon icon="material-symbols:poll" className="w-12 h-12 text-white mx-auto mb-4" />

@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
 import { hasRole } from '@/lib/rbac';
-import Button from '@/app/components/Button';
-import TextEditor from '@/app/components/TextEditor';
+import Button from '@/app/components/ui/Button';
+import TextEditor from '@/app/components/editor/TextEditor';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -276,7 +276,7 @@ export default function PostDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -293,7 +293,7 @@ export default function PostDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -306,7 +306,7 @@ export default function PostDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <div className="bg-red-50 border border-red-200 rounded-md p-6 text-red-700">
             {error || 'Post not found'}
           </div>
         </div>
@@ -326,11 +326,11 @@ export default function PostDetailPage() {
             <Icon icon="mdi:arrow-left" />
             Back to {post.forum.title}
           </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
+          <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-4">{post.title}</h1>
         </div>
 
         {/* Post */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+        <div className="bg-white rounded-lg p-6 shadow-sm mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#0066CC] rounded-full flex items-center justify-center text-white font-semibold">
@@ -381,7 +381,7 @@ export default function PostDetailPage() {
             {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
           </h2>
           {replies.length === 0 ? (
-            <div className="bg-white rounded-xl p-8 text-center shadow-sm">
+            <div className="bg-white rounded-lg p-8 text-center shadow-sm">
               <Icon icon="mdi:comment-outline" className="text-4xl text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500">No replies yet. Be the first to reply!</p>
             </div>
@@ -394,7 +394,7 @@ export default function PostDetailPage() {
 
         {/* Reply Form */}
         {!post.is_locked && (
-          <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="bg-white rounded-lg p-6 shadow-sm">
             {!showReplyForm ? (
               <Button
                 onClick={() => setShowReplyForm(true)}

@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
 import { hasRole } from '@/lib/rbac';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 
@@ -199,7 +200,7 @@ export default function ResourceDetailPage() {
               key={i}
               type={interactive ? 'button' : undefined}
               onClick={interactive && onRate ? () => onRate(starValue) : undefined}
-              className={interactive ? 'hover:scale-110 transition-transform' : ''}
+              className={interactive ? ' transition-transform' : ''}
             >
               <Icon
                 icon={starValue <= rating ? 'mdi:star' : 'mdi:star-outline'}
@@ -218,7 +219,7 @@ export default function ResourceDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -235,7 +236,7 @@ export default function ResourceDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -248,7 +249,7 @@ export default function ResourceDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <div className="bg-red-50 border border-red-200 rounded-md p-6 text-red-700">
             {error || 'Resource not found'}
           </div>
         </div>
@@ -268,7 +269,7 @@ export default function ResourceDetailPage() {
             <Icon icon="mdi:arrow-left" />
             Back to Resources
           </button>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{resource.title}</h1>
+          <h1 className="text-2xl font-normal text-slate-900 tracking-tight mb-2">{resource.title}</h1>
           <div className="flex items-center gap-4 text-sm text-gray-500">
             <span>By {resource.uploaded_by_user?.name || 'Unknown'}</span>
             <span>•</span>
@@ -279,7 +280,7 @@ export default function ResourceDetailPage() {
         </div>
 
         {/* Resource Info Card */}
-        <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+        <div className="bg-white rounded-lg p-6 shadow-sm mb-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               {resource.description && (
@@ -359,7 +360,7 @@ export default function ResourceDetailPage() {
         </div>
 
         {/* Ratings Section */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
               Ratings & Reviews ({resource.rating_count})
@@ -456,7 +457,7 @@ function RatingFormModal({
               key={i}
               type="button"
               onClick={() => onRate(starValue)}
-              className="hover:scale-110 transition-transform"
+              className=" transition-transform"
             >
               <Icon
                 icon={starValue <= currentRating ? 'mdi:star' : 'mdi:star-outline'}
@@ -472,63 +473,55 @@ function RatingFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-xl p-6 max-w-md w-full"
+    <AccessibleModal
+      isOpen={true}
+      onClose={onClose}
+      title="Rate Resource"
+      size="sm"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (rating > 0) {
+            onSubmit(rating, comment);
+          }
+        }}
+        className="space-y-4"
       >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Rate Resource</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <Icon icon="mdi:close" className="text-2xl" />
-          </button>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Rating *</label>
+          {renderStars(rating, setRating)}
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (rating > 0) {
-              onSubmit(rating, comment);
-            }
-          }}
-          className="space-y-4"
-        >
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Rating *</label>
-            {renderStars(rating, setRating)}
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={4}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+            placeholder="Share your thoughts about this resource..."
+          />
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-              placeholder="Share your thoughts about this resource..."
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
-              disabled={rating === 0}
-            >
-              Submit Rating
-            </Button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+        <div className="flex gap-3 pt-4">
+          <Button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
+            disabled={rating === 0}
+          >
+            Submit Rating
+          </Button>
+        </div>
+      </form>
+    </AccessibleModal>
   );
 }
 

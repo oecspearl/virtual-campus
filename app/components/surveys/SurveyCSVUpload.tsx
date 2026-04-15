@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Icon } from "@iconify/react";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 
 interface SurveyCSVUploadProps {
   courseId?: string;
@@ -84,7 +84,7 @@ export default function SurveyCSVUpload({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+      <div className="bg-white rounded-lg shadow-sm max-w-lg w-full">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-3">
@@ -120,7 +120,11 @@ export default function SurveyCSVUpload({
 
             {uploading ? (
               <div className="flex flex-col items-center">
-                <Icon icon="material-symbols:progress-activity" className="w-12 h-12 text-blue-500 animate-spin mb-3" />
+                <span className="inline-flex items-center gap-1.5 mb-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.15s' }} />
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                </span>
                 <p className="text-sm text-gray-600">Uploading...</p>
               </div>
             ) : (

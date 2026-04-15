@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { createServiceSupabaseClient } from "@/lib/supabase-server";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 
 // Maximum file size for profile pictures (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -17,12 +17,11 @@ const ALLOWED_MIME_TYPES = [
 export async function POST(request: Request) {
   try {
     // Authenticate user
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
-    const supabase = await createServerSupabaseClient();
+    const serviceSupabase = createServiceSupabaseClient();
 
     // Parse form data
     const formData = await request.formData();
@@ -54,9 +53,8 @@ export async function POST(request: Request) {
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `profile-pictures/${user.id}/${timestamp}-${randomString}.${fileExtension}`;
 
-    // Upload file to Supabase Storage
-    // Use course-materials bucket with profile-pictures folder, or create dedicated bucket
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    // Upload file to Supabase Storage using service client (bypasses RLS)
+    const { data: uploadData, error: uploadError } = await serviceSupabase.storage
       .from('course-materials')
       .upload(fileName, file, {
         cacheControl: '3600',
@@ -67,20 +65,20 @@ export async function POST(request: Request) {
     if (uploadError) {
       console.error('Supabase upload error:', uploadError);
       return NextResponse.json(
-        { error: "File upload failed", details: uploadError.message },
+        { error: "File upload failed" },
         { status: 500 }
       );
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = serviceSupabase.storage
       .from('course-materials')
       .getPublicUrl(fileName);
 
     if (!urlData || !urlData.publicUrl) {
       console.error("Failed to get public URL for uploaded file");
       // Try to clean up uploaded file
-      await supabase.storage.from('course-materials').remove([fileName]);
+      await serviceSupabase.storage.from('course-materials').remove([fileName]);
       return NextResponse.json(
         { error: "Failed to generate file URL" },
         { status: 500 }
@@ -88,43 +86,20 @@ export async function POST(request: Request) {
     }
 
     // Update user_profiles with new avatar URL
-    // Use service client to bypass RLS (should work if service role key is set)
-    // If service client fails, the RLS policies should allow the user to update their own profile
-    let profileResult;
-    let profileError;
-    
-    // First, try with service client (bypasses RLS completely)
-    const serviceSupabase = createServiceSupabaseClient();
+    const tenantId = user.tenant_id || '00000000-0000-0000-0000-000000000001';
     const serviceResult = await serviceSupabase
       .from("user_profiles")
       .upsert({
         user_id: user.id,
+        tenant_id: tenantId,
         avatar: urlData.publicUrl,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" })
       .select("avatar")
       .single();
-    
-    profileResult = serviceResult.data;
-    profileError = serviceResult.error;
-    
-    // If service client failed (likely RLS issue), try with regular client
-    // This will work if RLS policies are properly configured
-    if (profileError && profileError.message?.includes('row-level security')) {
-      console.log("Service client failed with RLS error, trying regular client with RLS policies...");
-      const regularResult = await supabase
-        .from("user_profiles")
-        .upsert({
-          user_id: user.id,
-          avatar: urlData.publicUrl,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" })
-        .select("avatar")
-        .single();
-      
-      profileResult = regularResult.data;
-      profileError = regularResult.error;
-    }
+
+    const profileResult = serviceResult.data;
+    const profileError = serviceResult.error;
 
     if (profileError) {
       console.error("Profile update error:", profileError);
@@ -135,7 +110,7 @@ export async function POST(request: Request) {
       
       // Try to clean up uploaded file
       try {
-        await supabase.storage.from('course-materials').remove([fileName]);
+        await serviceSupabase.storage.from('course-materials').remove([fileName]);
       } catch (cleanupError) {
         console.error("Failed to cleanup uploaded file:", cleanupError);
       }
@@ -147,10 +122,8 @@ export async function POST(request: Request) {
       }
       
       return NextResponse.json(
-        { 
-          error: errorMessage,
-          details: profileError.message || profileError.hint || "Unknown error",
-          code: profileError.code
+        {
+          error: errorMessage
         },
         { status: 500 }
       );
@@ -168,9 +141,8 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Avatar upload error:", error);
     return NextResponse.json(
-      { 
-        error: "Internal server error",
-        details: error?.message || "Unknown error occurred"
+      {
+        error: "Internal server error"
       },
       { status: 500 }
     );

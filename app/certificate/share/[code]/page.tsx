@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
-import CertificateShareView from '@/app/components/CertificateShareView';
+import CertificateShareView from '@/app/components/certificate/CertificateShareView';
 
 interface PageProps {
   params: Promise<{ code: string }>;

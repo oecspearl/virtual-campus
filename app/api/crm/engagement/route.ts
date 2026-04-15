@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/api-auth';
-import { hasRole } from '@/lib/database-helpers';
+import { hasRole } from '@/lib/rbac';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { getEngagementTrend } from '@/lib/crm/engagement-engine';
 

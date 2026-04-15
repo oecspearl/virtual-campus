@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 import { v4 as uuidv4 } from 'uuid';
 import { createGoogleMeetLink, isGoogleCalendarConfigured } from '@/lib/google-calendar';
 
 export async function GET(request: NextRequest) {
   try {
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
+    }
+    const user = authResult.user;
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('course_id');
@@ -87,14 +88,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
+    }
+    const user = authResult.user;
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     let body;
     try {
@@ -123,14 +123,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title and course_id are required' }, { status: 400 });
     }
 
-    // Get user data to check role
-    const { data: userData, error: userError } = await tq
+    // Get user data to check role (use raw client to avoid tenant mismatch)
+    const { data: userData, error: userError } = await tq.raw
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single();
 
     if (userError || !userData) {
+      console.error('User lookup failed:', userError?.message, 'user.id:', user.id);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
@@ -182,47 +183,37 @@ export async function POST(request: NextRequest) {
     }
 
     if (video_provider === 'google_meet') {
-      // For Google Meet, use provided link or create via Calendar API
+      // For Google Meet, use provided link or auto-generate via Calendar API
       if (providedGoogleMeetLink && providedGoogleMeetLink.startsWith('https://meet.google.com/')) {
         googleMeetLink = providedGoogleMeetLink;
-      } else {
-        // Try to create a valid Google Meet link via Calendar API
-        if (isGoogleCalendarConfigured() && scheduled_at) {
-          try {
-            const startTime = new Date(scheduled_at);
-            const endTime = new Date(startTime.getTime() + (duration_minutes * 60 * 1000));
-            const meetLink = await createGoogleMeetLink(
-              title,
-              description || '',
-              startTime,
-              endTime,
-              timezone
-            );
+      } else if (isGoogleCalendarConfigured()) {
+        // Auto-generate via Google Calendar API (works for both scheduled and instant meetings)
+        const startTime = scheduled_at ? new Date(scheduled_at) : new Date();
+        const endTime = new Date(startTime.getTime() + (duration_minutes * 60 * 1000));
+        const result = await createGoogleMeetLink(
+          title,
+          description || '',
+          startTime,
+          endTime,
+          timezone
+        );
 
-            if (meetLink) {
-              googleMeetLink = meetLink;
-            } else {
-              // Calendar API failed, require manual link
-              return NextResponse.json({
-                error: 'Failed to create Google Meet link. Please provide a Google Meet link manually or configure Google Calendar API credentials.',
-                requiresManualLink: true
-              }, { status: 400 });
-            }
-          } catch (error) {
-            console.error('Error creating Google Meet link:', error);
-            return NextResponse.json({
-              error: 'Failed to create Google Meet link. Please provide a Google Meet link manually.',
-              requiresManualLink: true
-            }, { status: 400 });
-          }
+        if ('link' in result) {
+          googleMeetLink = result.link;
         } else {
-          // Google Calendar API not configured - require manual link
+          console.error('[Conference] Google Meet auto-generation failed:', result.error);
           return NextResponse.json({
-            error: 'Google Meet link is required. Please provide a Google Meet link or configure Google Calendar API to auto-generate links.',
-            requiresManualLink: true,
-            hint: 'To auto-generate links, configure GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY environment variables.'
+            error: `Failed to auto-generate Google Meet link: ${result.error}`,
+            requiresManualLink: true
           }, { status: 400 });
         }
+      } else {
+        // Google Calendar API not configured and no manual link provided
+        return NextResponse.json({
+          error: 'Google Meet link is required. Please provide a Google Meet link or configure Google Calendar API to auto-generate links.',
+          requiresManualLink: true,
+          hint: 'To auto-generate links, configure GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY environment variables.'
+        }, { status: 400 });
       }
       meetingUrl = googleMeetLink; // Use same URL for compatibility
     } else if (video_provider === 'bigbluebutton') {

@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extensions";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const { searchParams } = new URL(request.url);
     const requestedStudentId = searchParams.get("studentId");
@@ -60,8 +61,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(_request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
     
     // Use service client to fetch quiz (bypasses RLS to ensure students can access quizzes)
     const supabase = createServiceSupabaseClient();
@@ -187,7 +189,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     if (createError) {
       console.error('Quiz attempt creation error:', createError);
       console.error('Payload that failed:', payload);
-      return NextResponse.json({ error: "Failed to create quiz attempt", details: createError.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to create quiz attempt" }, { status: 500 });
     }
     
     return NextResponse.json({ id: attempt.id });

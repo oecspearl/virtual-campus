@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
 import { hasRole } from '@/lib/rbac';
-import Button from '@/app/components/Button';
-import TextEditor from '@/app/components/TextEditor';
+import Button from '@/app/components/ui/Button';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
+import TextEditor from '@/app/components/editor/TextEditor';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -176,7 +177,7 @@ export default function ForumDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -193,7 +194,7 @@ export default function ForumDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
+          <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           </div>
@@ -206,7 +207,7 @@ export default function ForumDetailPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <div className="bg-red-50 border border-red-200 rounded-md p-6 text-red-700">
             {error || 'Forum not found'}
           </div>
         </div>
@@ -232,7 +233,7 @@ export default function ForumDetailPage() {
             <Icon icon="mdi:arrow-left" />
             Back to Forums
           </button>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{forum.title}</h1>
+          <h1 className="text-2xl font-normal text-slate-900 tracking-tight mb-2">{forum.title}</h1>
           {forum.description && (
             <p className="text-gray-600 mb-4">{forum.description}</p>
           )}
@@ -258,7 +259,7 @@ export default function ForumDetailPage() {
 
         {/* Posts List */}
         {sortedPosts.length === 0 ? (
-          <div className="bg-white rounded-xl p-12 text-center shadow-sm">
+          <div className="bg-white rounded-lg p-12 text-center shadow-sm">
             <Icon icon="mdi:forum-outline" className="text-6xl text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No posts yet</h3>
             <p className="text-gray-500">Be the first to start a discussion!</p>
@@ -270,7 +271,7 @@ export default function ForumDetailPage() {
                 key={post.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => router.push(`/lecturers/forums/posts/${post.id}`)}
               >
                 <div className="flex items-start justify-between">
@@ -332,68 +333,55 @@ export default function ForumDetailPage() {
         )}
 
         {/* Create Post Modal */}
-        {showCreatePost && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Create New Post</h2>
-                <button
-                  onClick={() => setShowCreatePost(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <Icon icon="mdi:close" className="text-2xl" />
-                </button>
-              </div>
+        <AccessibleModal
+          isOpen={showCreatePost}
+          onClose={() => setShowCreatePost(false)}
+          title="Create New Post"
+          size="xl"
+        >
+          <form onSubmit={handleCreatePost} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Post Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={newPost.title}
+                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
+                placeholder="Enter post title..."
+              />
+            </div>
 
-              <form onSubmit={handleCreatePost} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Post Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newPost.title}
-                    onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0066CC] focus:border-transparent"
-                    placeholder="Enter post title..."
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Content *
+              </label>
+              <TextEditor
+                value={newPost.content}
+                onChange={(content) => setNewPost({ ...newPost, content })}
+                placeholder="Write your post content..."
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Content *
-                  </label>
-                  <TextEditor
-                    value={newPost.content}
-                    onChange={(content) => setNewPost({ ...newPost, content })}
-                    placeholder="Write your post content..."
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    type="button"
-                    onClick={() => setShowCreatePost(false)}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
-                  >
-                    Create Post
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                onClick={() => setShowCreatePost(false)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-[#0066CC] hover:bg-[#0052A3] text-white"
+              >
+                Create Post
+              </Button>
+            </div>
+          </form>
+        </AccessibleModal>
       </div>
     </div>
   );

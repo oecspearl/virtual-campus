@@ -102,16 +102,16 @@ export default function StudyGroupCard({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+          <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
             {group.avatar_url ? (
               <img
                 src={group.avatar_url}
                 alt={group.name}
-                className="w-full h-full rounded-xl object-cover"
+                className="w-full h-full rounded-lg object-cover"
               />
             ) : (
               group.name.charAt(0).toUpperCase()

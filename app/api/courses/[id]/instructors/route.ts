@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser } from '@/lib/api-auth';
 
 export async function GET(
   request: NextRequest,
@@ -48,12 +49,11 @@ export async function POST(
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    // Authenticate via tenant query raw client for auth
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { id: courseId } = await params;
     const body = await request.json();
@@ -144,11 +144,11 @@ export async function DELETE(
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    const { data: { user }, error: authError } = await tq.raw.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
+    const user = authResult.user;
 
     const { id: courseId } = await params;
     const { searchParams } = new URL(request.url);

@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import RoleGuard from '@/app/components/RoleGuard';
-import LessonList, { LessonItem } from '@/app/components/LessonList';
+import LessonList, { LessonItem } from '@/app/components/lesson/LessonList';
 
 interface Course {
   id: string;

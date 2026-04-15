@@ -51,7 +51,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={toast.id}
-              className={`flex items-start gap-3 px-4 py-3 rounded-xl border shadow-lg ${config.bg} ${config.border} animate-in slide-in-from-right`}
+              className={`flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg ${config.bg} ${config.border} animate-in slide-in-from-right`}
               style={{ animation: 'slideIn 0.3s ease-out' }}
             >
               <Icon icon={config.icon} className={`w-5 h-5 flex-shrink-0 mt-0.5 ${config.text}`} />

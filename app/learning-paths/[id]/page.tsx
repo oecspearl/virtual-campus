@@ -163,7 +163,7 @@ export default function LearningPathPage({ params }: PageProps) {
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg" />
             <div className="space-y-3">
               <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
@@ -207,7 +207,7 @@ export default function LearningPathPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="relative bg-gradient-to-br from-blue-600 to-purple-700 text-white">
+      <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white">
         {path.thumbnail && (
           <div className="absolute inset-0">
             <Image
@@ -243,7 +243,7 @@ export default function LearningPathPage({ params }: PageProps) {
                 )}
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-bold mb-3">{path.title}</h1>
+              <h1 className="text-xl md:text-2xl font-normal text-slate-900 tracking-tight mb-3">{path.title}</h1>
 
               {path.description && (
                 <p className="text-white/80 text-lg mb-4">{path.description}</p>
@@ -272,7 +272,7 @@ export default function LearningPathPage({ params }: PageProps) {
             {/* Progress or enroll */}
             <div className="md:w-64">
               {isEnrolled ? (
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
                   {!isCompleted && progress && (
                     <>
                       <div className="flex justify-between text-sm mb-2">
@@ -310,7 +310,7 @@ export default function LearningPathPage({ params }: PageProps) {
                 <button
                   onClick={handleEnroll}
                   disabled={enrolling}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 disabled:opacity-50 transition-colors"
                 >
                   {enrolling ? (
                     <div className="w-5 h-5 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
@@ -375,7 +375,7 @@ function CourseCard({
 
   return (
     <div
-      className={`relative bg-white dark:bg-gray-800 rounded-xl border ${
+      className={`relative bg-white dark:bg-gray-800 rounded-lg border ${
         isLocked
           ? 'border-gray-200 dark:border-gray-700 opacity-60'
           : isCompleted

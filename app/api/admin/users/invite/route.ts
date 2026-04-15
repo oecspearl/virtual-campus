@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { hasRole } from "@/lib/database-helpers";
+import { hasRole } from '@/lib/rbac';
 import { notifyStudentWelcome } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {

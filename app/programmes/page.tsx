@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
-import Breadcrumb from '@/app/components/Breadcrumb';
+import Breadcrumb from '@/app/components/ui/Breadcrumb';
 import { stripHtml } from '@/lib/utils';
 
 interface Programme {
@@ -96,9 +96,9 @@ export default function ProgrammesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-16">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-16">
         <div className="container mx-auto px-4 max-w-7xl">
           <Breadcrumb
             items={[
@@ -107,7 +107,7 @@ export default function ProgrammesPage() {
             ]}
             className="mb-6 text-white/80"
           />
-          <h1 className="text-4xl font-bold mb-4">Learning Programmes</h1>
+          <h1 className="text-2xl font-normal text-slate-900 tracking-tight mb-4">Learning Programmes</h1>
           <p className="text-xl text-white/80 max-w-2xl">
             Structured learning paths with multiple courses. Complete all courses to earn your programme certificate.
           </p>
@@ -116,7 +116,7 @@ export default function ProgrammesPage() {
 
       <div className="container mx-auto px-4 max-w-7xl py-8">
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -172,7 +172,7 @@ export default function ProgrammesPage() {
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
           </div>
         ) : filteredProgrammes.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
+          <div className="text-center py-16 bg-white rounded-lg shadow">
             <Icon icon="material-symbols:school" className="w-20 h-20 mx-auto text-gray-300 mb-4" />
             <h3 className="text-xl font-medium text-gray-900 mb-2">No programmes found</h3>
             <p className="text-gray-600">Try adjusting your search or filters</p>
@@ -185,10 +185,10 @@ export default function ProgrammesPage() {
                 <Link
                   key={programme.id}
                   href={`/programmes/${programme.id}`}
-                  className="group bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-lg transition-all duration-200"
+                  className="group bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-lg transition-all duration-200"
                 >
                   {/* Thumbnail or gradient */}
-                  <div className="h-40 bg-gradient-to-br from-indigo-500 to-purple-600 relative">
+                  <div className="h-40 bg-gradient-to-br from-blue-600 to-blue-700 relative">
                     {programme.thumbnail ? (
                       <img
                         src={programme.thumbnail}

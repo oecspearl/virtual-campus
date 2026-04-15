@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { getCurrentUser } from '@/lib/database-helpers';
+import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 
 // GET - Fetch resource links for a course or lesson
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return createAuthResponse(authResult.error!, authResult.status!);
+    }
+
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
     const lessonId = searchParams.get('lessonId');
@@ -15,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query
-    let query = supabase
+    let query = tq
       .from('resource_links')
       .select('*')
       .order('order', { ascending: true });
@@ -45,12 +51,9 @@ export async function GET(request: NextRequest) {
 // POST - Create a new resource link
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    const authResult = await authenticateUser(request);
+    if (!authResult.success) {
+      return createAuthResponse(authResult.error!, authResult.status!);
     }
 
     const body = await request.json();
@@ -63,7 +66,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify that either courseId or lessonId is provided
     if (!courseId && !lessonId) {
       return NextResponse.json(
         { error: 'courseId or lessonId is required' },
@@ -71,18 +73,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Note: Both courseId and lessonId can be provided for lesson-level links
-    // This allows lesson links to be associated with both the lesson and its course
-
-    // Verify user has permission (instructor, curriculum_designer, admin, or super_admin)
-    if (!['instructor', 'curriculum_designer', 'admin', 'super_admin'].includes(user.role)) {
+    // Verify user has permission
+    if (!['instructor', 'curriculum_designer', 'admin', 'super_admin', 'tenant_admin'].includes(authResult.userProfile.role)) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
         { status: 403 }
       );
     }
 
-    const supabase = await createServerSupabaseClient();
+    const tenantId = getTenantIdFromRequest(request);
+    const tq = createTenantQuery(tenantId);
 
     // Create the resource link
     const insertData: any = {
@@ -90,14 +90,14 @@ export async function POST(request: NextRequest) {
       url,
       description: description || null,
       link_type: link_type || 'external',
-      created_by: user.id,
+      created_by: authResult.user.id,
       order: 0
     };
 
     if (courseId) insertData.course_id = courseId;
     if (lessonId) insertData.lesson_id = lessonId;
 
-    const { data: link, error } = await supabase
+    const { data: link, error } = await tq
       .from('resource_links')
       .insert(insertData)
       .select()
@@ -114,4 +114,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAtRiskStudents, calculateStudentRisk } from '@/lib/analytics/risk-prediction';
 import { authenticateUser } from '@/lib/api-auth';
-import { hasRole } from '@/lib/database-helpers';
+import { hasRole } from '@/lib/rbac';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Only instructors and admins can view at-risk students
-    if (!hasRole(authResult.userProfile, ['instructor', 'admin', 'super_admin'])) {
+    if (!hasRole(authResult.userProfile?.role, ['instructor', 'admin', 'super_admin'])) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!hasRole(authResult.userProfile, ['instructor', 'admin', 'super_admin'])) {
+    if (!hasRole(authResult.userProfile?.role, ['instructor', 'admin', 'super_admin'])) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

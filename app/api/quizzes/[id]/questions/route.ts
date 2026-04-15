@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
@@ -32,11 +32,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await getCurrentUser();
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) return createAuthResponse("Forbidden", 403);
+
     const data = await request.json();
     const serviceSupabase = createServiceSupabaseClient();
     
@@ -85,7 +85,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     
     if (error) {
       console.error('Question creation error:', error);
-      return NextResponse.json({ error: "Failed to create question", details: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to create question" }, { status: 500 });
     }
     
     return NextResponse.json({ id: question.id });

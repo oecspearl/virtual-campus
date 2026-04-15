@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<enterprise>
+	<properties>
+		<datasource>Sir Arthur Lewis Community College SONISWeb</datasource>
+		<datetime>2026-2-18T14:4:44</datetime>
+	</properties>
+
+	<person>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>AB3846951</id>
+		</sourcedid>
+		<userid>AB3846951</userid>
+		<name>
+			<fn>Chante Abbot</fn>
+			<n>
+				<family>Abbot</family>
+				<given>Chante</given>
+				<suffix/>
+			</n>
+		</name>
+		<email>chabbot@salcc.edu.lc</email>
+	</person>
+
+	<person>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>AB6728418</id>
+		</sourcedid>
+		<userid>AB6728418</userid>
+		<name>
+			<fn>Phil Abbot</fn>
+			<n>
+				<family>Abbot</family>
+				<given>Phil</given>
+				<suffix/>
+			</n>
+		</name>
+		<email>phabbot@salcc.edu.lc</email>
+	</person>
+
+	<person>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>VA7304700</id>
+		</sourcedid>
+		<userid>VA7304700</userid>
+		<name>
+			<fn>Valez Abel</fn>
+			<n>
+				<family>Abel</family>
+				<given>Valez</given>
+				<suffix/>
+			</n>
+		</name>
+		<email>vaabel@salcc.edu.lc</email>
+	</person>
+
+	<group>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>2512237418787330</id>
+		</sourcedid>
+		<description>
+			<short>MAT236:A:MAIN Probability and Distribution</short>
+			<long>MAT236:A:MAIN Probability and Distribution</long>
+		</description>
+		<org>
+			<orgunit>202526 Spring</orgunit>
+		</org>
+	</group>
+
+	<group>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>2512239889457020</id>
+		</sourcedid>
+		<description>
+			<short>MAT235:A:MAIN Discrete Mathematics II</short>
+			<long>MAT235:A:MAIN Discrete Mathematics II</long>
+		</description>
+		<org>
+			<orgunit>202526 Spring</orgunit>
+		</org>
+	</group>
+
+	<group>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>2512231847224550</id>
+		</sourcedid>
+		<description>
+			<short>SOC214:A:MAIN Caribbean Social Issues II</short>
+			<long>SOC214:A:MAIN Caribbean Social Issues II</long>
+		</description>
+		<org>
+			<orgunit>202526 Spring</orgunit>
+		</org>
+	</group>
+
+	<membership>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>2512237418787330</id>
+		</sourcedid>
+		<member>
+			<sourcedid>
+				<source>Sir Arthur Lewis Community College SONISWeb</source>
+				<id>AB3846951</id>
+			</sourcedid>
+			<idtype>1</idtype>
+			<role roletype="01">
+				<status>1</status>
+			</role>
+		</member>
+	</membership>
+
+	<membership>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>2512239889457020</id>
+		</sourcedid>
+		<member>
+			<sourcedid>
+				<source>Sir Arthur Lewis Community College SONISWeb</source>
+				<id>AB3846951</id>
+			</sourcedid>
+			<idtype>1</idtype>
+			<role roletype="01">
+				<status>1</status>
+			</role>
+		</member>
+	</membership>
+
+	<membership>
+		<sourcedid>
+			<source>Sir Arthur Lewis Community College SONISWeb</source>
+			<id>2512231847224550</id>
+		</sourcedid>
+		<member>
+			<sourcedid>
+				<source>Sir Arthur Lewis Community College SONISWeb</source>
+				<id>AB3846951</id>
+			</sourcedid>
+			<idtype>1</idtype>
+			<role roletype="01">
+				<status>1</status>
+			</role>
+		</member>
+	</membership>
+
+</enterprise>

@@ -32,7 +32,7 @@ export default function LearningPath({
   const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
       {courseTitle && (
         <div className="mb-4 pb-4 border-b border-gray-200">
           <h3 className="text-lg font-bold text-gray-900">{courseTitle}</h3>

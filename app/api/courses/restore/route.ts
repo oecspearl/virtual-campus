@@ -11,14 +11,19 @@ export const maxDuration = 300; // 5 minutes for Vercel Pro
 const MAX_FILES = 100;
 const MAX_TOTAL_SIZE = 500 * 1024 * 1024; // 500MB
 const MAX_UNCOMPRESSED_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+const FILE_UPLOAD_CONCURRENCY = 5;
 
 interface BackupManifest {
   version: string;
   timestamp: string;
   includesUserData?: boolean;
   course: any;
-  instructors: Array<{ instructor_id: string }>;
+  instructors: Array<{ instructor_id: string; instructor_email?: string }>;
   lessons: any[];
+  quizzes?: any[];
+  questions?: any[];
+  assignments?: any[];
+  discussions?: any[];
   files: Record<string, { name: string; hash: string }>;
   userData?: {
     classes: any[];
@@ -41,19 +46,49 @@ function sanitizePath(path: string): string {
 }
 
 /**
- * Check if file hash already exists in storage (deduplication)
+ * Strip internal mapping fields (prefixed with _) before DB insert
  */
-async function findFileByHash(
-  supabase: any,
-  hash: string
-): Promise<{ fileId: string; url: string } | null> {
-  // Note: This requires storing file hashes in the database
-  // For now, we'll upload all files and rely on Supabase Storage deduplication
-  // TODO: Add file_hash column to files table for better deduplication
-  return null;
+function stripInternalFields(obj: any): any {
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (!key.startsWith('_') && key !== 'student_email' && key !== 'student_name') {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
+/**
+ * Update file references in content/resource items, handling both fileId and file_id patterns
+ */
+function updateFileReferences(items: any[], fileMapping: Record<string, string>): any[] {
+  return (items || []).map((item: any) => {
+    if (!item?.data) return item;
+
+    const oldFileId = item.data.fileId || item.data.file_id;
+    if (oldFileId && fileMapping[oldFileId]) {
+      const newFileId = fileMapping[oldFileId];
+      return {
+        ...item,
+        data: {
+          ...item.data,
+          ...(item.data.fileId ? { fileId: newFileId } : {}),
+          ...(item.data.file_id ? { file_id: newFileId } : {}),
+          url: `/api/files/${newFileId}`
+        }
+      };
+    }
+    return item;
+  });
 }
 
 export async function POST(request: Request) {
+  // Track created resources for rollback on failure
+  let createdCourseId: string | null = null;
+  let uploadedStorageFiles: string[] = [];
+  let createdFileIds: string[] = [];
+  let serviceSupabase: any = null;
+
   try {
     // Authenticate user
     const authResult = await authenticateUser(request as any);
@@ -68,28 +103,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
-    // Get form data
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-
-    if (!file) {
-      return NextResponse.json({ error: "No backup file provided" }, { status: 400 });
-    }
-
-    // Validate file type
-    if (!file.name.endsWith('.zip') && file.type !== 'application/zip' && file.type !== 'application/x-zip-compressed') {
-      return NextResponse.json({ error: "Backup file must be a ZIP file" }, { status: 400 });
-    }
-
-    // Check file size
-    if (file.size > MAX_TOTAL_SIZE) {
-      return NextResponse.json({
-        error: `Backup file too large (${Math.round(file.size / 1024 / 1024)}MB). Maximum is ${MAX_TOTAL_SIZE / 1024 / 1024}MB.`
-      }, { status: 400 });
-    }
-
     const supabase = await createServerSupabaseClient();
-    const serviceSupabase = createServiceSupabaseClient();
+    serviceSupabase = createServiceSupabaseClient();
 
     // Resolve tenant for this request
     let tenantId = '00000000-0000-0000-0000-000000000001';
@@ -100,10 +115,52 @@ export async function POST(request: Request) {
       // fallback to default tenant
     }
 
-    // Read and extract ZIP file
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
+    let buffer: Buffer;
+    const contentType = request.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      // Storage-first flow: file already uploaded to Supabase Storage
+      const body = await request.json();
+      const { storagePath } = body;
+
+      if (!storagePath) {
+        return NextResponse.json({ error: "No storagePath provided" }, { status: 400 });
+      }
+
+      const { data: fileData, error: downloadError } = await serviceSupabase.storage
+        .from('course-materials')
+        .download(storagePath);
+
+      if (downloadError || !fileData) {
+        return NextResponse.json({ error: "Failed to download backup from storage" }, { status: 400 });
+      }
+
+      buffer = Buffer.from(await fileData.arrayBuffer());
+
+      // Clean up temp file (fire and forget)
+      serviceSupabase.storage.from('course-materials').remove([storagePath]).catch(() => {});
+    } else {
+      // Legacy flow: file sent directly in FormData
+      const formData = await request.formData();
+      const file = formData.get('file') as File | null;
+
+      if (!file) {
+        return NextResponse.json({ error: "No backup file provided" }, { status: 400 });
+      }
+
+      if (!file.name.endsWith('.zip') && file.type !== 'application/zip' && file.type !== 'application/x-zip-compressed') {
+        return NextResponse.json({ error: "Backup file must be a ZIP file" }, { status: 400 });
+      }
+
+      if (file.size > MAX_TOTAL_SIZE) {
+        return NextResponse.json({
+          error: `Backup file too large (${Math.round(file.size / 1024 / 1024)}MB). Maximum is ${MAX_TOTAL_SIZE / 1024 / 1024}MB.`
+        }, { status: 400 });
+      }
+
+      buffer = Buffer.from(await file.arrayBuffer());
+    }
+
     let zip: JSZip;
     try {
       zip = await JSZip.loadAsync(buffer);
@@ -117,22 +174,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid backup file: manifest.json not found" }, { status: 400 });
     }
 
-    // Check total uncompressed size (ZIP bomb protection)
-    let totalUncompressedSize = 0;
-    zip.forEach((relativePath, file) => {
-      if (!file.dir) {
-        totalUncompressedSize += (file as any)._data?.uncompressedSize || 0;
+    // ZIP bomb protection: extract manifest first, then measure actual file sizes
+    // instead of relying on unreliable internal JSZip properties
+    let totalExtractedSize = 0;
+    const filesInZip = new Map<string, JSZip.JSZipObject>();
+    zip.forEach((relativePath, zipEntry) => {
+      if (!zipEntry.dir) {
+        filesInZip.set(relativePath, zipEntry);
       }
     });
 
-    if (totalUncompressedSize > MAX_UNCOMPRESSED_SIZE) {
-      return NextResponse.json({
-        error: `Backup file uncompressed size too large (${Math.round(totalUncompressedSize / 1024 / 1024)}MB). Maximum is ${MAX_UNCOMPRESSED_SIZE / 1024 / 1024}MB.`
-      }, { status: 400 });
-    }
-
-    // Parse manifest
+    // Parse manifest first (small file, safe to extract)
     const manifestContent = await manifestFile.async('string');
+    totalExtractedSize += manifestContent.length;
+
     let manifest: BackupManifest;
     try {
       manifest = JSON.parse(manifestContent);
@@ -165,11 +220,10 @@ export async function POST(request: Request) {
       ? `${manifest.course.title} (Restored ${new Date().toISOString().split('T')[0]})`
       : manifest.course.title;
 
-    // Start transaction-like operations
     // Create new course - strip old id/tenant_id and set current tenant
     const { id: _oldCourseId, tenant_id: _oldCourseTenant, created_at: _cc, updated_at: _cu, ...courseFields } = manifest.course;
     const newCourseData = {
-      ...courseFields,
+      ...stripInternalFields(courseFields),
       title: courseTitle,
       tenant_id: tenantId,
       published: false, // Restore as unpublished by default
@@ -187,128 +241,129 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Failed to create course: ${courseError?.message}` }, { status: 500 });
     }
 
-    // Upload files and create file mapping (old fileId -> new fileId)
+    createdCourseId = newCourse.id;
+
+    // Upload files with concurrency control and size tracking
     const fileMapping: Record<string, string> = {};
     const filesFolder = zip.folder('files');
 
     if (filesFolder && manifest.files) {
-      for (const [oldFileId, fileInfo] of Object.entries(manifest.files)) {
-        try {
-          const zipFile = filesFolder.file(fileInfo.name);
-          if (!zipFile) {
-            console.warn(`File ${fileInfo.name} not found in ZIP`);
-            continue;
+      const fileEntries = Object.entries(manifest.files);
+
+      for (let i = 0; i < fileEntries.length; i += FILE_UPLOAD_CONCURRENCY) {
+        const batch = fileEntries.slice(i, i + FILE_UPLOAD_CONCURRENCY);
+        const batchResults = await Promise.all(
+          batch.map(async ([oldFileId, fileInfo]) => {
+            try {
+              const zipFile = filesFolder.file(fileInfo.name);
+              if (!zipFile) {
+                console.warn(`File ${fileInfo.name} not found in ZIP`);
+                return null;
+              }
+
+              // Read file from ZIP and track extracted size for ZIP bomb protection
+              const fileBuffer = await zipFile.async('nodebuffer');
+              totalExtractedSize += fileBuffer.length;
+              if (totalExtractedSize > MAX_UNCOMPRESSED_SIZE) {
+                throw new Error('ZIP bomb detected: uncompressed size exceeds limit');
+              }
+
+              const hash = createHash('sha256').update(fileBuffer).digest('hex');
+
+              // Check if file hash matches (security check)
+              if (fileInfo.hash && hash !== fileInfo.hash) {
+                console.warn(`File hash mismatch for ${fileInfo.name}`);
+              }
+
+              // Generate unique filename
+              const timestamp = Date.now();
+              const randomString = Math.random().toString(36).substring(2, 15);
+              const fileExtension = fileInfo.name.split('.').pop() || 'bin';
+              const fileName = sanitizePath(`${timestamp}-${randomString}.${fileExtension}`);
+
+              // Upload to Supabase Storage
+              const { data: uploadData, error: uploadError } = await serviceSupabase.storage
+                .from('course-materials')
+                .upload(fileName, fileBuffer, {
+                  cacheControl: '3600',
+                  upsert: false
+                });
+
+              if (uploadError) {
+                console.error(`Failed to upload file ${fileInfo.name}:`, uploadError);
+                return null;
+              }
+
+              uploadedStorageFiles.push(fileName);
+
+              // Get public URL
+              const { data: urlData } = serviceSupabase.storage
+                .from('course-materials')
+                .getPublicUrl(fileName);
+
+              // Create file record in database
+              const { data: fileRecord, error: fileRecordError } = await serviceSupabase
+                .from('files')
+                .insert([{
+                  name: fileInfo.name,
+                  type: 'application/octet-stream',
+                  size: fileBuffer.length,
+                  url: urlData.publicUrl,
+                  uploaded_by: user.id,
+                  course_id: newCourse.id,
+                  tenant_id: tenantId
+                }])
+                .select()
+                .single();
+
+              if (fileRecordError || !fileRecord) {
+                console.error(`Failed to create file record for ${fileInfo.name}:`, fileRecordError);
+                await serviceSupabase.storage.from('course-materials').remove([fileName]);
+                uploadedStorageFiles = uploadedStorageFiles.filter(f => f !== fileName);
+                return null;
+              }
+
+              createdFileIds.push(fileRecord.id);
+              return { oldFileId, newFileId: fileRecord.id };
+            } catch (error: any) {
+              if (error.message?.includes('ZIP bomb')) throw error;
+              console.error(`Error processing file ${fileInfo.name}:`, error);
+              return null;
+            }
+          })
+        );
+
+        for (const result of batchResults) {
+          if (result) {
+            fileMapping[result.oldFileId] = result.newFileId;
           }
-
-          // Read file from ZIP
-          const fileBuffer = await zipFile.async('nodebuffer');
-          const hash = createHash('sha256').update(fileBuffer).digest('hex');
-
-          // Check if file hash matches (security check)
-          if (fileInfo.hash && hash !== fileInfo.hash) {
-            console.warn(`File hash mismatch for ${fileInfo.name}`);
-            // Continue anyway - might be a different file
-          }
-
-          // Generate unique filename
-          const timestamp = Date.now();
-          const randomString = Math.random().toString(36).substring(2, 15);
-          const fileExtension = fileInfo.name.split('.').pop() || 'bin';
-          const fileName = `${timestamp}-${randomString}.${fileExtension}`;
-
-          // Upload to Supabase Storage
-          const { data: uploadData, error: uploadError } = await serviceSupabase.storage
-            .from('course-materials')
-            .upload(fileName, fileBuffer, {
-              cacheControl: '3600',
-              upsert: false
-            });
-
-          if (uploadError) {
-            console.error(`Failed to upload file ${fileInfo.name}:`, uploadError);
-            // Continue with other files
-            continue;
-          }
-
-          // Get public URL
-          const { data: urlData } = serviceSupabase.storage
-            .from('course-materials')
-            .getPublicUrl(fileName);
-
-          // Create file record in database
-          const { data: fileRecord, error: fileRecordError } = await serviceSupabase
-            .from('files')
-            .insert([{
-              name: fileInfo.name,
-              type: 'application/octet-stream', // Will be determined from extension
-              size: fileBuffer.length,
-              url: urlData.publicUrl,
-              uploaded_by: user.id,
-              course_id: newCourse.id,
-              tenant_id: tenantId
-            }])
-            .select()
-            .single();
-
-          if (fileRecordError || !fileRecord) {
-            console.error(`Failed to create file record for ${fileInfo.name}:`, fileRecordError);
-            // Try to clean up uploaded file
-            await serviceSupabase.storage.from('course-materials').remove([fileName]);
-            continue;
-          }
-
-          // Map old fileId to new fileId
-          fileMapping[oldFileId] = fileRecord.id;
-        } catch (error) {
-          console.error(`Error processing file ${fileInfo.name}:`, error);
-          // Continue with other files
         }
       }
     }
 
-    // Update file references in lessons and create lessons
-    const newLessons = [];
+    // Create lessons with file reference updates and prerequisite tracking
+    const newLessons: any[] = [];
+    // Map original lesson ID -> new lesson ID for prerequisite remapping
+    const lessonIdMapping: Record<string, string> = {};
+
     for (const lesson of manifest.lessons || []) {
       try {
-        // Update file references in content
-        const updatedContent = (lesson.content || []).map((item: any) => {
-          if (item.data?.fileId && fileMapping[item.data.fileId]) {
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                fileId: fileMapping[item.data.fileId],
-                url: `/api/files/${fileMapping[item.data.fileId]}`
-              }
-            };
-          }
-          return item;
-        });
+        // Update file references in content and resources (handles both fileId and file_id)
+        const updatedContent = updateFileReferences(lesson.content, fileMapping);
+        const updatedResources = updateFileReferences(lesson.resources, fileMapping);
 
-        // Update file references in resources
-        const updatedResources = (lesson.resources || []).map((item: any) => {
-          if (item.data?.fileId && fileMapping[item.data.fileId]) {
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                fileId: fileMapping[item.data.fileId],
-                url: `/api/files/${fileMapping[item.data.fileId]}`
-              }
-            };
-          }
-          return item;
-        });
+        // Strip internal fields and old identifiers
+        const { id: _oldLessonId, tenant_id: _oldLessonTenant, created_at: _lc, updated_at: _lu,
+                _original_id, _original_prerequisite_lesson_id, ...lessonFields } = lesson;
 
-        // Create lesson - strip old id/tenant_id and set current tenant
-        const { id: _oldLessonId, tenant_id: _oldLessonTenant, created_at: _lc, updated_at: _lu, ...lessonFields } = lesson;
         const lessonData = {
-          ...lessonFields,
+          ...stripInternalFields(lessonFields),
           course_id: newCourse.id,
           tenant_id: tenantId,
           content: updatedContent,
           resources: updatedResources,
-          published: false // Restore as unpublished
+          prerequisite_lesson_id: null, // Will be remapped after all lessons created
+          published: false
         };
 
         const { data: newLesson, error: lessonError } = await serviceSupabase
@@ -319,33 +374,191 @@ export async function POST(request: Request) {
 
         if (lessonError || !newLesson) {
           console.error('Lesson creation error:', lessonError);
-          // Continue with other lessons
           continue;
         }
 
         newLessons.push(newLesson);
+
+        // Track mapping using _original_id (v1.2+) or index-based fallback
+        const origId = _original_id || lesson._original_id;
+        if (origId) {
+          lessonIdMapping[origId] = newLesson.id;
+        }
       } catch (error) {
         console.error(`Error creating lesson ${lesson.title}:`, error);
-        // Continue with other lessons
       }
     }
 
-    // Add course instructors (only if instructors exist in system)
-    if (manifest.instructors && manifest.instructors.length > 0) {
-      const instructorInserts = [];
-      
-      for (const instructorRef of manifest.instructors) {
-        // Check if instructor exists (by ID)
-        const { data: instructorExists } = await serviceSupabase
-          .from('users')
-          .select('id')
-          .eq('id', instructorRef.instructor_id)
+    // Remap prerequisite_lesson_id references
+    for (const lesson of manifest.lessons || []) {
+      const origId = lesson._original_id;
+      const origPrereqId = lesson._original_prerequisite_lesson_id;
+
+      if (origId && origPrereqId && lessonIdMapping[origId] && lessonIdMapping[origPrereqId]) {
+        await serviceSupabase
+          .from('lessons')
+          .update({ prerequisite_lesson_id: lessonIdMapping[origPrereqId] })
+          .eq('id', lessonIdMapping[origId]);
+      }
+    }
+
+    // ── Restore assessments (quizzes, questions, assignments, discussions) ──
+    const quizIdMapping: Record<string, string> = {};
+    let quizzesRestored = 0;
+    let questionsRestored = 0;
+    let assignmentsRestored = 0;
+    let discussionsRestored = 0;
+
+    // Restore quizzes
+    for (const quiz of manifest.quizzes || []) {
+      try {
+        const { _original_id, _original_lesson_id, _original_course_id, ...quizFields } = quiz;
+
+        const quizData = {
+          ...stripInternalFields(quizFields),
+          course_id: newCourse.id,
+          lesson_id: _original_lesson_id ? (lessonIdMapping[_original_lesson_id] || null) : null,
+          tenant_id: tenantId,
+          creator_id: user.id,
+          published: false,
+        };
+
+        const { data: newQuiz, error: quizError } = await serviceSupabase
+          .from('quizzes')
+          .insert([quizData])
+          .select()
           .single();
 
-        if (instructorExists) {
+        if (quizError || !newQuiz) {
+          console.error(`Quiz creation error for "${quiz.title}":`, quizError);
+          continue;
+        }
+
+        if (_original_id) {
+          quizIdMapping[_original_id] = newQuiz.id;
+        }
+        quizzesRestored++;
+      } catch (error) {
+        console.error(`Error restoring quiz "${quiz.title}":`, error);
+      }
+    }
+
+    // Restore questions (linked to quizzes)
+    for (const question of manifest.questions || []) {
+      try {
+        const { _original_id, _original_quiz_id, ...qFields } = question;
+
+        const newQuizId = _original_quiz_id ? quizIdMapping[_original_quiz_id] : null;
+        if (!newQuizId) continue; // Skip orphaned questions
+
+        const questionData = {
+          ...stripInternalFields(qFields),
+          quiz_id: newQuizId,
+          tenant_id: tenantId,
+        };
+
+        const { error: qError } = await serviceSupabase
+          .from('questions')
+          .insert([questionData]);
+
+        if (qError) {
+          console.error(`Question creation error:`, qError);
+          continue;
+        }
+        questionsRestored++;
+      } catch (error) {
+        console.error('Error restoring question:', error);
+      }
+    }
+
+    // Restore assignments
+    for (const assignment of manifest.assignments || []) {
+      try {
+        const { _original_id, _original_lesson_id, _original_course_id, _original_class_id, ...aFields } = assignment;
+
+        const assignmentData = {
+          ...stripInternalFields(aFields),
+          course_id: newCourse.id,
+          lesson_id: _original_lesson_id ? (lessonIdMapping[_original_lesson_id] || null) : null,
+          class_id: null,
+          tenant_id: tenantId,
+          creator_id: user.id,
+          published: false,
+        };
+
+        const { error: aError } = await serviceSupabase
+          .from('assignments')
+          .insert([assignmentData]);
+
+        if (aError) {
+          console.error(`Assignment creation error for "${assignment.title}":`, aError);
+          continue;
+        }
+        assignmentsRestored++;
+      } catch (error) {
+        console.error(`Error restoring assignment "${assignment.title}":`, error);
+      }
+    }
+
+    // Restore discussions
+    for (const discussion of manifest.discussions || []) {
+      try {
+        const { _original_id, ...dFields } = discussion;
+
+        const discussionData = {
+          ...stripInternalFields(dFields),
+          course_id: newCourse.id,
+          tenant_id: tenantId,
+          creator_id: user.id,
+        };
+
+        const { error: dError } = await serviceSupabase
+          .from('discussions')
+          .insert([discussionData]);
+
+        if (dError) {
+          console.error(`Discussion creation error:`, dError);
+          continue;
+        }
+        discussionsRestored++;
+      } catch (error) {
+        console.error('Error restoring discussion:', error);
+      }
+    }
+
+    // Add course instructors — use email for cross-tenant lookup, fall back to UUID
+    if (manifest.instructors && manifest.instructors.length > 0) {
+      const instructorInserts = [];
+
+      for (const instructorRef of manifest.instructors) {
+        let instructorId: string | null = null;
+
+        // Try email-based lookup first (works cross-tenant)
+        if (instructorRef.instructor_email) {
+          const { data: byEmail } = await serviceSupabase
+            .from('users')
+            .select('id')
+            .eq('email', instructorRef.instructor_email)
+            .eq('tenant_id', tenantId)
+            .single();
+          if (byEmail) instructorId = byEmail.id;
+        }
+
+        // Fall back to UUID lookup within same tenant
+        if (!instructorId && instructorRef.instructor_id) {
+          const { data: byId } = await serviceSupabase
+            .from('users')
+            .select('id')
+            .eq('id', instructorRef.instructor_id)
+            .eq('tenant_id', tenantId)
+            .single();
+          if (byId) instructorId = byId.id;
+        }
+
+        if (instructorId && !instructorInserts.find(ci => ci.instructor_id === instructorId)) {
           instructorInserts.push({
             course_id: newCourse.id,
-            instructor_id: instructorRef.instructor_id,
+            instructor_id: instructorId,
             tenant_id: tenantId
           });
         }
@@ -364,7 +577,6 @@ export async function POST(request: Request) {
         await serviceSupabase.from('course_instructors').insert(instructorInserts);
       }
     } else {
-      // If no instructors in backup, add current user as instructor
       await serviceSupabase.from('course_instructors').insert([{
         course_id: newCourse.id,
         instructor_id: user.id,
@@ -398,15 +610,16 @@ export async function POST(request: Request) {
     if (manifest.includesUserData && manifest.userData && hasRole(userProfile.role, ["admin", "super_admin"])) {
       try {
         const userData = manifest.userData;
-        
+
         // Create user mapping (email -> user ID)
         const userEmailMap: Record<string, string> = {};
         for (const userRef of userData.users || []) {
-          // Find or create user by email
+          // Find existing user by email within this tenant
           const { data: existingUser } = await serviceSupabase
             .from('users')
             .select('id')
             .eq('email', userRef.email)
+            .eq('tenant_id', tenantId)
             .single();
 
           if (existingUser) {
@@ -424,20 +637,32 @@ export async function POST(request: Request) {
 
             if (newUser?.user?.id) {
               userEmailMap[userRef.email] = newUser.user.id;
-              
-              // Update user role if needed
+
+              // Update user role and tenant_id
               await serviceSupabase
                 .from('users')
-                .update({ role: userRef.role })
+                .update({ role: userRef.role, tenant_id: tenantId })
                 .eq('id', newUser.user.id);
+
+              // Create tenant membership
+              await serviceSupabase
+                .from('tenant_memberships')
+                .insert([{
+                  tenant_id: tenantId,
+                  user_id: newUser.user.id,
+                  role: userRef.role
+                }]);
             }
           }
         }
 
-        // Create classes
+        // Create classes with stable ID mapping using _original_id
         const classMapping: Record<string, string> = {};
         for (const classData of userData.classes || []) {
-          const { id: _oldClassId, tenant_id: _oldClassTenant, created_at: _clc, updated_at: _clu, ...classFields } = classData;
+          const originalClassId = classData._original_id;
+          const cleanedData = stripInternalFields(classData);
+          const { id: _cid, tenant_id: _ctid, course_id: _ccid, ...classFields } = cleanedData;
+
           const newClassData = {
             ...classFields,
             course_id: newCourse.id,
@@ -450,29 +675,31 @@ export async function POST(request: Request) {
             .select()
             .single();
 
-          if (newClass) {
-            // Use a temporary mapping key (we'll need to store original class identifier)
-            // For now, use index-based mapping
-            const classIndex = (userData.classes || []).indexOf(classData);
-            classMapping[`class_${classIndex}`] = newClass.id;
+          if (newClass && originalClassId) {
+            classMapping[originalClassId] = newClass.id;
             userDataStats.classesCreated++;
           }
         }
 
-        // Create enrollments (map by email)
+        // Create enrollments — map class by _original_class_id and student by email
         for (const enrollment of userData.enrollments || []) {
           const studentId = enrollment.student_email ? userEmailMap[enrollment.student_email] : null;
           if (!studentId) continue;
 
-          // Find class by matching criteria (use first class for now if no mapping)
-          const classId = Object.values(classMapping)[0] || newCourse.id;
-          
+          const originalClassId = enrollment._original_class_id;
+          const classId = originalClassId ? classMapping[originalClassId] : null;
+          if (!classId) continue;
+
+          const cleanedEnrollment = stripInternalFields(enrollment);
+          const { id: _eid, class_id: _ecid, student_id: _esid, tenant_id: _etid, ...enrollmentFields } = cleanedEnrollment;
+
           const { data: newEnrollment } = await serviceSupabase
             .from('enrollments')
             .insert([{
-              ...enrollment,
+              ...enrollmentFields,
               class_id: classId,
-              student_id: studentId
+              student_id: studentId,
+              tenant_id: tenantId
             }])
             .select()
             .single();
@@ -482,30 +709,25 @@ export async function POST(request: Request) {
           }
         }
 
-        // Create progress (map by email and lesson)
-        const lessonMapping: Record<string, string> = {};
-        newLessons.forEach((lesson, index) => {
-          const originalLesson = manifest.lessons[index];
-          if (originalLesson) {
-            lessonMapping[`lesson_${index}`] = lesson.id;
-          }
-        });
-
+        // Create progress — map lesson by _original_lesson_id and student by email
         for (const progress of userData.progress || []) {
           const studentId = progress.student_email ? userEmailMap[progress.student_email] : null;
           if (!studentId) continue;
 
-          // Find lesson by index (simplified - assumes same order)
-          const progressIndex = (userData.progress || []).indexOf(progress);
-          const lessonId = Object.values(lessonMapping)[progressIndex] || newLessons[0]?.id;
+          const originalLessonId = progress._original_lesson_id;
+          const lessonId = originalLessonId ? lessonIdMapping[originalLessonId] : null;
           if (!lessonId) continue;
+
+          const cleanedProgress = stripInternalFields(progress);
+          const { id: _pid, lesson_id: _plid, student_id: _psid, tenant_id: _ptid, ...progressFields } = cleanedProgress;
 
           const { data: newProgress } = await serviceSupabase
             .from('progress')
             .insert([{
-              ...progress,
+              ...progressFields,
               lesson_id: lessonId,
-              student_id: studentId
+              student_id: studentId,
+              tenant_id: tenantId
             }])
             .select()
             .single();
@@ -516,14 +738,14 @@ export async function POST(request: Request) {
         }
 
         // Note: Quiz attempts, assignments, submissions, and grades restoration
-        // would require more complex mapping logic (quizzes, assignments need to be created first)
-        // This is a simplified version - full implementation would require creating
-        // quizzes and assignments, then mapping attempts/submissions/grades
+        // requires quizzes/assignments to exist in the restored course.
+        // These are structural elements that should be cloned separately.
+        // The mapping IDs are preserved in the backup for future implementation.
 
         userDataRestored = true;
       } catch (error) {
         console.error('Error restoring user data:', error);
-        // Continue even if user data restoration fails
+        // Continue even if user data restoration fails — course structure is intact
       }
     }
 
@@ -531,17 +753,43 @@ export async function POST(request: Request) {
       success: true,
       course: newCourse,
       lessonsCreated: newLessons.length,
+      quizzesRestored,
+      questionsRestored,
+      assignmentsRestored,
+      discussionsRestored,
       filesRestored: Object.keys(fileMapping).length,
       userDataRestored,
       userDataStats: userDataRestored ? userDataStats : null,
-      message: `Course restored successfully. ${newLessons.length} lessons and ${Object.keys(fileMapping).length} files restored.${userDataRestored ? ` User data restored: ${userDataStats.enrollmentsCreated} enrollments, ${userDataStats.progressCreated} progress records.` : ''}`
+      message: `Course restored successfully. ${newLessons.length} lessons, ${quizzesRestored} quizzes (${questionsRestored} questions), ${assignmentsRestored} assignments, ${discussionsRestored} discussions, and ${Object.keys(fileMapping).length} files restored.${userDataRestored ? ` User data: ${userDataStats.enrollmentsCreated} enrollments, ${userDataStats.progressCreated} progress records.` : ''}`
     });
 
   } catch (error: any) {
     console.error('Restore error:', error);
+
+    // Rollback: clean up partially created resources
+    if (serviceSupabase) {
+      try {
+        // Remove uploaded storage files
+        if (uploadedStorageFiles.length > 0) {
+          await serviceSupabase.storage.from('course-materials').remove(uploadedStorageFiles);
+        }
+
+        // Remove created file records
+        if (createdFileIds.length > 0) {
+          await serviceSupabase.from('files').delete().in('id', createdFileIds);
+        }
+
+        // Remove the course (cascades to lessons, instructors, etc.)
+        if (createdCourseId) {
+          await serviceSupabase.from('courses').delete().eq('id', createdCourseId);
+        }
+      } catch (cleanupError) {
+        console.error('Rollback cleanup error:', cleanupError);
+      }
+    }
+
     return NextResponse.json({
       error: `Restore failed: ${error.message || 'Unknown error'}`
     }, { status: 500 });
   }
 }
-

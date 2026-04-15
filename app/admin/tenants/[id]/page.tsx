@@ -4,7 +4,7 @@ import React, { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RoleGuard from "@/app/components/RoleGuard";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 
 type Tenant = {
   id: string;

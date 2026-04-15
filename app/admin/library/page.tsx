@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import RoleGuard from '@/app/components/RoleGuard';
-import FileUpload, { UploadResult } from '@/app/components/FileUpload';
-import GoogleDrivePicker, { GoogleDriveFile, mimeToResourceType, getGoogleFileTypeLabel } from '@/app/components/GoogleDrivePicker';
-import GoogleFileEmbed, { isGoogleWorkspaceUrl } from '@/app/components/GoogleFileEmbed';
+import FileUpload, { UploadResult } from '@/app/components/file-upload/FileUpload';
+import GoogleDrivePicker, { GoogleDriveFile, mimeToResourceType, getGoogleFileTypeLabel } from '@/app/components/media/GoogleDrivePicker';
+import GoogleFileEmbed, { isGoogleWorkspaceUrl } from '@/app/components/media/GoogleFileEmbed';
 
 interface LibraryResource {
   id: string;

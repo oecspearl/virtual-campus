@@ -2,12 +2,12 @@
 
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
-import DateTimePicker from "@/app/components/DateTimePicker";
-import RubricBuilder, { type RubricCriterion } from "@/app/components/RubricBuilder";
-import Button from "@/app/components/Button";
-import TextEditor from "@/app/components/TextEditor";
+import DateTimePicker from "@/app/components/ui/DateTimePicker";
+import RubricBuilder, { type RubricCriterion } from "@/app/components/assignment/RubricBuilder";
+import Button from "@/app/components/ui/Button";
+import TextEditor from "@/app/components/editor/TextEditor";
 import { Icon } from '@iconify/react';
-import Breadcrumb from "@/app/components/Breadcrumb";
+import Breadcrumb from "@/app/components/ui/Breadcrumb";
 import RoleGuard from "@/app/components/RoleGuard";
 
 interface Lesson {

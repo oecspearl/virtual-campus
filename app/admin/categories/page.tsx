@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 import RoleGuard from '@/app/components/RoleGuard';
 
 interface Category {
@@ -298,6 +299,7 @@ export default function CategoriesManagementPage() {
               onClick={() => openCreateModal(category.id)}
               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
               title="Add subcategory"
+              aria-label="Add subcategory"
             >
               <Icon icon="material-symbols:add" className="w-5 h-5" />
             </button>
@@ -305,6 +307,7 @@ export default function CategoriesManagementPage() {
               onClick={() => openEditModal(category)}
               className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
               title="Edit"
+              aria-label="Edit"
             >
               <Icon icon="material-symbols:edit" className="w-5 h-5" />
             </button>
@@ -312,6 +315,7 @@ export default function CategoriesManagementPage() {
               onClick={() => setDeleteConfirm(category)}
               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
               title="Delete"
+              aria-label="Delete"
             >
               <Icon icon="material-symbols:delete" className="w-5 h-5" />
             </button>
@@ -353,7 +357,7 @@ export default function CategoriesManagementPage() {
           {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Course Categories</h1>
+              <h1 className="text-xl font-normal text-slate-900 tracking-tight">Course Categories</h1>
               <p className="text-gray-600 mt-1">Organize courses into categories and subcategories</p>
             </div>
             <Button onClick={() => openCreateModal()}>
@@ -415,155 +419,147 @@ export default function CategoriesManagementPage() {
       </div>
 
       {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-black/50" onClick={() => setShowModal(false)}></div>
-            <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">
-                {editingCategory ? 'Edit Category' : 'Create Category'}
-              </h2>
+      <AccessibleModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingCategory ? 'Edit Category' : 'Create Category'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Category name"
+            />
+          </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Category name"
-                  />
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Brief description"
+            />
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Brief description"
-                  />
-                </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+            <select
+              value={formData.parent_id}
+              onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">None (Top Level)</option>
+              {flatCategories
+                .filter(c => c.id !== editingCategory?.id)
+                .map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.parent_id ? '└ ' : ''}{cat.name}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
-                  <select
-                    value={formData.parent_id}
-                    onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">None (Top Level)</option>
-                    {flatCategories
-                      .filter(c => c.id !== editingCategory?.id)
-                      .map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.parent_id ? '└ ' : ''}{cat.name}
-                        </option>
-                      ))
-                    }
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Icon</label>
-                  <div className="grid grid-cols-8 gap-2">
-                    {ICON_OPTIONS.map(icon => (
-                      <button
-                        key={icon.value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, icon: icon.value })}
-                        className={`p-2 rounded-lg border-2 ${
-                          formData.icon === icon.value
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        title={icon.label}
-                      >
-                        <Icon icon={icon.value} className="w-5 h-5 mx-auto" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                  <div className="flex gap-2">
-                    {COLOR_OPTIONS.map(color => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, color })}
-                        className={`w-8 h-8 rounded-full border-2 ${
-                          formData.color === color
-                            ? 'border-gray-900 ring-2 ring-offset-2 ring-gray-400'
-                            : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
-                  <input
-                    type="number"
-                    value={formData.order}
-                    onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
-                    className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Saving...' : editingCategory ? 'Update' : 'Create'}
-                  </Button>
-                </div>
-              </form>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+            <div className="grid grid-cols-8 gap-2">
+              {ICON_OPTIONS.map(icon => (
+                <button
+                  key={icon.value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, icon: icon.value })}
+                  className={`p-2 rounded-lg border-2 ${
+                    formData.icon === icon.value
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  title={icon.label}
+                  aria-label={icon.label}
+                >
+                  <Icon icon={icon.value} className="w-5 h-5 mx-auto" />
+                </button>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+            <div className="flex gap-2">
+              {COLOR_OPTIONS.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, color })}
+                  className={`w-8 h-8 rounded-full border-2 ${
+                    formData.color === color
+                      ? 'border-gray-900 ring-2 ring-offset-2 ring-gray-400'
+                      : 'border-transparent'
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+            <input
+              type="number"
+              value={formData.order}
+              onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : editingCategory ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </form>
+      </AccessibleModal>
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-black/50" onClick={() => setDeleteConfirm(null)}></div>
-            <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Delete Category</h2>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?
-                {deleteConfirm.course_count > 0 && (
-                  <span className="block mt-2 text-amber-600">
-                    This category has {deleteConfirm.course_count} course(s) assigned.
-                    They will be unassigned from this category.
-                  </span>
-                )}
-              </p>
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="outline"
-                  className="text-red-600 border-red-300 hover:bg-red-50"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                >
-                  {deleting ? 'Deleting...' : 'Delete'}
-                </Button>
-              </div>
-            </div>
-          </div>
+      <AccessibleModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title="Delete Category"
+        size="md"
+      >
+        <p className="text-gray-600 mb-6">
+          Are you sure you want to delete <strong>{deleteConfirm?.name}</strong>?
+          {deleteConfirm && deleteConfirm.course_count > 0 && (
+            <span className="block mt-2 text-amber-600">
+              This category has {deleteConfirm.course_count} course(s) assigned.
+              They will be unassigned from this category.
+            </span>
+          )}
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            className="text-red-600 border-red-300 hover:bg-red-50"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
         </div>
-      )}
+      </AccessibleModal>
     </RoleGuard>
   );
 }

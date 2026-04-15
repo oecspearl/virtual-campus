@@ -189,7 +189,7 @@ export default function AdaptiveLearningPage() {
       {/* Stats Overview */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Icon icon="material-symbols:psychology" className="w-6 h-6 text-blue-600" />
@@ -200,7 +200,7 @@ export default function AdaptiveLearningPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg">
                 <Icon icon="material-symbols:check-circle" className="w-6 h-6 text-green-600" />
@@ -211,7 +211,7 @@ export default function AdaptiveLearningPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Icon icon="material-symbols:star" className="w-6 h-6 text-purple-600" />
@@ -222,7 +222,7 @@ export default function AdaptiveLearningPage() {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-orange-100 rounded-lg">
                 <Icon icon="material-symbols:trending-up" className="w-6 h-6 text-orange-600" />
@@ -274,7 +274,7 @@ export default function AdaptiveLearningPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-6 animate-pulse">
               <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
             </div>
@@ -283,7 +283,7 @@ export default function AdaptiveLearningPage() {
       ) : activeTab === 'recommendations' ? (
         /* Recommendations Tab */
         recommendations.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <Icon icon="material-symbols:check-circle" className="w-16 h-16 text-green-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-700 mb-2">All caught up!</h3>
             <p className="text-gray-500">No personalized recommendations at the moment. Keep learning!</p>
@@ -293,12 +293,12 @@ export default function AdaptiveLearningPage() {
             {recommendations.map(rec => (
               <div
                 key={rec.id}
-                className={`bg-white rounded-xl border p-6 transition-all ${
+                className={`bg-white rounded-lg border p-6 transition-all ${
                   rec.status === 'pending' ? 'border-blue-300 shadow-sm' : 'border-gray-200 opacity-75'
                 }`}
               >
                 <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-xl ${
+                  <div className={`p-3 rounded-lg ${
                     rec.status === 'pending' ? 'bg-blue-100' : 'bg-gray-100'
                   }`}>
                     <Icon
@@ -360,7 +360,7 @@ export default function AdaptiveLearningPage() {
       ) : (
         /* Competencies Tab */
         competencies.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <Icon icon="material-symbols:psychology-outline" className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-700 mb-2">No skills tracked yet</h3>
             <p className="text-gray-500">Complete quizzes and assignments to build your skill profile</p>
@@ -370,7 +370,7 @@ export default function AdaptiveLearningPage() {
             {competencies.map(comp => (
               <div
                 key={comp.id}
-                className="bg-white rounded-xl border border-gray-200 p-6"
+                className="bg-white rounded-lg border border-gray-200 p-6"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>

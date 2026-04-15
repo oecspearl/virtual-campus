@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
-import AIChatWidget from '@/app/components/AIChatWidget';
-import AIHelpEnhancement from '@/app/components/AIHelpEnhancement';
-import AISearchBox from '@/app/components/AISearchBox';
+import AIChatWidget from '@/app/components/ai/AIChatWidget';
+import AIHelpEnhancement from '@/app/components/ai/AIHelpEnhancement';
+import AISearchBox from '@/app/components/ai/AISearchBox';
 
 interface HelpSection {
   id: string;
@@ -18,6 +18,8 @@ export default function InstructorHelpPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState<string>('getting-started');
   const [showAIChat, setShowAIChat] = useState(false);
+  const [aiInitialMessage, setAiInitialMessage] = useState('');
+  const [aiMessageKey, setAiMessageKey] = useState(0);
 
   const selectSection = (sectionId: string) => {
     setActiveSection(sectionId);
@@ -29,6 +31,8 @@ export default function InstructorHelpPage() {
       const firstMatch = helpSections.find(s => s.title.toLowerCase().includes(q));
       if (firstMatch) setActiveSection(firstMatch.id);
     }
+    setAiInitialMessage(query || '');
+    setAiMessageKey(k => k + 1);
     setShowAIChat(true);
   };
 
@@ -125,7 +129,7 @@ export default function InstructorHelpPage() {
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
                 <li>Update course description and objectives - Keep your course description current and clearly communicate learning objectives to help students understand what they'll gain from the course. A well-written description can improve enrollment and set appropriate expectations.</li>
                 <li>Set course difficulty and prerequisites - Specify the difficulty level (beginner, intermediate, advanced) and list any prerequisites students should complete first. This helps students choose courses appropriate for their skill level and ensures they have necessary background knowledge.</li>
-                <li>Configure enrollment options - Control whether enrollment is open to all students, requires approval, or is restricted to specific groups. You can also set enrollment limits if you want to cap class size for a more personalized learning experience.</li>
+                <li>Configure enrollment options - Control whether enrollment is open to all students, requires approval, or is restricted to specific groups. You can also set enrollment limits if you want to cap course size for a more personalized learning experience.</li>
                 <li>Manage course visibility and publish status - Control when your course becomes visible to students. You can keep it in draft mode while building content, make it visible but require enrollment, or publish it fully. This gives you control over the launch timeline.</li>
               </ol>
             </div>
@@ -528,7 +532,7 @@ export default function InstructorHelpPage() {
                 <li>View attendance records - Access the conference details to see who attended, when they joined, and total participants.</li>
                 <li>Track attendance patterns - Monitor which students consistently attend live sessions and identify those who may need encouragement.</li>
                 <li>Export attendance data - Download attendance records for grading, reporting, or administrative purposes.</li>
-                <li>Use attendance for participation grades - Consider conference attendance as part of class participation when calculating grades.</li>
+                <li>Use attendance for participation grades - Consider conference attendance as part of course participation when calculating grades.</li>
               </ol>
             </div>
 
@@ -538,7 +542,7 @@ export default function InstructorHelpPage() {
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
                 <li>View all scheduled conferences for your courses - Access a centralized calendar or list showing all upcoming video conferences across all your courses. This overview helps you manage your schedule, avoid conflicts, and plan your teaching time effectively.</li>
                 <li>Edit or cancel scheduled meetings - Update meeting details (time, duration, settings) or cancel sessions when necessary. Students are automatically notified of changes, so they always have current information. This flexibility helps you adapt to unexpected circumstances.</li>
-                <li>Set up recurring conference sessions - Create repeating meetings (like weekly office hours or regular class sessions) with a single setup. This saves time and ensures consistent scheduling, making it easier for students to plan and attend regularly scheduled sessions.</li>
+                <li>Set up recurring conference sessions - Create repeating meetings (like weekly office hours or regular course sessions) with a single setup. This saves time and ensures consistent scheduling, making it easier for students to plan and attend regularly scheduled sessions.</li>
                 <li>Monitor participant attendance - Track which students attended each session to monitor engagement and participation. This attendance data helps you identify students who may need encouragement to attend, and provides a record of participation for grading or reporting purposes.</li>
               </ol>
             </div>
@@ -602,15 +606,15 @@ export default function InstructorHelpPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-purple-50 to-blue-50">
+            <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-blue-50 to-blue-100">
               <h4 className="font-medium text-gray-900 mb-2 flex items-center">
                 <Icon icon="mdi:forum" className="w-5 h-5 mr-2 text-purple-600" />
-                Lecturer Forums
+                Lecturer Discussions
               </h4>
-              <p className="text-sm text-gray-600 mb-3">Join discussion forums to share teaching strategies, ask questions, and exchange ideas with fellow educators.</p>
+              <p className="text-sm text-gray-600 mb-3">Join discussions to share teaching strategies, ask questions, and exchange ideas with fellow educators.</p>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Browse forums by category - Forums are organized by topics like Pedagogy, Technology, Assessment, Curriculum Design, and more. This helps you find discussions relevant to your interests and expertise.</li>
-                <li>Create new forums - Start your own discussion forum on a topic you're passionate about. Set the category, description, and guidelines to attract like-minded lecturers who want to discuss the same subject.</li>
+                <li>Browse discussions by category - Discussions are organized by topics like Pedagogy, Technology, Assessment, Curriculum Design, and more. This helps you find conversations relevant to your interests and expertise.</li>
+                <li>Create new discussions - Start your own discussion on a topic you're passionate about. Set the category, description, and guidelines to attract like-minded lecturers who want to discuss the same subject.</li>
                 <li>Post questions and share ideas - Ask questions about teaching methods, share successful strategies you've used, or start discussions about educational trends. Your posts help build a community of practice among lecturers.</li>
                 <li>Reply to posts and engage in discussions - Participate actively by replying to posts, providing insights, and building on others' ideas. Thoughtful engagement creates valuable knowledge-sharing opportunities.</li>
                 <li>Vote on posts and replies - Use the voting system to highlight particularly valuable content. Upvoting helps other lecturers discover the most useful discussions and contributions.</li>
@@ -915,6 +919,135 @@ export default function InstructorHelpPage() {
           </div>
         </div>
       )
+    },
+    {
+      id: 'course-management-tools',
+      title: 'Course Management Tools',
+      icon: <Icon icon="mdi:school" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Course Management Tools</h3>
+          <p className="text-gray-600">Manage your courses with cohorts, attendance tracking, and gradebook tools.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Cohorts & Groups</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Create cohorts to group students into scheduled batches</li>
+              <li>Set up course groups for collaborative assignments</li>
+              <li>Manage enrollment and capacity per cohort</li>
+              <li>View all your courses from <strong>My Courses</strong></li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Attendance Tracking</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Open a course and navigate to <strong>Attendance</strong></li>
+              <li>Mark students as present, absent, or late for each session</li>
+              <li>View attendance history and patterns</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Course Gradebook</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Each course has its own gradebook for tracking student performance</li>
+              <li>Configure grade categories and weights in <strong>Gradebook Setup</strong></li>
+              <li>Enter grades directly in the gradebook view</li>
+              <li>View the course <strong>Participants</strong> to see all enrolled students</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'question-banks',
+      title: 'Question Banks',
+      icon: <Icon icon="mdi:database-search" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Question Banks</h3>
+          <p className="text-gray-600">Build reusable pools of questions that can be shared across multiple quizzes.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Creating Question Banks</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Question Banks</strong> from admin or course settings</li>
+              <li>Create banks organized by subject, topic, or difficulty</li>
+              <li>Add questions of any type (multiple choice, true/false, short answer, matching, etc.)</li>
+              <li>Tag questions for easy filtering</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Using Banks in Quizzes</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>When creating a quiz, select questions from your banks</li>
+              <li>Set the number of random questions to pull from each bank</li>
+              <li>Students receive unique randomized question sets for exam integrity</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'learning-paths',
+      title: 'Learning Paths',
+      icon: <Icon icon="mdi:road-variant" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Learning Paths</h3>
+          <p className="text-gray-600">Create structured sequences of courses that guide students through a learning journey.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Creating a Learning Path</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Learning Paths</strong> and create a new path</li>
+              <li>Add courses in the desired sequence</li>
+              <li>Configure prerequisites between courses</li>
+              <li>Set completion criteria for the overall path</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Student Progress</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Students enroll in the path and progress through courses in order</li>
+              <li>Track enrollment and completion rates for each path</li>
+              <li>Students earn a completion certificate upon finishing all courses</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'adaptive-learning',
+      title: 'Adaptive Learning',
+      icon: <Icon icon="mdi:brain" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Adaptive Learning</h3>
+          <p className="text-gray-600">The platform can personalize the learning experience based on student performance.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">How It Works</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Adaptive rules (configured by admins) evaluate student performance</li>
+              <li>When a student scores below a threshold, supplementary content is recommended</li>
+              <li>Students see personalized recommendations in their Adaptive Learning dashboard</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">For Instructors</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Create supplementary lessons and materials for struggling students</li>
+              <li>Review which students are receiving adaptive recommendations</li>
+              <li>Adjust course difficulty and pacing based on course performance</li>
+            </ul>
+          </div>
+        </div>
+      )
     }
   ];
 
@@ -927,7 +1060,7 @@ export default function InstructorHelpPage() {
   const currentSection = helpSections.find(section => section.id === activeSection);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -994,10 +1127,11 @@ export default function InstructorHelpPage() {
           {/* Main Content */}
           <div className="flex-1">
             <div className="bg-white rounded-lg shadow-sm p-8">
-              <AIHelpEnhancement 
+              <AIHelpEnhancement
                 onAISearch={handleAISearch}
                 currentPage="/help/instructor"
                 userRole="instructor"
+                activeSection={activeSection}
               />
               
               {currentSection ? (
@@ -1009,7 +1143,7 @@ export default function InstructorHelpPage() {
                         {currentSection.icon}
                       </div>
                       <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{currentSection.title}</h1>
+                        <h1 className="text-xl font-normal text-slate-900 tracking-tight">{currentSection.title}</h1>
                       </div>
                     </div>
                   </div>
@@ -1033,9 +1167,11 @@ export default function InstructorHelpPage() {
 
       {/* AI Chat Widget */}
       {showAIChat && (
-        <AIChatWidget 
+        <AIChatWidget
+          key={aiMessageKey}
           currentPage="/help/instructor"
           context={{ userRole: 'instructor', activeSection }}
+          initialMessage={aiInitialMessage}
         />
       )}
     </div>

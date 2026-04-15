@@ -1,7 +1,7 @@
 'use client';
 
 import React, { use } from 'react';
-import DiscussionDetail from '@/app/components/DiscussionDetail';
+import DiscussionDetail from '@/app/components/discussions/DiscussionDetail';
 
 interface DiscussionPageProps {
   params: Promise<{ id: string; discussionId: string }>;

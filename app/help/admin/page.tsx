@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
-import AIChatWidget from '@/app/components/AIChatWidget';
-import AIHelpEnhancement from '@/app/components/AIHelpEnhancement';
-import AISearchBox from '@/app/components/AISearchBox';
+import AIChatWidget from '@/app/components/ai/AIChatWidget';
+import AIHelpEnhancement from '@/app/components/ai/AIHelpEnhancement';
+import AISearchBox from '@/app/components/ai/AISearchBox';
 
 interface HelpSection {
   id: string;
@@ -18,6 +18,8 @@ export default function AdminHelpPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState<string>('getting-started');
   const [showAIChat, setShowAIChat] = useState(false);
+  const [aiInitialMessage, setAiInitialMessage] = useState('');
+  const [aiMessageKey, setAiMessageKey] = useState(0);
 
   const selectSection = (sectionId: string) => {
     setActiveSection(sectionId);
@@ -29,6 +31,8 @@ export default function AdminHelpPage() {
       const firstMatch = helpSections.find(s => s.title.toLowerCase().includes(q));
       if (firstMatch) setActiveSection(firstMatch.id);
     }
+    setAiInitialMessage(query || '');
+    setAiMessageKey(k => k + 1);
     setShowAIChat(true);
   };
 
@@ -112,22 +116,24 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">🔐 User Roles & Permissions</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• <strong>Student:</strong> Enroll in courses, submit assignments, participate in discussions</li>
-                <li>• <strong>Instructor:</strong> Create courses, grade assignments, manage enrolled students</li>
-                <li>• <strong>Curriculum Designer:</strong> Full course creation and editing capabilities</li>
-                <li>• <strong>Admin:</strong> User and course management, system settings</li>
-                <li>• <strong>Super Admin:</strong> Full system access including user role changes</li>
+                <li><strong>Super Admin:</strong> Full system access including user role changes and tenant management</li>
+                <li><strong>Tenant Admin:</strong> Manage own tenant settings, users, and branding</li>
+                <li><strong>Admin:</strong> User and course management, system settings</li>
+                <li><strong>Instructor:</strong> Create courses, grade assignments, manage enrolled students</li>
+                <li><strong>Curriculum Designer:</strong> Full course creation and editing capabilities</li>
+                <li><strong>Student:</strong> Enroll in courses, submit assignments, participate in discussions</li>
+                <li><strong>Parent:</strong> View linked student progress, grades, and activity</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">✏️ Editing Users</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Update user name, email, and profile information</li>
-                <li>• Change user roles (Super Admin only)</li>
-                <li>• Reset user passwords</li>
-                <li>• Activate or deactivate user accounts</li>
-                <li>• View user activity and enrollment history</li>
+                <li>Update user name, email, and profile information</li>
+                <li>Change user roles (Super Admin only)</li>
+                <li>Reset user passwords</li>
+                <li>Activate or deactivate user accounts</li>
+                <li>View user activity and enrollment history</li>
               </ul>
             </div>
           </div>
@@ -159,30 +165,30 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">👨‍🏫 Assigning Instructors</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Add multiple instructors to a single course</li>
-                <li>• Assign primary and secondary instructors</li>
-                <li>• Instructors can create content and grade assignments</li>
-                <li>• Change instructor assignments at any time</li>
+                <li>Add multiple instructors to a single course</li>
+                <li>Assign primary and secondary instructors</li>
+                <li>Instructors can create content and grade assignments</li>
+                <li>Change instructor assignments at any time</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">⭐ Featured Courses</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Mark courses as "Featured" to display on homepage</li>
-                <li>• Featured courses appear in the "Featured Courses" section</li>
-                <li>• Toggle featured status from the course management page</li>
-                <li>• Use featured courses to highlight important or popular content</li>
+                <li>Mark courses as "Featured" to display on homepage</li>
+                <li>Featured courses appear in the "Featured Courses" section</li>
+                <li>Toggle featured status from the course management page</li>
+                <li>Use featured courses to highlight important or popular content</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">🗑️ Deleting Courses</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Delete courses that are no longer needed</li>
-                <li>• System will warn about enrolled students</li>
-                <li>• Consider archiving instead of deleting</li>
-                <li>• Deleted courses cannot be recovered</li>
+                <li>Delete courses that are no longer needed</li>
+                <li>System will warn about enrolled students</li>
+                <li>Consider archiving instead of deleting</li>
+                <li>Deleted courses cannot be recovered</li>
               </ul>
             </div>
 
@@ -206,9 +212,9 @@ export default function AdminHelpPage() {
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <p className="text-xs font-medium text-gray-900 mb-2">New Interactive Content Types:</p>
                 <ul className="text-xs text-gray-600 space-y-1 ml-4">
-                  <li>• <strong>Interactive Video:</strong> Videos pause at checkpoints to ask questions, increasing engagement and comprehension</li>
-                  <li>• <strong>Audio/Podcast:</strong> Audio content with playback controls, speed adjustment, and optional transcripts for accessibility</li>
-                  <li>• <strong>Code Sandbox:</strong> Interactive code editor supporting 8 languages (JavaScript, Python, HTML/CSS, Java, C++, SQL, JSON) with live execution</li>
+                  <li><strong>Interactive Video:</strong> Videos pause at checkpoints to ask questions, increasing engagement and comprehension</li>
+                  <li><strong>Audio/Podcast:</strong> Audio content with playback controls, speed adjustment, and optional transcripts for accessibility</li>
+                  <li><strong>Code Sandbox:</strong> Interactive code editor supporting 8 languages (JavaScript, Python, HTML/CSS, Java, C++, SQL, JSON) with live execution</li>
                 </ul>
                 <p className="text-xs text-gray-500 mt-2">
                   <strong>Note:</strong> Admins can view all content types when reviewing courses. These features enhance learning engagement and support diverse teaching methods.
@@ -220,11 +226,11 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-red-900 mb-2">🔒 Quiz Proctoring (Safe Browser Mode)</h4>
               <p className="text-sm text-red-700 mb-3">The platform includes a built-in proctoring system that instructors can enable for high-stakes assessments.</p>
               <ul className="text-sm text-red-700 space-y-1 ml-4">
-                <li>• <strong>How it works:</strong> When enabled, quizzes run in fullscreen mode and monitor for suspicious activity like tab switching, window blur, and keyboard shortcuts.</li>
-                <li>• <strong>Violation tracking:</strong> All violations are logged to the <code className="bg-red-100 px-1 rounded">quiz_proctor_logs</code> table with timestamps and details.</li>
-                <li>• <strong>Auto-submit:</strong> Quizzes can be configured to automatically submit when a student exceeds the maximum violation count.</li>
-                <li>• <strong>Instructor access:</strong> Instructors can view violation logs for their quizzes to identify potential academic integrity issues.</li>
-                <li>• <strong>Database columns:</strong> <code className="bg-red-100 px-1 rounded">proctored_mode</code> (boolean) and <code className="bg-red-100 px-1 rounded">proctor_settings</code> (JSONB) on the quizzes table.</li>
+                <li><strong>How it works:</strong> When enabled, quizzes run in fullscreen mode and monitor for suspicious activity like tab switching, window blur, and keyboard shortcuts.</li>
+                <li><strong>Violation tracking:</strong> All violations are logged to the <code className="bg-red-100 px-1 rounded">quiz_proctor_logs</code> table with timestamps and details.</li>
+                <li><strong>Auto-submit:</strong> Quizzes can be configured to automatically submit when a student exceeds the maximum violation count.</li>
+                <li><strong>Instructor access:</strong> Instructors can view violation logs for their quizzes to identify potential academic integrity issues.</li>
+                <li><strong>Database columns:</strong> <code className="bg-red-100 px-1 rounded">proctored_mode</code> (boolean) and <code className="bg-red-100 px-1 rounded">proctor_settings</code> (JSONB) on the quizzes table.</li>
               </ul>
               <div className="mt-3 p-2 bg-red-100 rounded text-xs text-red-800">
                 <strong>Admin Note:</strong> The proctoring system uses client-side JavaScript and is designed as a deterrent. It is not a full secure browser replacement but provides reasonable protection for online assessments.
@@ -235,10 +241,10 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-green-900 mb-2">📹 Video Conference Providers</h4>
               <p className="text-sm text-green-700 mb-3">The platform supports multiple video conferencing providers for live sessions.</p>
               <ul className="text-sm text-green-700 space-y-1 ml-4">
-                <li>• <strong>8x8.vc (Jitsi Meet):</strong> Free, open-source, no account required for students. Links are auto-generated.</li>
-                <li>• <strong>Google Meet:</strong> Familiar interface, requires Google account. Instructors can paste existing meet links or use auto-generation if Calendar API is configured.</li>
-                <li>• <strong>BigBlueButton:</strong> Open-source classroom-focused solution. Requires server configuration.</li>
-                <li>• <strong>Attendance tracking:</strong> Student attendance is automatically logged when they join meetings via the platform.</li>
+                <li><strong>8x8.vc (Jitsi Meet):</strong> Free, open-source, no account required for students. Links are auto-generated.</li>
+                <li><strong>Google Meet:</strong> Familiar interface, requires Google account. Instructors can paste existing meet links or use auto-generation if Calendar API is configured.</li>
+                <li><strong>BigBlueButton:</strong> Open-source classroom-focused solution. Requires server configuration.</li>
+                <li><strong>Attendance tracking:</strong> Student attendance is automatically logged when they join meetings via the platform.</li>
               </ul>
             </div>
           </div>
@@ -313,11 +319,11 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-emerald-900 mb-2">🎬 Interactive Video</h4>
               <p className="text-sm text-emerald-700 mb-2">Videos that pause at specified timestamps to ask questions. This increases engagement and helps verify comprehension.</p>
               <ul className="text-xs text-emerald-700 space-y-1 ml-4">
-                <li>• Instructors add checkpoints at specific timestamps</li>
-                <li>• Questions can be multiple choice, true/false, or short answer</li>
-                <li>• Students must answer to continue watching</li>
-                <li>• Immediate feedback and progress tracking</li>
-                <li>• Perfect for step-by-step tutorials and case studies</li>
+                <li>Instructors add checkpoints at specific timestamps</li>
+                <li>Questions can be multiple choice, true/false, or short answer</li>
+                <li>Students must answer to continue watching</li>
+                <li>Immediate feedback and progress tracking</li>
+                <li>Perfect for step-by-step tutorials and case studies</li>
               </ul>
             </div>
 
@@ -325,11 +331,11 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-purple-900 mb-2">🎵 Audio/Podcast Content</h4>
               <p className="text-sm text-purple-700 mb-2">Audio content with full playback controls and accessibility features. Essential for language learning and mobile learning.</p>
               <ul className="text-xs text-purple-700 space-y-1 ml-4">
-                <li>• Supports MP3, WAV, OGG, M4A formats</li>
-                <li>• Playback speed control (0.5x to 2x)</li>
-                <li>• Volume control and download option</li>
-                <li>• Optional transcripts for accessibility</li>
-                <li>• Perfect for language learning, lectures, interviews</li>
+                <li>Supports MP3, WAV, OGG, M4A formats</li>
+                <li>Playback speed control (0.5x to 2x)</li>
+                <li>Volume control and download option</li>
+                <li>Optional transcripts for accessibility</li>
+                <li>Perfect for language learning, lectures, interviews</li>
               </ul>
             </div>
 
@@ -337,12 +343,12 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-blue-900 mb-2">💻 Code Sandbox</h4>
               <p className="text-sm text-blue-700 mb-2">Interactive code editor with live execution. Critical for programming and technical courses.</p>
               <ul className="text-xs text-blue-700 space-y-1 ml-4">
-                <li>• Supports 8 languages: JavaScript, TypeScript, HTML/CSS, Python, Java, C++, SQL, JSON</li>
-                <li>• JavaScript and HTML/CSS execute directly in browser</li>
-                <li>• Real-time output and error messages</li>
-                <li>• Code templates for each language</li>
-                <li>• Read-only mode for demonstrations</li>
-                <li>• Perfect for programming courses and coding exercises</li>
+                <li>Supports 8 languages: JavaScript, TypeScript, HTML/CSS, Python, Java, C++, SQL, JSON</li>
+                <li>JavaScript and HTML/CSS execute directly in browser</li>
+                <li>Real-time output and error messages</li>
+                <li>Code templates for each language</li>
+                <li>Read-only mode for demonstrations</li>
+                <li>Perfect for programming courses and coding exercises</li>
               </ul>
             </div>
 
@@ -387,22 +393,22 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">🎓 Certificate Issuance</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Certificates are automatically issued when students complete courses</li>
-                <li>• Each certificate has a unique verification code</li>
-                <li>• Certificates are stored as PDF files in Supabase Storage</li>
-                <li>• Students can download and share certificates</li>
-                <li>• Public verification portal for certificate authenticity</li>
+                <li>Certificates are automatically issued when students complete courses</li>
+                <li>Each certificate has a unique verification code</li>
+                <li>Certificates are stored as PDF files in Supabase Storage</li>
+                <li>Students can download and share certificates</li>
+                <li>Public verification portal for certificate authenticity</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">📊 Managing Issued Certificates</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• View all issued certificates in Admin → Certificates → Manage Certificates</li>
-                <li>• Search and filter certificates by student or course</li>
-                <li>• Download certificate PDFs</li>
-                <li>• Regenerate certificates if needed</li>
-                <li>• View certificate verification codes</li>
+                <li>View all issued certificates in Admin → Certificates → Manage Certificates</li>
+                <li>Search and filter certificates by student or course</li>
+                <li>Download certificate PDFs</li>
+                <li>Regenerate certificates if needed</li>
+                <li>View certificate verification codes</li>
               </ul>
             </div>
           </div>
@@ -421,26 +427,26 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">📊 Analytics Dashboard</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Access via Admin → Analytics</li>
-                <li>• Daily Active Users (DAU) tracking</li>
-                <li>• Course engagement metrics</li>
-                <li>• Activity type breakdowns</li>
-                <li>• Course completion rates</li>
-                <li>• Student progress tracking</li>
-                <li>• Top courses by enrollment</li>
-                <li>• Time spent analysis</li>
-                <li>• Quiz and assignment performance</li>
-                <li>• Engagement trends over time</li>
+                <li>Access via Admin → Analytics</li>
+                <li>Daily Active Users (DAU) tracking</li>
+                <li>Course engagement metrics</li>
+                <li>Activity type breakdowns</li>
+                <li>Course completion rates</li>
+                <li>Student progress tracking</li>
+                <li>Top courses by enrollment</li>
+                <li>Time spent analysis</li>
+                <li>Quiz and assignment performance</li>
+                <li>Engagement trends over time</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">📥 Exporting Data</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Export analytics data to CSV format</li>
-                <li>• Filter data by date range</li>
-                <li>• Download reports for specific metrics</li>
-                <li>• Use exports for external analysis and reporting</li>
+                <li>Export analytics data to CSV format</li>
+                <li>Filter data by date range</li>
+                <li>Download reports for specific metrics</li>
+                <li>Use exports for external analysis and reporting</li>
               </ul>
             </div>
           </div>
@@ -459,32 +465,32 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">⚙️ Email Service Setup</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• System uses Resend API for email delivery</li>
-                <li>• Configure RESEND_API_KEY in environment variables</li>
-                <li>• Verify domain with Resend for production emails</li>
-                <li>• Test email functionality from Admin → Test Email</li>
-                <li>• Use onboarding@resend.dev for testing without domain verification</li>
+                <li>System uses Resend API for email delivery</li>
+                <li>Configure RESEND_API_KEY in environment variables</li>
+                <li>Verify domain with Resend for production emails</li>
+                <li>Test email functionality from Admin → Test Email</li>
+                <li>Use onboarding@resend.dev for testing without domain verification</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">📧 Email Templates</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Customize email templates for different notification types</li>
-                <li>• Templates include: grade posted, assignment due, enrollment confirmation</li>
-                <li>• Course announcements and discussion replies</li>
-                <li>• Email digests (daily/weekly summaries)</li>
-                <li>• Templates support variable substitution</li>
+                <li>Customize email templates for different notification types</li>
+                <li>Templates include: grade posted, assignment due, enrollment confirmation</li>
+                <li>Course announcements and discussion replies</li>
+                <li>Email digests (daily/weekly summaries)</li>
+                <li>Templates support variable substitution</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">⏰ Scheduled Emails</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Assignment due reminders (sent before due dates)</li>
-                <li>• Daily/weekly email digests</li>
-                <li>• Configure cron jobs for scheduled tasks</li>
-                <li>• Email rate limiting (2 requests/second with Resend)</li>
+                <li>Assignment due reminders (sent before due dates)</li>
+                <li>Daily/weekly email digests</li>
+                <li>Configure cron jobs for scheduled tasks</li>
+                <li>Email rate limiting (2 requests/second with Resend)</li>
               </ul>
             </div>
           </div>
@@ -517,10 +523,10 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">🌐 Overview</h4>
               <p className="text-sm text-gray-600 mb-3">Global Discussions provide a platform-wide discussion forum where all users can participate regardless of course enrollment.</p>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• <strong>Categories:</strong> General, Academic Help, Campus Life, Career & Jobs, Tech Support, Announcements</li>
-                <li>• <strong>Features:</strong> Threaded replies, upvoting/downvoting, pinning, locking discussions</li>
-                <li>• <strong>Access:</strong> All authenticated users can view and participate</li>
-                <li>• <strong>Moderation:</strong> Admins can delete inappropriate content and lock discussions</li>
+                <li><strong>Categories:</strong> General, Academic Help, Campus Life, Career & Jobs, Tech Support, Announcements</li>
+                <li><strong>Features:</strong> Threaded replies, upvoting/downvoting, pinning, locking discussions</li>
+                <li><strong>Access:</strong> All authenticated users can view and participate</li>
+                <li><strong>Moderation:</strong> Admins can delete inappropriate content and lock discussions</li>
               </ul>
             </div>
 
@@ -538,11 +544,11 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">📊 Database Tables</h4>
               <p className="text-sm text-gray-600 mb-3">Global discussions are stored in the following database tables:</p>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• <code className="bg-gray-100 px-1 rounded">global_discussion_categories</code> - Discussion categories</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">global_discussions</code> - Main discussion threads</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">global_discussion_replies</code> - Threaded replies</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">global_discussion_votes</code> - Upvotes and downvotes</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">global_discussion_subscriptions</code> - User subscriptions for notifications</li>
+                <li><code className="bg-gray-100 px-1 rounded">global_discussion_categories</code> - Discussion categories</li>
+                <li><code className="bg-gray-100 px-1 rounded">global_discussions</code> - Main discussion threads</li>
+                <li><code className="bg-gray-100 px-1 rounded">global_discussion_replies</code> - Threaded replies</li>
+                <li><code className="bg-gray-100 px-1 rounded">global_discussion_votes</code> - Upvotes and downvotes</li>
+                <li><code className="bg-gray-100 px-1 rounded">global_discussion_subscriptions</code> - User subscriptions for notifications</li>
               </ul>
             </div>
           </div>
@@ -575,11 +581,11 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">💬 System Overview</h4>
               <p className="text-sm text-gray-600 mb-3">The messaging system enables private communication between platform users.</p>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• <strong>Direct Messages:</strong> One-on-one private conversations between users</li>
-                <li>• <strong>Group Chats:</strong> Multi-user chat rooms for study groups and project teams</li>
-                <li>• <strong>Course Chats:</strong> Automatic chat rooms for enrolled course members</li>
-                <li>• <strong>File Sharing:</strong> Users can attach files and images to messages</li>
-                <li>• <strong>Real-time Updates:</strong> Messages delivered instantly via Supabase Realtime</li>
+                <li><strong>Direct Messages:</strong> One-on-one private conversations between users</li>
+                <li><strong>Group Chats:</strong> Multi-user chat rooms for study groups and project teams</li>
+                <li><strong>Course Chats:</strong> Automatic chat rooms for enrolled course members</li>
+                <li><strong>File Sharing:</strong> Users can attach files and images to messages</li>
+                <li><strong>Real-time Updates:</strong> Messages delivered instantly via Supabase Realtime</li>
               </ul>
             </div>
 
@@ -597,11 +603,11 @@ export default function AdminHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">📊 Database Tables</h4>
               <p className="text-sm text-gray-600 mb-3">Student messaging uses the following database tables:</p>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• <code className="bg-gray-100 px-1 rounded">student_chat_rooms</code> - Chat rooms (direct, group, course, study_group types)</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">student_chat_members</code> - Room membership and roles</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">student_chat_messages</code> - Messages with file attachment support</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">student_chat_reactions</code> - Emoji reactions on messages</li>
-                <li>• <code className="bg-gray-100 px-1 rounded">student_chat_blocked_users</code> - User blocking for safety</li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_rooms</code> - Chat rooms (direct, group, course, study_group types)</li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_members</code> - Room membership and roles</li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_messages</code> - Messages with file attachment support</li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_reactions</code> - Emoji reactions on messages</li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_blocked_users</code> - User blocking for safety</li>
               </ul>
             </div>
 
@@ -643,32 +649,32 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">⚙️ General Settings</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Configure site branding and customization</li>
-                <li>• Set system-wide notification preferences</li>
-                <li>• Manage feature flags and toggles</li>
-                <li>• Configure file upload limits</li>
-                <li>• Set default course settings</li>
+                <li>Configure site branding and customization</li>
+                <li>Set system-wide notification preferences</li>
+                <li>Manage feature flags and toggles</li>
+                <li>Configure file upload limits</li>
+                <li>Set default course settings</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">🔒 Security Settings</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Manage password policies</li>
-                <li>• Configure session timeouts</li>
-                <li>• Set up rate limiting rules</li>
-                <li>• Monitor security logs and events</li>
-                <li>• Configure two-factor authentication (if enabled)</li>
+                <li>Manage password policies</li>
+                <li>Configure session timeouts</li>
+                <li>Set up rate limiting rules</li>
+                <li>Monitor security logs and events</li>
+                <li>Configure two-factor authentication (if enabled)</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">💾 Storage & Media</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>• Manage Supabase Storage buckets</li>
-                <li>• Configure certificate storage permissions</li>
-                <li>• Set media upload size limits</li>
-                <li>• Manage file retention policies</li>
+                <li>Manage Supabase Storage buckets</li>
+                <li>Configure certificate storage permissions</li>
+                <li>Set media upload size limits</li>
+                <li>Manage file retention policies</li>
               </ul>
             </div>
           </div>
@@ -756,7 +762,7 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">🛤️ Creating Learning Paths</h4>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Navigate to Admin → Learning Paths</li>
+                <li>Navigate to Learning Paths from the main navigation</li>
                 <li>Click &quot;Create Learning Path&quot;</li>
                 <li>Enter path name, description, and category</li>
                 <li>Add courses in the recommended completion order</li>
@@ -835,6 +841,470 @@ export default function AdminHelpPage() {
       )
     },
     {
+      id: 'bulk-user-operations',
+      title: 'Bulk User Operations',
+      icon: <Icon icon="mdi:account-group" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Bulk User Operations</h3>
+          <p className="text-gray-600">The Advanced User Management page (<strong>Admin → Users → Manage</strong>) provides powerful bulk operations for managing many users at once.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Selecting Users</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Use the checkbox on each row to select individual users</li>
+              <li>Click <strong>Select All</strong> to select all users matching current filters</li>
+              <li>A blue actions bar appears when users are selected</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Available Bulk Actions</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li><strong>Send Welcome Email</strong> — Generates temporary passwords and sends login instructions</li>
+              <li><strong>Send Custom Email</strong> — Compose and send a custom email to selected users</li>
+              <li><strong>Delete Selected</strong> — Permanently removes user accounts, profiles, and all associated data</li>
+              <li><strong>Clear Selection</strong> — Deselects all users</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Other Management Tools</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li><strong>Invite User</strong> — Send email invitations to join the platform</li>
+              <li><strong>Bulk Update</strong> — Upload a CSV to update multiple user records at once</li>
+              <li><strong>Basic CSV Import</strong> — Import users from a CSV file (email, name, role)</li>
+              <li><strong>Download Report</strong> — Export the user list as a report</li>
+              <li><strong>Add New User</strong> — Manually create a new user account</li>
+              <li><strong>Enroll User in Course</strong> — Directly enroll a user in a specific course</li>
+            </ul>
+          </div>
+
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <p className="text-sm text-yellow-700"><strong>Warning:</strong> Bulk delete is permanent and cannot be undone. A confirmation dialog appears, and for 10+ users a second confirmation is required.</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'course-management-tools',
+      title: 'Course Management Tools',
+      icon: <Icon icon="mdi:school" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Course Management Tools</h3>
+          <p className="text-gray-600">Manage courses with cohorts, groups, attendance tracking, and gradebook tools.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Cohorts & Groups</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Create cohorts to organize students into scheduled batches</li>
+              <li>Set up course groups for collaborative work</li>
+              <li>Set capacity, schedule, and enrollment windows</li>
+              <li>Assign instructors and facilitators</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Course Features</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li><strong>Participants</strong> — View and manage enrolled students</li>
+              <li><strong>Attendance</strong> — Track student attendance for each session</li>
+              <li><strong>Gradebook</strong> — Course gradebook with customizable setup</li>
+              <li><strong>Gradebook Setup</strong> — Configure grade categories, weights, and grading scale</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'question-banks',
+      title: 'Question Banks',
+      icon: <Icon icon="mdi:database-search" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Question Banks</h3>
+          <p className="text-gray-600">Question Banks allow you to maintain reusable pools of questions that can be shared across multiple quizzes.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Managing Question Banks</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → Question Banks</strong></li>
+              <li>Create named banks organized by subject or topic</li>
+              <li>Add questions of any type (multiple choice, true/false, short answer, etc.)</li>
+              <li>Tag questions for easy searching and filtering</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Using in Quizzes</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>When creating a quiz, pull random questions from a bank</li>
+              <li>Set the number of questions to draw from each bank</li>
+              <li>Each student can receive a unique randomized set</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'crm',
+      title: 'CRM & Enrollment Pipeline',
+      icon: <Icon icon="mdi:account-heart" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">CRM & Enrollment Pipeline</h3>
+          <p className="text-gray-600">The built-in CRM helps you manage student relationships, track enrollment pipelines, and automate communications from inquiry through graduation.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">CRM Dashboard</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>CRM</strong> from the main navigation</li>
+              <li>View lifecycle stages, risk levels, and engagement scores at a glance</li>
+              <li>Access students, pipeline, tasks, and communications from the sidebar</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Enrollment Pipeline</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li><strong>Pipeline View</strong> — Kanban-style board showing students at each enrollment stage</li>
+              <li>Drag and drop students between stages</li>
+              <li>Track conversion rates from inquiry to enrollment</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Student Segments</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Create segments based on criteria (enrollment status, engagement, risk level)</li>
+              <li>Use segments to target communications and campaigns</li>
+              <li>Navigate to <strong>CRM → Segments</strong> to manage</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Communications & Campaigns</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Create targeted email campaigns for specific student segments</li>
+              <li>Track open rates, click rates, and engagement</li>
+              <li>Schedule communications for optimal delivery times</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Automation Workflows</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>CRM → Workflows</strong></li>
+              <li>Create automated actions triggered by student behavior</li>
+              <li>Examples: send follow-up email when application submitted, assign task when student at risk</li>
+              <li>Toggle workflows on/off as needed</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">CRM Tasks</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Manage follow-up tasks for staff (calls, emails, meetings)</li>
+              <li>Assign tasks to team members</li>
+              <li>Set due dates and priorities</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'admissions',
+      title: 'Admissions Management',
+      icon: <Icon icon="mdi:clipboard-check" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Admissions Management</h3>
+          <p className="text-gray-600">Create and manage admissions campaigns with custom application forms, track applicants, and process applications.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Admissions Forms</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>CRM → Admissions → Forms</strong></li>
+              <li>Create custom application forms with various field types</li>
+              <li>Each form generates a public URL for applicants</li>
+              <li>Edit or deactivate forms at any time</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Processing Applications</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>View all submitted applications in <strong>CRM → Applications</strong></li>
+              <li>Review individual applications with full submission details</li>
+              <li>Update application status (pending, under review, accepted, rejected)</li>
+              <li>Applicants can check their status at <code>/admissions/status</code></li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'sis-integration',
+      title: 'SIS Integration (SonisWeb)',
+      icon: <Icon icon="mdi:swap-horizontal" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">SIS Integration (SonisWeb)</h3>
+          <p className="text-gray-600">Integrate with SonisWeb Student Information System to sync students, courses, enrollments, and grades.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">IMS Enterprise XML Import</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → SIS Integration</strong></li>
+              <li>Upload an IMS Enterprise XML file exported from SonisWeb</li>
+              <li>The system parses persons, groups (courses), and memberships (enrollments)</li>
+              <li>Large files are processed in batches automatically</li>
+              <li>Progress bar shows real-time import status</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Sync Features</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li><strong>Student Sync</strong> — Import and update student records</li>
+              <li><strong>Enrollment Sync</strong> — Sync course enrollments and instructor assignments</li>
+              <li><strong>Grade Passback</strong> — Send grades back to SonisWeb</li>
+              <li><strong>Scheduled Sync</strong> — Automatic daily sync via cron job (2:00 AM)</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Configuration</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Configure SonisWeb connection credentials in the SIS dashboard</li>
+              <li>Set up grade sync configuration to map grade columns</li>
+              <li>View sync logs to monitor successful and failed operations</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'at-risk-students',
+      title: 'At-Risk Student Monitoring',
+      icon: <Icon icon="mdi:alert-octagon" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">At-Risk Student Monitoring</h3>
+          <p className="text-gray-600">Identify and support students who may be struggling academically or disengaging from courses.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">How It Works</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → At-Risk Students</strong></li>
+              <li>Students are flagged based on risk scores computed from multiple factors</li>
+              <li>Factors include: low grades, missing assignments, low engagement, infrequent logins</li>
+              <li>View risk levels and drill into individual student details</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Taking Action</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Contact at-risk students directly via messaging</li>
+              <li>Create CRM tasks for follow-up interventions</li>
+              <li>Use adaptive learning rules to provide additional support content</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'adaptive-rules',
+      title: 'Adaptive Learning Rules',
+      icon: <Icon icon="mdi:brain" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Adaptive Learning Rules</h3>
+          <p className="text-gray-600">Configure rules that personalize the learning experience based on student performance and behavior.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Managing Rules</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → Adaptive Rules</strong></li>
+              <li>Create rules with conditions (e.g., quiz score below 60%)</li>
+              <li>Define actions (e.g., recommend supplementary lesson, lower difficulty)</li>
+              <li>Rules are evaluated automatically when conditions are met</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Student Experience</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Students see personalized recommendations at <strong>My Courses → Adaptive Learning</strong></li>
+              <li>Recommendations update based on their performance</li>
+              <li>Difficulty preference can be set in their profile</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'lti-integrations',
+      title: 'LTI Integrations',
+      icon: <Icon icon="mdi:puzzle" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">LTI 1.3 Integrations</h3>
+          <p className="text-gray-600">Connect external learning tools and platforms using the LTI 1.3 standard for seamless single sign-on and grade exchange.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">LTI Tools (Outbound)</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → LTI Tools</strong></li>
+              <li>Register external tools (e.g., Turnitin, Labster, H5P)</li>
+              <li>Configure client ID, deployment ID, and key set URL</li>
+              <li>Launch external tools from within courses</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">LTI Platforms (Inbound)</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → LTI Platforms</strong></li>
+              <li>Register this LMS as a tool provider for external LMS platforms</li>
+              <li>Share JWKS URL and launch URL with partner platforms</li>
+              <li>Supports grade passback via LTI Assignment and Grade Services</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'proctoring',
+      title: 'Proctoring Services',
+      icon: <Icon icon="mdi:eye-check" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Proctoring Services</h3>
+          <p className="text-gray-600">Configure and manage quiz proctoring to ensure exam integrity.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Built-in Safe Browser Mode</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Enable Safe Browser Mode on any quiz</li>
+              <li>Forces fullscreen during the quiz attempt</li>
+              <li>Blocks right-click context menus and keyboard shortcuts</li>
+              <li>Tracks violations (tab switches, exiting fullscreen)</li>
+              <li>Auto-submits quiz after configurable max violations</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">External Proctoring</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → Proctoring Services</strong></li>
+              <li>Configure third-party proctoring integrations</li>
+              <li>Events are logged and can be reviewed per student</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'custom-reports',
+      title: 'Custom Reports',
+      icon: <Icon icon="mdi:chart-box" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Custom Reports</h3>
+          <p className="text-gray-600">Build and run custom data reports tailored to your institution&apos;s needs.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Report Builder</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → Reports → Builder</strong></li>
+              <li>Select data sources (users, courses, enrollments, grades, etc.)</li>
+              <li>Add filters, groupings, and sort order</li>
+              <li>Save reports for future use</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Running Reports</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>View saved reports in <strong>Admin → Reports</strong></li>
+              <li>Execute reports on-demand to get current data</li>
+              <li>Export results as CSV for further analysis</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'branding',
+      title: 'Branding & Theming',
+      icon: <Icon icon="mdi:palette" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Branding & Theming</h3>
+          <p className="text-gray-600">Customize the look and feel of your campus with your institution&apos;s branding.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Branding Settings</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → Settings → Branding</strong></li>
+              <li>Upload your institution&apos;s logo</li>
+              <li>Set primary and secondary brand colors</li>
+              <li>Customize the site name and tagline</li>
+              <li>Changes apply across the entire platform for your tenant</li>
+            </ul>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <p className="text-sm text-blue-700"><strong>Multi-Tenant:</strong> Each tenant (institution) can have its own unique branding. Branding is scoped to the tenant subdomain.</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'multi-tenancy',
+      title: 'Multi-Tenancy & Tenants',
+      icon: <Icon icon="mdi:domain" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Multi-Tenancy & Tenant Management</h3>
+          <p className="text-gray-600">The platform supports multiple institutions (tenants), each with their own users, courses, data, and branding.</p>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">How Tenants Work</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Each tenant has a unique subdomain (e.g., <code>salcc.oecscampus.org</code>)</li>
+              <li>Data is fully isolated between tenants</li>
+              <li>Each tenant has its own admins, instructors, and students</li>
+              <li>Custom branding per tenant</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Managing Tenants (Super Admin)</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Navigate to <strong>Admin → Tenants</strong> (Super Admin only)</li>
+              <li>Create new tenants with name, slug, and custom domain</li>
+              <li>Manage tenant settings, members, and suspension status</li>
+              <li>Use <strong>Admin → System</strong> for a global overview of all tenants</li>
+            </ul>
+          </div>
+
+          <div className="bg-white border rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">Roles</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li><strong>Super Admin</strong> — Can manage all tenants and global settings</li>
+              <li><strong>Tenant Admin</strong> — Can manage their own tenant&apos;s settings and users</li>
+              <li><strong>Admin</strong> — Full administrative access within a tenant</li>
+              <li>Other roles (instructor, student, etc.) are scoped to their tenant</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
       id: 'troubleshooting',
       title: 'Troubleshooting',
       icon: <Icon icon="mdi:alert-circle" className="w-5 h-5" />,
@@ -846,32 +1316,32 @@ export default function AdminHelpPage() {
             <div className="border border-red-200 rounded-lg p-4 bg-red-50">
               <h4 className="font-medium text-red-900 mb-2">❌ Email Not Sending</h4>
               <ul className="text-sm text-red-700 space-y-1 ml-4">
-                <li>• Verify RESEND_API_KEY is set in environment variables</li>
-                <li>• Check domain verification status in Resend dashboard</li>
-                <li>• Test email functionality from Admin → Test Email</li>
-                <li>• Check rate limits (2 requests/second)</li>
-                <li>• Review email logs for delivery errors</li>
+                <li>Verify RESEND_API_KEY is set in environment variables</li>
+                <li>Check domain verification status in Resend dashboard</li>
+                <li>Test email functionality from Admin → Test Email</li>
+                <li>Check rate limits (2 requests/second)</li>
+                <li>Review email logs for delivery errors</li>
               </ul>
             </div>
 
             <div className="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
               <h4 className="font-medium text-yellow-900 mb-2">⚠️ Certificate Generation Issues</h4>
               <ul className="text-sm text-yellow-700 space-y-1 ml-4">
-                <li>• Verify Supabase Storage bucket permissions</li>
-                <li>• Check certificate template syntax</li>
-                <li>• Ensure course completion criteria are met</li>
-                <li>• Review certificate generation logs</li>
-                <li>• Manually trigger certificate generation if needed</li>
+                <li>Verify Supabase Storage bucket permissions</li>
+                <li>Check certificate template syntax</li>
+                <li>Ensure course completion criteria are met</li>
+                <li>Review certificate generation logs</li>
+                <li>Manually trigger certificate generation if needed</li>
               </ul>
             </div>
 
             <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
               <h4 className="font-medium text-blue-900 mb-2">ℹ️ Analytics Not Updating</h4>
               <ul className="text-sm text-blue-700 space-y-1 ml-4">
-                <li>• Refresh materialized views if needed</li>
-                <li>• Check database connection status</li>
-                <li>• Verify student activity logging is enabled</li>
-                <li>• Clear analytics cache if data seems stale</li>
+                <li>Refresh materialized views if needed</li>
+                <li>Check database connection status</li>
+                <li>Verify student activity logging is enabled</li>
+                <li>Clear analytics cache if data seems stale</li>
               </ul>
             </div>
           </div>
@@ -889,7 +1359,7 @@ export default function AdminHelpPage() {
   const currentSection = helpSections.find(section => section.id === activeSection);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -956,10 +1426,11 @@ export default function AdminHelpPage() {
           {/* Main Content */}
           <div className="flex-1">
             <div className="bg-white rounded-lg shadow-sm p-8">
-              <AIHelpEnhancement 
+              <AIHelpEnhancement
                 onAISearch={handleAISearch}
                 currentPage="/help/admin"
                 userRole="admin"
+                activeSection={activeSection}
               />
               
               {currentSection ? (
@@ -971,7 +1442,7 @@ export default function AdminHelpPage() {
                         {currentSection.icon}
                       </div>
                       <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{currentSection.title}</h1>
+                        <h1 className="text-xl font-normal text-slate-900 tracking-tight">{currentSection.title}</h1>
                       </div>
                     </div>
                   </div>
@@ -995,9 +1466,11 @@ export default function AdminHelpPage() {
 
       {/* AI Chat Widget */}
       {showAIChat && (
-        <AIChatWidget 
+        <AIChatWidget
+          key={aiMessageKey}
           currentPage="/help/admin"
           context={{ userRole: 'admin', activeSection }}
+          initialMessage={aiInitialMessage}
         />
       )}
     </div>

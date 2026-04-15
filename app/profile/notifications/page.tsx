@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
 import { motion } from 'framer-motion';
-import PushNotificationManager from '@/app/components/PushNotificationManager';
+import PushNotificationManager from '@/app/components/notification/PushNotificationManager';
 
 interface NotificationPreferences {
   id?: string;
@@ -188,7 +188,7 @@ export default function NotificationPreferencesPage() {
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Notification Preferences</h1>
+          <h1 className="text-xl font-normal text-slate-900 tracking-tight">Notification Preferences</h1>
           <p className="text-gray-600 mt-2">Manage how and when you receive notifications</p>
         </div>
 

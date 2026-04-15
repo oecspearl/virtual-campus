@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { StudentCalendar } from '@/app/components/student';
+import AccessibleModal from '@/app/components/ui/AccessibleModal';
 import { Plus, X } from 'lucide-react';
 
 interface CalendarEvent {
@@ -109,166 +110,155 @@ export default function CalendarPage() {
         />
 
         {/* Event Modal */}
-        {showEventModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedEvent ? 'Event Details' : 'New Event'}
-                </h2>
-                <button
-                  onClick={() => setShowEventModal(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+        <AccessibleModal
+          isOpen={showEventModal}
+          onClose={() => setShowEventModal(false)}
+          title={selectedEvent ? 'Event Details' : 'New Event'}
+          size="md"
+        >
+          {selectedEvent ? (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white">
+                  {selectedEvent.title}
+                </h3>
+                {selectedEvent.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {selectedEvent.description}
+                  </p>
+                )}
               </div>
 
-              {selectedEvent ? (
-                <div className="p-4 space-y-4">
-                  <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      {selectedEvent.title}
-                    </h3>
-                    {selectedEvent.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {selectedEvent.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    <p>
-                      <strong>When:</strong>{' '}
-                      {new Date(selectedEvent.start_datetime).toLocaleString()}
-                      {selectedEvent.end_datetime && (
-                        <> - {new Date(selectedEvent.end_datetime).toLocaleString()}</>
-                      )}
-                    </p>
-                    {selectedEvent.location && (
-                      <p>
-                        <strong>Where:</strong> {selectedEvent.location}
-                      </p>
-                    )}
-                    <p>
-                      <strong>Type:</strong> {selectedEvent.event_type}
-                    </p>
-                  </div>
-
-                  {!selectedEvent.is_synced && (
-                    <button
-                      onClick={handleDeleteEvent}
-                      className="w-full px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      Delete Event
-                    </button>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <p>
+                  <strong>When:</strong>{' '}
+                  {new Date(selectedEvent.start_datetime).toLocaleString()}
+                  {selectedEvent.end_datetime && (
+                    <> - {new Date(selectedEvent.end_datetime).toLocaleString()}</>
                   )}
-                </div>
-              ) : (
-                <form onSubmit={handleSaveEvent} className="p-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Title
-                    </label>
-                    <input
-                      type="text"
-                      value={newEvent.title}
-                      onChange={(e) =>
-                        setNewEvent((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    />
-                  </div>
+                </p>
+                {selectedEvent.location && (
+                  <p>
+                    <strong>Where:</strong> {selectedEvent.location}
+                  </p>
+                )}
+                <p>
+                  <strong>Type:</strong> {selectedEvent.event_type}
+                </p>
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      value={newEvent.description}
-                      onChange={(e) =>
-                        setNewEvent((prev) => ({ ...prev, description: e.target.value }))
-                      }
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Start
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={newEvent.start_datetime}
-                        onChange={(e) =>
-                          setNewEvent((prev) => ({
-                            ...prev,
-                            start_datetime: e.target.value,
-                          }))
-                        }
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        End
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={newEvent.end_datetime}
-                        onChange={(e) =>
-                          setNewEvent((prev) => ({
-                            ...prev,
-                            end_datetime: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="all_day"
-                      checked={newEvent.all_day}
-                      onChange={(e) =>
-                        setNewEvent((prev) => ({ ...prev, all_day: e.target.checked }))
-                      }
-                      className="w-4 h-4 text-blue-600 rounded"
-                    />
-                    <label
-                      htmlFor="all_day"
-                      className="text-sm text-gray-700 dark:text-gray-300"
-                    >
-                      All day event
-                    </label>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowEventModal(false)}
-                      className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Create Event
-                    </button>
-                  </div>
-                </form>
+              {!selectedEvent.is_synced && (
+                <button
+                  onClick={handleDeleteEvent}
+                  className="w-full px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  Delete Event
+                </button>
               )}
             </div>
-          </div>
-        )}
+          ) : (
+            <form onSubmit={handleSaveEvent} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={newEvent.title}
+                  onChange={(e) =>
+                    setNewEvent((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={newEvent.description}
+                  onChange={(e) =>
+                    setNewEvent((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Start
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newEvent.start_datetime}
+                    onChange={(e) =>
+                      setNewEvent((prev) => ({
+                        ...prev,
+                        start_datetime: e.target.value,
+                      }))
+                    }
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    End
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newEvent.end_datetime}
+                    onChange={(e) =>
+                      setNewEvent((prev) => ({
+                        ...prev,
+                        end_datetime: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="all_day"
+                  checked={newEvent.all_day}
+                  onChange={(e) =>
+                    setNewEvent((prev) => ({ ...prev, all_day: e.target.checked }))
+                  }
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
+                <label
+                  htmlFor="all_day"
+                  className="text-sm text-gray-700 dark:text-gray-300"
+                >
+                  All day event
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEventModal(false)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Create Event
+                </button>
+              </div>
+            </form>
+          )}
+        </AccessibleModal>
       </div>
     </div>
   );

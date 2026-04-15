@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Eye, CheckCircle2 } from 'lucide-react';
+import { Edit, Trash2, Eye, CheckCircle2 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import Link from 'next/link';
-import CertificatePreview from '@/app/components/CertificatePreview';
+import Button from '@/app/components/ui/Button';
+import CertificatePreview from '@/app/components/certificate/CertificatePreview';
 
 interface Template {
   id: string;
@@ -79,17 +81,16 @@ export default function CertificateTemplatesPage() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Certificate Templates</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-2">Certificate Templates</h1>
             <p className="text-gray-600">
               Manage certificate templates for course completions
             </p>
           </div>
-          <Link
-            href="/admin/certificates/templates/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-oecs-red text-white rounded-lg hover:bg-red-700 transition"
-          >
-            <Plus className="h-5 w-5" />
-            Create Template
+          <Link href="/admin/certificates/templates/new">
+            <Button size="sm">
+              <Icon icon="material-symbols:add" className="w-4 h-4 mr-1.5" />
+              Create Template
+            </Button>
           </Link>
         </div>
 
@@ -97,12 +98,11 @@ export default function CertificateTemplatesPage() {
         {templates.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <p className="text-gray-600 mb-4">No templates found</p>
-            <Link
-              href="/admin/certificates/templates/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-oecs-red text-white rounded-lg hover:bg-red-700 transition"
-            >
-              <Plus className="h-5 w-5" />
-              Create Your First Template
+            <Link href="/admin/certificates/templates/new">
+              <Button size="sm">
+                <Icon icon="material-symbols:add" className="w-4 h-4 mr-1.5" />
+                Create Your First Template
+              </Button>
             </Link>
           </div>
         ) : (

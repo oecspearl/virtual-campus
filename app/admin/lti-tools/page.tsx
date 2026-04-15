@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
-import Button from '@/app/components/Button';
-import { Input } from '@/app/components/Input';
+import Button from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
 
 interface LTITool {
   id: string;
@@ -156,7 +156,7 @@ export default function LTIToolsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">LTI 1.3 Tools</h1>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">LTI 1.3 Tools</h1>
             <p className="mt-2 text-sm text-gray-600">
               Manage Learning Tools Interoperability (LTI) 1.3 tool registrations
             </p>

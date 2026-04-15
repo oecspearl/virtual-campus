@@ -1,6 +1,6 @@
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
-import QuizResults from "@/app/components/QuizResults";
-import Breadcrumb from "@/app/components/Breadcrumb";
+import QuizResults from "@/app/components/quiz/QuizResults";
+import Breadcrumb from "@/app/components/ui/Breadcrumb";
 import Link from "next/link";
 
 // Force dynamic rendering to prevent Vercel from treating this as a static 404
@@ -26,7 +26,7 @@ export default async function Page({ params }: { params: Promise<{ id: string; a
         attemptId,
       });
       return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-md p-8 max-w-md text-center">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Results</h2>
             <p className="text-sm text-gray-600 mb-4">
@@ -45,7 +45,7 @@ export default async function Page({ params }: { params: Promise<{ id: string; a
     const questions = questionsResult.data || [];
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gray-50/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
           <Breadcrumb
             items={[
@@ -63,7 +63,7 @@ export default async function Page({ params }: { params: Promise<{ id: string; a
   } catch (error) {
     console.error("Error loading quiz results:", error);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-md p-8 max-w-md text-center">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Results</h2>
           <p className="text-sm text-gray-600 mb-4">

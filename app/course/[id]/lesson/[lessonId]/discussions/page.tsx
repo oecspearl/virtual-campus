@@ -1,7 +1,7 @@
 'use client';
 
 import React, { use } from 'react';
-import LessonDiscussionList from '@/app/components/LessonDiscussionList';
+import LessonDiscussionList from '@/app/components/discussions/LessonDiscussionList';
 
 interface LessonDiscussionsPageProps {
   params: Promise<{ id: string; lessonId: string }>;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { hasRole } from "@/lib/database-helpers";
+import { hasRole } from '@/lib/rbac';
 
 // GET editor preference (public - all users can read)
 export async function GET(request: NextRequest) {
@@ -42,8 +42,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching editor preference:', error);
     // Always default to proseforge to ensure the app continues to work
     return NextResponse.json({
-      editorType: 'proseforge',
-      message: error?.message || 'Using default editor'
+      editorType: 'proseforge'
     }, { status: 200 }); // Return 200 with default value instead of 500
   }
 }
@@ -91,10 +90,9 @@ export async function PUT(request: NextRequest) {
       if (checkError.code === '42P01' || checkError.message?.includes('does not exist')) {
         console.error('system_settings table does not exist. Please run the database migration.');
         return NextResponse.json(
-          { 
+          {
             error: "Database table not found. Please run the database migration (create-system-settings-schema.sql) first.",
-            code: 'TABLE_NOT_FOUND',
-            details: process.env.NODE_ENV === 'development' ? checkError.message : undefined
+            code: 'TABLE_NOT_FOUND'
           },
           { status: 500 }
         );
@@ -152,10 +150,9 @@ export async function PUT(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { 
+        {
           error: "Failed to update editor setting",
-          code: error.code || 'UNKNOWN_ERROR',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          code: error.code || 'UNKNOWN_ERROR'
         },
         { status: 500 }
       );
@@ -174,9 +171,8 @@ export async function PUT(request: NextRequest) {
     });
     
     return NextResponse.json(
-      { 
-        error: "Internal server error",
-        details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      {
+        error: "Internal server error"
       },
       { status: 500 }
     );

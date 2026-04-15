@@ -106,7 +106,7 @@ export default function InsightsFeed({ entityType, entityId }: InsightsFeedProps
       </div>
 
       {insights.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-8 text-center">
+        <div className="bg-gray-50 rounded-lg p-8 text-center">
           <Icon icon="material-symbols:lightbulb-outline" className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">No insights available</p>
         </div>
@@ -115,7 +115,7 @@ export default function InsightsFeed({ entityType, entityId }: InsightsFeedProps
           {insights.map((insight) => (
             <div
               key={insight.id}
-              className={`border-2 rounded-xl p-4 ${getInsightColor(insight.insight_type)} ${
+              className={`border-2 rounded-lg p-4 ${getInsightColor(insight.insight_type)} ${
                 !insight.is_read ? 'ring-2 ring-blue-500' : ''
               }`}
             >

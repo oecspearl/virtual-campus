@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 export async function POST(
@@ -9,8 +9,9 @@ export async function POST(
 ) {
   try {
     const { id: courseId } = await params;
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);

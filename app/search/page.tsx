@@ -47,11 +47,11 @@ function SearchContent() {
       results.discussions.length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50/50">
       <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Search</h1>
+          <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-4">Search</h1>
           <div className="max-w-2xl">
             <SmartSearch />
           </div>
@@ -96,7 +96,7 @@ function SearchContent() {
                     <Link
                       key={course.id}
                       href={`/course/${course.id}`}
-                      className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all hover:-translate-y-1"
+                      className="bg-white rounded-lg border border-gray-200/80 overflow-hidden  transition-all hover:-translate-y-1"
                     >
                       {course.thumbnail && (
                         <img
@@ -139,7 +139,7 @@ function SearchContent() {
                   <Icon icon="material-symbols:article" className="w-6 h-6 text-green-600" />
                   Lessons ({results.lessons.length})
                 </h2>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 divide-y divide-gray-200">
+                <div className="bg-white rounded-lg border border-gray-200/80 divide-y divide-gray-200">
                   {results.lessons.map((lesson: any) => (
                     <Link
                       key={lesson.id}
@@ -179,7 +179,7 @@ function SearchContent() {
                   <Icon icon="material-symbols:assignment" className="w-6 h-6 text-orange-600" />
                   Assignments ({results.assignments.length})
                 </h2>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 divide-y divide-gray-200">
+                <div className="bg-white rounded-lg border border-gray-200/80 divide-y divide-gray-200">
                   {results.assignments.map((assignment: any) => (
                     <Link
                       key={assignment.id}
@@ -223,7 +223,7 @@ function SearchContent() {
                   <Icon icon="material-symbols:forum" className="w-6 h-6 text-purple-600" />
                   Discussions ({results.discussions.length})
                 </h2>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 divide-y divide-gray-200">
+                <div className="bg-white rounded-lg border border-gray-200/80 divide-y divide-gray-200">
                   {results.discussions.map((discussion: any) => (
                     <Link
                       key={discussion.id}

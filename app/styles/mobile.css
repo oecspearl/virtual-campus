@@ -147,7 +147,153 @@
   }
 }
 
-/* Safe area utility classes */
+/* ============================================================
+   TOUCH-FRIENDLY CHECKBOXES & RADIO BUTTONS
+   Browser defaults are 13-16px — too small for finger taps.
+   These scale the control to 20px with a 44px tap zone.
+   ============================================================ */
+@media (max-width: 1023px) {
+  /* Enlarge native checkboxes & radios */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    accent-color: var(--theme-primary, #3B82F6);
+    cursor: pointer;
+  }
+
+  /* Ensure labels wrapping checkboxes/radios have adequate tap zone */
+  label:has(input[type="checkbox"]),
+  label:has(input[type="radio"]) {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+}
+
+/* ============================================================
+   BOTTOM NAVIGATION CONTENT CLEARANCE
+   Pages need padding-bottom to prevent content being hidden
+   behind the fixed bottom nav bar on mobile.
+   ============================================================ */
+@media (max-width: 1023px) {
+  .has-bottom-nav {
+    padding-bottom: calc(72px + var(--safe-area-inset-bottom));
+  }
+}
+
+/* ============================================================
+   MOBILE HORIZONTAL SCROLL PATTERNS
+   Tables and wide content use horizontal scroll on mobile
+   instead of forcing awkward column squishing.
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Responsive table wrapper — horizontal scroll on overflow */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;  /* bleed to edges */
+    padding: 0 16px;
+  }
+
+  .table-responsive table {
+    min-width: 600px;  /* force scroll for data-dense tables */
+  }
+
+  /* Horizontal card scroll rail */
+  .scroll-rail {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;  /* space for scrollbar */
+  }
+
+  .scroll-rail > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+    width: 280px;  /* consistent card width */
+  }
+
+  /* Full-bleed scroll rail (e.g., dashboard widgets) */
+  .scroll-rail-bleed {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+}
+
+/* ============================================================
+   STICKY ACTION BARS
+   Common pattern: sticky save/submit bar at bottom of forms
+   ============================================================ */
+@media (max-width: 1023px) {
+  .sticky-action-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    padding: 12px 16px calc(12px + var(--safe-area-inset-bottom));
+    z-index: 30;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* ============================================================
+   MOBILE MODAL / SHEET PATTERNS
+   Bottom sheets feel more natural on mobile than centered modals
+   ============================================================ */
+@media (max-width: 640px) {
+  .mobile-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--safe-area-inset-bottom);
+    z-index: 50;
+  }
+
+  .mobile-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+    margin: 8px auto 16px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE TYPOGRAPHY CLAMP
+   Fluid type that scales smoothly between mobile and desktop
+   ============================================================ */
+.text-fluid-hero {
+  font-size: clamp(2rem, 5vw + 1rem, 3.5rem);
+  line-height: 1.1;
+}
+
+.text-fluid-title {
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 2.5rem);
+  line-height: 1.2;
+}
+
+.text-fluid-subtitle {
+  font-size: clamp(1.125rem, 2vw + 0.25rem, 1.5rem);
+  line-height: 1.4;
+}
+
+/* ============================================================
+   SAFE AREA UTILITY CLASSES
+   ============================================================ */
 .safe-area-top {
   padding-top: var(--safe-area-inset-top);
 }
@@ -171,5 +317,3 @@
 .h-safe-area-inset-top {
   height: var(--safe-area-inset-top);
 }
-
-

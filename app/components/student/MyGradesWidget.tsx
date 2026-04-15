@@ -184,7 +184,7 @@ export default function MyGradesWidget({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-yellow-600 to-amber-600 px-4 sm:px-6 py-4">
           <h3 className="text-lg font-bold text-white flex items-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +203,7 @@ export default function MyGradesWidget({
 
   if (grades.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-yellow-600 to-amber-600 px-4 sm:px-6 py-4">
           <h3 className="text-lg font-bold text-white flex items-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +223,7 @@ export default function MyGradesWidget({
   }
 
   return (
-    <div id="my-grades" className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+    <div id="my-grades" className="bg-white rounded-lg border border-gray-100 overflow-hidden">
       <div className="bg-gradient-to-r from-yellow-600 to-amber-600 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -251,7 +251,7 @@ export default function MyGradesWidget({
             const hasMore = courseGrades.length > 3;
 
             return (
-              <div key={course.id} className="border border-gray-200 rounded-xl overflow-hidden">
+              <div key={course.id} className="border border-gray-200 rounded-lg overflow-hidden">
                 {/* Course Header */}
                 <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">

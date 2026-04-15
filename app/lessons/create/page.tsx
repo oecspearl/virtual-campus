@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import RoleGuard from '@/app/components/RoleGuard';
 
 interface Course {

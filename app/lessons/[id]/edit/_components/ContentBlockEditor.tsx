@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import TextEditor from '@/app/components/TextEditor';
-import FileUpload, { UploadResult } from '@/app/components/FileUpload';
+import TextEditor from '@/app/components/editor/TextEditor';
+import FileUpload, { UploadResult } from '@/app/components/file-upload/FileUpload';
 
 type ContentItem = {
   type: 'video' | 'text' | 'slideshow' | 'file' | 'embed' | 'quiz' | 'survey' | 'assignment' | 'image' | 'pdf' | 'audio' | 'interactive_video' | 'code_sandbox' | 'label' | 'whiteboard';

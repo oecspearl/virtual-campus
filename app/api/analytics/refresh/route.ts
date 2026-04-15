@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 
 /**
  * Analytics Refresh API
@@ -12,16 +12,14 @@ import { getCurrentUser } from "@/lib/database-helpers";
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-
     // Only allow admins to manually refresh, but allow unauthenticated cron requests
     const cronSecret = request.headers.get('x-cron-secret');
     const isCronRequest = cronSecret === process.env.CRON_SECRET;
 
     if (!isCronRequest) {
-      if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+      const authResult = await authenticateUser(request as any);
+      if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+      const user = authResult.userProfile!;
 
       const allowedRoles = ['admin', 'super_admin'];
       if (!allowedRoles.includes(user.role)) {
@@ -121,10 +119,9 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
 
     const allowedRoles = ['admin', 'super_admin', 'instructor', 'curriculum_designer'];
     if (!allowedRoles.includes(user.role)) {

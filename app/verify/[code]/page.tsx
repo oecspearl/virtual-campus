@@ -92,7 +92,7 @@ export default function VerifyCertificatePage() {
         {/* Header */}
         <div className="bg-oecs-red text-white p-6 text-center">
           <CheckCircle2 className="h-16 w-16 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold mb-2">Certificate Verified</h1>
+          <h1 className="text-xl font-normal text-slate-900 tracking-tight mb-2">Certificate Verified</h1>
           <p className="text-red-100">This certificate is authentic and verified</p>
         </div>
 

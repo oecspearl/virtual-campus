@@ -7,11 +7,28 @@ export function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
+
+  // HSTS — enforce HTTPS for 1 year including subdomains
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+
   // Content Security Policy
+  // Note: 'unsafe-inline' for styles is required by Tailwind CSS and dynamic style props.
+  // 'unsafe-eval' is required by TinyMCE editor — restrict to its CDN domain.
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tiny.cloud; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co;"
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://cdn.tiny.cloud",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' blob: https:",
+      "connect-src 'self' https://*.supabase.co https://api.openai.com wss://*.supabase.co",
+      "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://*.google.com",
+      "worker-src 'self' blob:",
+    ].join('; ')
   );
   
   return response;
@@ -21,21 +38,23 @@ export function validateCSRFToken(request: NextRequest): boolean {
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
   const host = request.headers.get('host');
-  
+
+  // No origin header = same-origin request (browsers always send origin for cross-origin)
+  if (!origin) return true;
+
   // For development, allow localhost
   if (process.env.NODE_ENV === 'development') {
-    return origin?.includes('localhost') || referer?.includes('localhost') || false;
+    return origin.includes('localhost') || origin.includes('127.0.0.1');
   }
-  
-  // In production, validate against your domain
+
+  // In production, validate origin against known hosts
   const allowedOrigins = [
     process.env.NEXT_PUBLIC_SITE_URL,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-  ].filter(Boolean);
-  
-  return allowedOrigins.some(allowedOrigin => 
-    origin === allowedOrigin || referer?.startsWith(allowedOrigin!)
-  );
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    host ? `https://${host}` : null,
+  ].filter(Boolean) as string[];
+
+  return allowedOrigins.some(allowed => origin === allowed);
 }
 
 export function sanitizeInput(input: any): any {

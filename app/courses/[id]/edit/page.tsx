@@ -2,12 +2,13 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import Button from '@/app/components/Button';
+import Button from '@/app/components/ui/Button';
 import RoleGuard from '@/app/components/RoleGuard';
-import TextEditor from '@/app/components/TextEditor';
-import FileUpload from '@/app/components/FileUpload';
+import TextEditor from '@/app/components/editor/TextEditor';
+import FileUpload from '@/app/components/file-upload/FileUpload';
 import { useSupabase } from '@/lib/supabase-provider';
-import Breadcrumb from '@/app/components/Breadcrumb';
+import Breadcrumb from '@/app/components/ui/Breadcrumb';
+import CourseFormatSelector, { type CourseFormat } from '@/app/components/course/CourseFormatSelector';
 
 export default function EditCoursePage() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,7 @@ export default function EditCoursePage() {
   const [syllabus, setSyllabus] = React.useState('');
   const [thumbnail, setThumbnail] = React.useState('');
   const [published, setPublished] = React.useState(false);
+  const [courseFormat, setCourseFormat] = React.useState<CourseFormat>('lessons');
   const [saving, setSaving] = React.useState(false);
 
   // Category state
@@ -101,6 +103,7 @@ export default function EditCoursePage() {
       setSyllabus(cData.syllabus||'');
       setThumbnail(cData.thumbnail||'');
       setPublished(Boolean(cData.published));
+      setCourseFormat(cData.course_format || 'lessons');
     } catch (error) {
       console.error('Error loading course:', error);
       alert('Failed to load course. Please refresh the page.');
@@ -148,12 +151,13 @@ export default function EditCoursePage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         }, 
-        body: JSON.stringify({ 
-          title, 
-          description, 
-          syllabus, 
+        body: JSON.stringify({
+          title,
+          description,
+          syllabus,
           published,
           thumbnail,
+          course_format: courseFormat,
           grade_level: course.grade_level,
           subject_area: course.subject_area,
           difficulty: course.difficulty
@@ -297,6 +301,15 @@ export default function EditCoursePage() {
                 </div>
               </div>
             )}
+
+            <div>
+              <label className="text-xs text-gray-600 block mb-1"><span>Course Format</span></label>
+              <CourseFormatSelector
+                currentFormat={courseFormat}
+                onFormatChange={setCourseFormat}
+                saving={saving}
+              />
+            </div>
 
             <div>
               <label className="text-xs text-gray-600"><span>Syllabus</span></label>

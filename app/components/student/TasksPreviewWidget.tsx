@@ -98,7 +98,7 @@ export default function TasksPreviewWidget() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div>

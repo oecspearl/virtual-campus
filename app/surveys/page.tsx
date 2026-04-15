@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 
 export default function SurveysListPage() {
   const [surveys, setSurveys] = React.useState<any[]>([]);

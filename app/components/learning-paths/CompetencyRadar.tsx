@@ -140,7 +140,7 @@ export default function CompetencyRadar({
       </div>
 
       {/* Radar chart visualization */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Skill Distribution
         </h3>
@@ -192,7 +192,7 @@ export default function CompetencyRadar({
 
       {/* Detailed competencies list */}
       {showDetails && selectedCategory && data.by_category[selectedCategory] && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             {selectedCategory} Skills
           </h3>

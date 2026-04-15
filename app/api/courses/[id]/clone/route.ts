@@ -46,23 +46,20 @@ export async function POST(
       return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
 
-    // Create new course (clone)
+    // Create new course using spread to capture all fields (including any added later)
+    const {
+      id: _id,
+      tenant_id: _tid,
+      created_at: _ca,
+      updated_at: _ua,
+      ...courseFieldsToCopy
+    } = originalCourse;
+
     const newCourseData = {
+      ...courseFieldsToCopy,
       title: newTitle || `Copy of ${originalCourse.title}`,
-      description: originalCourse.description,
-      thumbnail: originalCourse.thumbnail,
-      grade_level: originalCourse.grade_level,
-      subject_area: originalCourse.subject_area,
-      difficulty: originalCourse.difficulty,
-      modality: originalCourse.modality,
-      estimated_duration: originalCourse.estimated_duration,
-      syllabus: originalCourse.syllabus,
       published: false, // Always start as unpublished
       featured: false,
-      creator_id: user.id, // New owner is the person cloning
-      category_id: originalCourse.category_id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
     const { data: newCourse, error: createError } = await tq
@@ -82,10 +79,9 @@ export async function POST(
       .insert([{
         course_id: newCourse.id,
         instructor_id: user.id,
-        created_at: new Date().toISOString(),
       }]);
 
-    // Clone lessons
+    // Clone lessons using spread to capture all fields
     const { data: originalLessons } = await tq
       .from('lessons')
       .select('*')
@@ -96,24 +92,21 @@ export async function POST(
 
     if (originalLessons && originalLessons.length > 0) {
       for (const lesson of originalLessons) {
+        const {
+          id: _lid,
+          tenant_id: _ltid,
+          course_id: _lcid,
+          created_at: _lca,
+          updated_at: _lua,
+          prerequisite_lesson_id: _prereq, // Will update after all lessons created
+          ...lessonFieldsToCopy
+        } = lesson;
+
         const newLessonData = {
+          ...lessonFieldsToCopy,
           course_id: newCourse.id,
-          title: lesson.title,
-          description: lesson.description,
-          content: lesson.content,
-          content_type: lesson.content_type,
-          order: lesson.order,
           published: false, // Start unpublished
-          estimated_time: lesson.estimated_time,
-          difficulty: lesson.difficulty,
-          learning_outcomes: lesson.learning_outcomes,
-          lesson_instructions: lesson.lesson_instructions,
-          resources: lesson.resources,
-          prerequisite_lesson_id: null, // Will update after all lessons created
-          prerequisite_type: lesson.prerequisite_type,
-          prerequisite_min_score: lesson.prerequisite_min_score,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          prerequisite_lesson_id: null,
         };
 
         const { data: newLesson, error: lessonError } = await tq
@@ -135,37 +128,35 @@ export async function POST(
           const newLessonId = lessonIdMap[lesson.id];
           const newPrereqId = lessonIdMap[lesson.prerequisite_lesson_id];
 
-          await tq
-            .from('lessons')
-            .update({ prerequisite_lesson_id: newPrereqId })
-            .eq('id', newLessonId);
+          if (newLessonId) {
+            await tq
+              .from('lessons')
+              .update({ prerequisite_lesson_id: newPrereqId })
+              .eq('id', newLessonId);
+          }
         }
       }
     }
 
-    // Clone course grade items
+    // Clone course grade items — batch insert
     const { data: originalGradeItems } = await tq
       .from('course_grade_items')
       .select('*')
       .eq('course_id', courseId);
 
     if (originalGradeItems && originalGradeItems.length > 0) {
-      for (const item of originalGradeItems) {
-        await tq
-          .from('course_grade_items')
-          .insert([{
-            course_id: newCourse.id,
-            name: item.name,
-            type: item.type,
-            weight: item.weight,
-            max_score: item.max_score,
-            category: item.category,
-            order: item.order,
-            assessment_id: null, // Don't link to original assessments
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }]);
-      }
+      const gradeItemInserts = originalGradeItems.map(item => ({
+        course_id: newCourse.id,
+        name: item.name,
+        type: item.type,
+        weight: item.weight,
+        max_score: item.max_score,
+        category: item.category,
+        order: item.order,
+        assessment_id: null, // Don't link to original assessments
+      }));
+
+      await tq.from('course_grade_items').insert(gradeItemInserts);
     }
 
     // Clone gradebook settings
@@ -176,36 +167,185 @@ export async function POST(
       .single();
 
     if (originalSettings) {
+      const {
+        id: _sid,
+        tenant_id: _stid,
+        course_id: _scid,
+        created_at: _sca,
+        updated_at: _sua,
+        ...settingsFields
+      } = originalSettings;
+
       await tq
         .from('course_gradebook_settings')
         .insert([{
+          ...settingsFields,
           course_id: newCourse.id,
-          grading_scheme: originalSettings.grading_scheme,
-          show_overall_grade: originalSettings.show_overall_grade,
-          show_grade_distribution: originalSettings.show_grade_distribution,
-          show_class_average: originalSettings.show_class_average,
-          weight_ungraded_as_zero: originalSettings.weight_ungraded_as_zero,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         }]);
     }
 
-    // Clone course competencies
+    // Clone course competencies — batch insert
     const { data: originalCompetencies } = await tq
       .from('course_competencies')
       .select('*')
       .eq('course_id', courseId);
 
     if (originalCompetencies && originalCompetencies.length > 0) {
-      for (const comp of originalCompetencies) {
-        await tq
-          .from('course_competencies')
+      const competencyInserts = originalCompetencies.map(comp => ({
+        course_id: newCourse.id,
+        competency_id: comp.competency_id,
+        proficiency_level: comp.proficiency_level,
+        is_primary: comp.is_primary,
+      }));
+
+      await tq.from('course_competencies').insert(competencyInserts);
+    }
+
+    // Clone quizzes linked to lessons in this course
+    const { data: originalQuizzes } = await tq
+      .from('quizzes')
+      .select('*')
+      .eq('course_id', courseId);
+
+    const quizIdMap: Record<string, string> = {};
+
+    if (originalQuizzes && originalQuizzes.length > 0) {
+      for (const quiz of originalQuizzes) {
+        const {
+          id: _qid,
+          tenant_id: _qtid,
+          course_id: _qcid,
+          class_id: _qclid,
+          created_at: _qca,
+          updated_at: _qua,
+          creator_id: _qcrid,
+          ...quizFields
+        } = quiz;
+
+        // Remap lesson_id if the quiz is tied to a lesson
+        const newLessonId = quiz.lesson_id ? lessonIdMap[quiz.lesson_id] : null;
+
+        const { data: newQuiz } = await tq
+          .from('quizzes')
           .insert([{
+            ...quizFields,
             course_id: newCourse.id,
-            competency_id: comp.competency_id,
-            proficiency_level: comp.proficiency_level,
-            is_primary: comp.is_primary,
+            lesson_id: newLessonId || null,
+            class_id: null, // No class association for cloned course
+            creator_id: user.id,
+          }])
+          .select()
+          .single();
+
+        if (newQuiz) {
+          quizIdMap[quiz.id] = newQuiz.id;
+        }
+      }
+
+      // Clone quiz questions for each cloned quiz
+      for (const [oldQuizId, newQuizId] of Object.entries(quizIdMap)) {
+        const { data: originalQuestions } = await tq
+          .from('quiz_questions')
+          .select('*')
+          .eq('quiz_id', oldQuizId)
+          .order('order', { ascending: true });
+
+        if (originalQuestions && originalQuestions.length > 0) {
+          const questionInserts = originalQuestions.map(q => {
+            const {
+              id: _qqid,
+              tenant_id: _qqtid,
+              quiz_id: _qqzid,
+              created_at: _qqca,
+              updated_at: _qqua,
+              ...questionFields
+            } = q;
+            return {
+              ...questionFields,
+              quiz_id: newQuizId,
+            };
+          });
+
+          await tq.from('quiz_questions').insert(questionInserts);
+        }
+      }
+    }
+
+    // Clone assignments linked to lessons in this course
+    const { data: originalAssignments } = await tq
+      .from('assignments')
+      .select('*')
+      .eq('course_id', courseId);
+
+    if (originalAssignments && originalAssignments.length > 0) {
+      for (const assignment of originalAssignments) {
+        const {
+          id: _aid,
+          tenant_id: _atid,
+          course_id: _acid,
+          class_id: _aclid,
+          created_at: _aca,
+          updated_at: _aua,
+          creator_id: _acrid,
+          ...assignmentFields
+        } = assignment;
+
+        const newLessonId = assignment.lesson_id ? lessonIdMap[assignment.lesson_id] : null;
+
+        await tq
+          .from('assignments')
+          .insert([{
+            ...assignmentFields,
+            course_id: newCourse.id,
+            lesson_id: newLessonId || null,
+            class_id: null,
+            creator_id: user.id,
           }]);
+      }
+    }
+
+    // Clone course sections if they exist (course_format support)
+    const { data: originalSections } = await tq
+      .from('course_sections')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('order', { ascending: true });
+
+    const sectionIdMap: Record<string, string> = {};
+
+    if (originalSections && originalSections.length > 0) {
+      for (const section of originalSections) {
+        const {
+          id: _secid,
+          tenant_id: _sectid,
+          course_id: _seccid,
+          created_at: _secca,
+          updated_at: _secua,
+          ...sectionFields
+        } = section;
+
+        const { data: newSection } = await tq
+          .from('course_sections')
+          .insert([{
+            ...sectionFields,
+            course_id: newCourse.id,
+          }])
+          .select()
+          .single();
+
+        if (newSection) {
+          sectionIdMap[section.id] = newSection.id;
+        }
+      }
+
+      // Update section_id on cloned lessons
+      for (const lesson of originalLessons || []) {
+        if (lesson.section_id && sectionIdMap[lesson.section_id] && lessonIdMap[lesson.id]) {
+          await tq
+            .from('lessons')
+            .update({ section_id: sectionIdMap[lesson.section_id] })
+            .eq('id', lessonIdMap[lesson.id]);
+        }
       }
     }
 
@@ -214,6 +354,9 @@ export async function POST(
       message: "Course cloned successfully",
       course: newCourse,
       lessons_cloned: Object.keys(lessonIdMap).length,
+      quizzes_cloned: Object.keys(quizIdMap).length,
+      assignments_cloned: originalAssignments?.length || 0,
+      sections_cloned: Object.keys(sectionIdMap).length,
     });
 
   } catch (error: any) {

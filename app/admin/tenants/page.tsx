@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import RoleGuard from "@/app/components/RoleGuard";
-import Button from "@/app/components/Button";
+import Button from "@/app/components/ui/Button";
 
 type Tenant = {
   id: string;

@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUser } from "@/lib/database-helpers";
+import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string; questionId: string }> }) {
   try {
     const { id, questionId } = await params;
-    const user = await getCurrentUser();
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    
+    const authResult = await authenticateUser(request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) return createAuthResponse("Forbidden", 403);
+
     const data = await request.json();
     const serviceSupabase = createServiceSupabaseClient();
     
@@ -95,13 +95,13 @@ async function checkCourseInstructor(supabase: any, userId: string, courseId: st
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; questionId: string }> }) {
   try {
     const { id, questionId } = await params;
-    const user = await getCurrentUser();
-    if (!user || !hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    
+    const authResult = await authenticateUser(_request as any);
+    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    const user = authResult.userProfile!;
+    if (!hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) return createAuthResponse("Forbidden", 403);
+
     const serviceSupabase = createServiceSupabaseClient();
-    
+
     // Use service client to check if user can edit this quiz (bypasses RLS)
     const { data: quiz, error: quizError } = await serviceSupabase
       .from("quizzes")

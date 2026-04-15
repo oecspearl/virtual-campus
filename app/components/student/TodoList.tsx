@@ -193,7 +193,7 @@ export default function TodoList({
   }
 
   return (
-    <div className={compact ? '' : 'bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700'}>
+    <div className={compact ? '' : 'bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'}>
       {/* Header */}
       {!compact && (
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">

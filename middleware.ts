@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { resolveTenantFromHostname, getDefaultTenantId } from "@/lib/tenant";
+import { validateCSRFToken } from "@/lib/security";
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -34,6 +35,30 @@ export async function middleware(request: NextRequest) {
     });
   }
 
+  // Block debug/test endpoints in production
+  if (process.env.NODE_ENV !== 'development') {
+    if (path.startsWith('/api/debug')) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    if (path.startsWith('/test-') || path.startsWith('/auth-test') || path.startsWith('/admin/test')) {
+      return NextResponse.rewrite(new URL('/not-found', request.url), {
+        request: { headers: requestHeaders },
+      });
+    }
+  }
+
+  // CSRF validation for mutating API requests (skip auth callbacks and cron routes)
+  if (
+    path.startsWith('/api') &&
+    !path.startsWith('/api/auth') &&
+    !path.startsWith('/api/cron') &&
+    ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+  ) {
+    if (!validateCSRFToken(request)) {
+      return NextResponse.json({ error: 'Invalid request origin' }, { status: 403 });
+    }
+  }
+
   // Safety: never intercept API or static assets for auth (but tenant headers are already set)
   if (path.startsWith('/api') || path.startsWith('/_next') || path.startsWith('/favicon') || path.startsWith('/icon') || path.startsWith('/apple-icon') || path === '/service-worker.js' || path === '/manifest.json' || path === '/site.webmanifest' || path.endsWith('.png')) {
     return NextResponse.next({
@@ -42,7 +67,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Define public paths that don't require authentication
-  const publicPaths = ['/', '/about', '/auth/signin', '/auth/signup', '/test-supabase', '/auth-test', '/events', '/blog', '/contact', '/offline', '/apply', '/suspended'];
+  const publicPaths = ['/', '/about', '/auth/signin', '/auth/signup', '/events', '/blog', '/contact', '/offline', '/apply', '/suspended'];
   const isPublicPath = publicPaths.includes(path) || path.startsWith('/auth/') || path.startsWith('/apply/') || path.startsWith('/admissions');
 
   // For public paths, allow access (tenant headers are already set)
@@ -53,81 +78,19 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Check authentication using Supabase
+    // Check authentication using Supabase (JWT validation only — no DB queries)
     const supabase = await createServerSupabaseClient();
     const { data: { user }, error } = await supabase.auth.getUser();
 
     // If there's an error or no user, redirect to sign in
     if (error || !user) {
-      console.log('Middleware: No user found, redirecting to signin');
       return NextResponse.redirect(new URL("/auth/signin", request.url));
     }
 
-    // Check if user exists in our users table
-    // Use service client to bypass RLS on users table (prevents infinite recursion)
-    const { createServiceSupabaseClient } = await import('@/lib/supabase-server');
-    const serviceSupabase = await createServiceSupabaseClient();
-    let { data: userProfile, error: profileError } = await serviceSupabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    // If there's an error querying the profile or no profile exists, create one
-    if (profileError || !userProfile) {
-      console.log('Middleware: No user profile found, creating new user profile');
-
-      // Create user in our database
-      const newUser = {
-        id: user.id,
-        email: user.email || '',
-        name: (user.user_metadata?.full_name || user.user_metadata?.name || '') as string,
-        role: 'student', // Default role
-        tenant_id: tenantId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: createdUser, error: createError } = await serviceSupabase
-        .from('users')
-        .insert([newUser])
-        .select('role')
-        .single();
-
-      if (createError) {
-        console.error('Middleware: Failed to create user profile', createError);
-        return NextResponse.redirect(new URL("/auth/signin", request.url));
-      }
-
-      // Create tenant membership for the new user
-      await serviceSupabase
-        .from('tenant_memberships')
-        .insert([{
-          tenant_id: tenantId,
-          user_id: user.id,
-          role: 'student',
-          is_primary: true,
-        }])
-        .single();
-
-      userProfile = createdUser;
-      console.log('Middleware: User profile created successfully with tenant membership');
-    }
-
-    // Look up user's role within this specific tenant
-    const { data: membership } = await serviceSupabase
-      .from('tenant_memberships')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('tenant_id', tenantId)
-      .single();
-
-    // Add user info to headers for use in pages
+    // Set user ID header from the JWT (no DB needed)
+    // User provisioning and role lookup happen in authenticateUser() on API calls,
+    // and in getCurrentUser() on server component renders — not here.
     requestHeaders.set('x-user-id', user.id);
-    requestHeaders.set('x-user-role', userProfile.role);
-    if (membership) {
-      requestHeaders.set('x-user-tenant-role', membership.role);
-    }
 
     return NextResponse.next({
       request: {
@@ -137,7 +100,6 @@ export async function middleware(request: NextRequest) {
 
   } catch (error) {
     console.log('Middleware error:', error);
-    // If there's any error, redirect to sign in
     return NextResponse.redirect(new URL("/auth/signin", request.url));
   }
 }

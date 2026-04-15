@@ -283,7 +283,7 @@ function RecommendationCard({
 
   return (
     <div
-      className={`relative bg-white dark:bg-gray-800 rounded-xl border ${
+      className={`relative bg-white dark:bg-gray-800 rounded-lg border ${
         isNew
           ? 'border-amber-200 dark:border-amber-800 shadow-sm'
           : 'border-gray-200 dark:border-gray-700'
@@ -296,7 +296,7 @@ function RecommendationCard({
       <div className="p-4">
         <div className="flex items-start gap-4">
           <div
-            className={`p-3 rounded-xl ${
+            className={`p-3 rounded-lg ${
               isNew
                 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
                 : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'

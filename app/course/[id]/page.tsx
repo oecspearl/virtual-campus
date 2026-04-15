@@ -77,6 +77,7 @@ export default function CourseDetailPage() {
   const [formatSaving, setFormatSaving] = React.useState(false);
   const [showSectionManager, setShowSectionManager] = React.useState(false);
   const [lessonProgress, setLessonProgress] = React.useState<Array<{ lesson_id: string; status: 'not_started' | 'in_progress' | 'completed'; completed_at?: string | null }>>([]);
+  const [showEnrollmentSuccess, setShowEnrollmentSuccess] = React.useState(false);
 
   React.useEffect(() => {
     (async () => {
@@ -253,10 +254,8 @@ export default function CourseDetailPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        alert(data.message || 'Successfully enrolled in course!');
         setEnrollmentStatus('enrolled');
-        window.location.reload();
+        setShowEnrollmentSuccess(true);
       } else {
         const errorData = await res.json().catch(() => ({}));
         alert(errorData.error || 'Failed to enroll in course');
@@ -530,6 +529,68 @@ export default function CourseDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
+      {/* Enrollment Success Overlay */}
+      {showEnrollmentSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-300">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)' }}
+            >
+              <Icon icon="mdi:check-circle" className="w-10 h-10" style={{ color: 'var(--theme-primary)' }} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">You&apos;re In!</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              You&apos;ve successfully enrolled in <span className="font-medium text-gray-700">{course?.title}</span>
+            </p>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <Icon icon="mdi:book-open-page-variant-outline" className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                <span>{lessons.length} lesson{lessons.length !== 1 ? 's' : ''} to complete</span>
+              </div>
+              {course?.estimated_duration && (
+                <div className="flex items-center gap-3 text-sm text-gray-600 mt-2">
+                  <Icon icon="mdi:clock-outline" className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                  <span>Estimated {course.estimated_duration}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3 text-sm text-gray-600 mt-2">
+                <Icon icon="mdi:signal-cellular-3" className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                <span>{formatModality(course?.modality)} learning</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {lessons.length > 0 ? (
+                <Link
+                  href={`/course/${courseId}/lesson/${lessons[0]?.id}`}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+                >
+                  <Icon icon="mdi:play-circle" className="w-5 h-5" />
+                  Start First Lesson
+                </Link>
+              ) : (
+                <button
+                  onClick={() => { setShowEnrollmentSuccess(false); }}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+                >
+                  Explore Course
+                </button>
+              )}
+              <button
+                onClick={() => { setShowEnrollmentSuccess(false); }}
+                className="text-sm text-gray-500 hover:text-gray-700 py-2 transition-colors"
+              >
+                View Course Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
       <CourseHero course={course} lessonCount={lessons.length} sectionName={enrolledSectionName} />
 

@@ -21,10 +21,10 @@ export default function CourseTabBar({
     { key: 'overview', label: 'Overview' },
     { key: 'curriculum', label: 'Curriculum' },
     ...(isInstructor ? [{ key: 'sections', label: 'Sections' }] : []),
-    { key: 'assessments', label: 'Assessments' },
+    ...(isInstructor ? [{ key: 'assessments', label: 'Assessments' }] : []),
     { key: 'discussions', label: 'Discussions', count: discussionCount },
     { key: 'grades', label: 'Grades' },
-    { key: 'files', label: 'Files' },
+    ...(isInstructor ? [{ key: 'files', label: 'Files' }] : []),
   ];
 
   return (
@@ -39,13 +39,23 @@ export default function CourseTabBar({
                 onClick={() => onTabChange?.(tab.key)}
                 className={`relative text-[13px] px-4 py-3 border-b-2 whitespace-nowrap transition-colors shrink-0 font-medium ${
                   active
-                    ? 'border-emerald-600 text-emerald-700'
+                    ? ''
                     : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
+                style={active ? {
+                  borderColor: 'var(--theme-primary)',
+                  color: 'var(--theme-primary)',
+                } : undefined}
               >
                 {tab.label}
                 {'count' in tab && (tab as any).count > 0 && (
-                  <span className="ml-1.5 text-[10px] px-1.5 py-px rounded-full bg-emerald-100 text-emerald-700 font-semibold">
+                  <span
+                    className="ml-1.5 text-[10px] px-1.5 py-px rounded-full font-semibold"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)',
+                      color: 'var(--theme-primary)',
+                    }}
+                  >
                     {(tab as any).count}
                   </span>
                 )}

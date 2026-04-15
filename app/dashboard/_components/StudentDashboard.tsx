@@ -2,6 +2,8 @@ import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { getCurrentUser } from '@/lib/database-helpers';
 import WelcomeHeader from './WelcomeHeader';
 import AnnouncementBar from './AnnouncementBar';
+import ContinueLearningCard from './ContinueLearningCard';
+import OnboardingWizard from './OnboardingWizard';
 import CourseCard from './CourseCard';
 import DashboardSidebar from './DashboardSidebar';
 import MyProgrammesWidget from '@/app/components/student/MyProgrammesWidget';
@@ -33,11 +35,17 @@ export default async function StudentDashboard({ name }: { name: string }) {
 
   return (
     <div className="space-y-6">
+      {/* Onboarding for first-time students */}
+      <OnboardingWizard userName={name} />
+
       {/* Welcome Header */}
       <WelcomeHeader name={name} />
 
       {/* Announcement Bar */}
       <AnnouncementBar />
+
+      {/* Continue Learning — direct link to last lesson */}
+      {enrollments.length > 0 && <ContinueLearningCard userId={user.id} />}
 
       {/* 2-Column Layout */}
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">

@@ -8,6 +8,7 @@ import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
 import VideoDiscussionThread from '@/app/components/media/VideoDiscussionThread';
 import SCORMPlayer from '@/app/components/media/SCORMPlayer';
 import Button from '@/app/components/ui/Button';
+import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
 import LessonDiscussionsSidebar from '@/app/components/discussions/LessonDiscussionsSidebar';
@@ -38,6 +39,7 @@ export default function LessonViewerPage() {
   const [lessonProgressMap, setLessonProgressMap] = React.useState<Record<string, boolean>>({});
   const [aiTutorPreferences, setAiTutorPreferences] = React.useState<any>(null);
   const [scormPackage, setScormPackage] = React.useState<any>(null);
+  const [showNextLessonPrompt, setShowNextLessonPrompt] = React.useState(false);
   const [outcomesOpen, setOutcomesOpen] = React.useState(false);
   const [instructionsOpen, setInstructionsOpen] = React.useState(false);
   const [videoTab, setVideoTab] = React.useState<string | null>('outcomes');
@@ -148,6 +150,8 @@ export default function LessonViewerPage() {
       setIsCompleted(true);
       // Update the progress map for sidebar indicator
       setLessonProgressMap(prev => ({ ...prev, [lessonId]: true }));
+      // Show next lesson prompt after a brief delay
+      setTimeout(() => setShowNextLessonPrompt(true), 600);
     } catch (error) {
       console.error('Error marking lesson complete:', error);
       alert('Failed to mark lesson as complete');
@@ -196,8 +200,86 @@ export default function LessonViewerPage() {
   const idx = courseLessons.findIndex((l)=> l.id === lessonId);
   const prevId = idx>0 ? courseLessons[idx-1]?.id : null;
   const nextId = idx>=0 && idx < courseLessons.length-1 ? courseLessons[idx+1]?.id : null;
+  const nextLesson = nextId ? courseLessons[idx+1] : null;
   const completedCount = courseLessons.filter((l) => lessonProgressMap[l.id]).length;
   const progress = courseLessons.length > 0 ? Math.round((completedCount / courseLessons.length) * 100) : 0;
+  const isCourseComplete = completedCount === courseLessons.length && courseLessons.length > 0;
+
+  // Next lesson prompt component — rendered in all layout branches
+  const NextLessonPrompt = showNextLessonPrompt && isCompleted ? (
+    <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom duration-300">
+      <div className="max-w-3xl mx-auto px-4 pb-4">
+        <div className="bg-white rounded-xl shadow-2xl border border-gray-200/80 overflow-hidden">
+          {isCourseComplete ? (
+            /* Course complete state */
+            <div className="p-5 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-green-50">
+                <Icon icon="mdi:trophy" className="w-7 h-7 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">Course Complete!</p>
+                <p className="text-xs text-gray-500">You&apos;ve finished all {courseLessons.length} lessons</p>
+              </div>
+              <Link
+                href={`/course/${courseId}`}
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex-shrink-0"
+                style={{ backgroundColor: 'var(--theme-primary)' }}
+              >
+                View Course
+              </Link>
+              <button
+                onClick={() => setShowNextLessonPrompt(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              >
+                <Icon icon="mdi:close" className="w-4 h-4" />
+              </button>
+            </div>
+          ) : nextLesson ? (
+            /* Next lesson prompt */
+            <div className="p-5 flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 10%, transparent)' }}
+              >
+                <Icon icon="mdi:check-circle" className="w-7 h-7" style={{ color: 'var(--theme-primary)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-green-600 font-medium">Lesson Complete</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">Up next: {nextLesson.title}</p>
+                <p className="text-xs text-gray-400">{completedCount}/{courseLessons.length} lessons done</p>
+              </div>
+              <Link
+                href={`/course/${courseId}/lesson/${nextId}`}
+                className="px-5 py-2.5 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90 flex items-center gap-2 flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+              >
+                Continue
+                <Icon icon="mdi:arrow-right" className="w-4 h-4" />
+              </Link>
+              <button
+                onClick={() => setShowNextLessonPrompt(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              >
+                <Icon icon="mdi:close" className="w-4 h-4" />
+              </button>
+            </div>
+          ) : null}
+          {/* Mini progress bar */}
+          <div className="h-1 bg-gray-100">
+            <div
+              className="h-full transition-all duration-500"
+              style={{
+                width: `${progress}%`,
+                background: isCourseComplete
+                  ? '#10B981'
+                  : 'linear-gradient(90deg, var(--theme-primary), var(--theme-secondary))',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
   const isInstructorRole = profile?.role && ['instructor', 'curriculum_designer', 'admin', 'super_admin'].includes(profile.role);
 
   // Detect video-only lesson
@@ -446,6 +528,7 @@ export default function LessonViewerPage() {
           </div>
         </div>
 
+        {NextLessonPrompt}
       </div>
     );
   }
@@ -514,6 +597,7 @@ export default function LessonViewerPage() {
             isCompleted={isCompleted}
           />
         </div>
+        {NextLessonPrompt}
       </div>
     );
   }
@@ -552,6 +636,7 @@ export default function LessonViewerPage() {
           courseLessons={courseLessons}
           lessonProgressMap={lessonProgressMap}
         />
+        {NextLessonPrompt}
       </div>
     );
   }
@@ -1038,6 +1123,8 @@ export default function LessonViewerPage() {
           </div>
         </div>
       </div>
+
+      {NextLessonPrompt}
 
       {/* AI Tutor Widget */}
       <AITutorWidget

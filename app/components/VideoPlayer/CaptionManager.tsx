@@ -10,6 +10,8 @@ import {
   X,
   Globe,
   FileText,
+  Wand2,
+  Loader2,
 } from 'lucide-react';
 import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 
@@ -62,6 +64,8 @@ export default function CaptionManager({
   });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcribeStatus, setTranscribeStatus] = useState<string | null>(null);
 
   // Fetch existing captions
   useEffect(() => {
@@ -202,6 +206,55 @@ export default function CaptionManager({
     }
   };
 
+  // Auto-generate transcript using Whisper
+  const handleAutoTranscribe = async () => {
+    if (!lessonId) {
+      setError('Lesson ID is required for auto-transcription');
+      return;
+    }
+
+    setIsTranscribing(true);
+    setTranscribeStatus('Downloading video and sending to AI...');
+    setError(null);
+
+    try {
+      const response = await fetch('/api/ai/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Transcription failed');
+      }
+
+      setTranscribeStatus(null);
+
+      // Add the new caption to the list (or replace existing auto-generated)
+      if (data.caption) {
+        setCaptions(prev => {
+          const filtered = prev.filter(
+            c => !(c.auto_generated && c.language === data.caption.language)
+          );
+          return [...filtered, data.caption];
+        });
+        onCaptionsChange?.([
+          ...captions.filter(
+            c => !(c.auto_generated && c.language === data.caption.language)
+          ),
+          data.caption,
+        ]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Auto-transcription failed');
+      setTranscribeStatus(null);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   return (
     <div className={`bg-white rounded-lg border border-gray-200 ${className}`}>
       {/* Header */}
@@ -211,16 +264,40 @@ export default function CaptionManager({
             <Subtitles className="w-5 h-5 text-indigo-600" />
             <h3 className="font-semibold text-gray-900">Video Captions</h3>
           </div>
-          {!isAdding && (
-            <button
-              onClick={() => setIsAdding(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Caption
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {lessonId && !isAdding && (
+              <button
+                onClick={handleAutoTranscribe}
+                disabled={isTranscribing}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Auto-generate transcript using AI"
+              >
+                {isTranscribing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Wand2 className="w-4 h-4" />
+                )}
+                {isTranscribing ? 'Transcribing...' : 'Auto-Generate'}
+              </button>
+            )}
+            {!isAdding && (
+              <button
+                onClick={() => setIsAdding(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Caption
+              </button>
+            )}
+          </div>
         </div>
+        {/* Transcription status */}
+        {transcribeStatus && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-purple-700 bg-purple-50 px-3 py-2 rounded-lg">
+            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+            <span>{transcribeStatus}</span>
+          </div>
+        )}
       </div>
 
       {/* Add caption form */}

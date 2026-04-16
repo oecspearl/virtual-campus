@@ -79,81 +79,65 @@ export default function CourseDetailPage() {
   const [lessonProgress, setLessonProgress] = React.useState<Array<{ lesson_id: string; status: 'not_started' | 'in_progress' | 'completed'; completed_at?: string | null }>>([]);
   const [showEnrollmentSuccess, setShowEnrollmentSuccess] = React.useState(false);
 
+  // Load all course data in a single effect — fire all independent fetches in parallel
   React.useEffect(() => {
     (async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const authHeaders = session ? { 'Authorization': `Bearer ${session.access_token}` } : undefined;
 
-        const [cRes, lRes, profRes] = await Promise.all([
-          fetch(`/api/courses/${courseId}`, { cache: 'no-store' }),
-          fetch(`/api/lessons?course_id=${courseId}`, { cache: 'no-store' }),
-          session ? fetch('/api/auth/profile', {
-            cache: 'no-store',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`
-            }
-          }) : Promise.resolve({ ok: false })
+        // Fire ALL independent fetches in parallel (no waterfall)
+        const [cRes, lRes, profRes, sectionsRes, surveysRes, quizzesResult, assignmentsResult, discussionsResult] = await Promise.allSettled([
+          fetch(`/api/courses/${courseId}`),
+          fetch(`/api/lessons?course_id=${courseId}`),
+          session ? fetch('/api/auth/profile', { headers: authHeaders }) : Promise.resolve({ ok: false } as Response),
+          fetch(`/api/courses/${courseId}/sections`),
+          fetch(`/api/surveys?course_id=${courseId}&published=true`),
+          fetch(`/api/quizzes?course_id=${courseId}`).then(r => r.ok ? r.json() : null),
+          fetch(`/api/assignments?course_id=${courseId}`).then(r => r.ok ? r.json() : null),
+          fetch(`/api/courses/${courseId}/discussions`).then(r => r.ok ? r.json() : null),
         ]);
-        const cData = await cRes.json();
-        const lData = await lRes.json();
-        const pData = profRes.ok && 'json' in profRes ? await (profRes as Response).json() : null;
-        setCourse(cData);
-        if (cData?.course_format) {
-          setCourseFormat(cData.course_format as CourseFormat);
-        }
-        const lessonsArray = Array.isArray(lData.lessons) ? lData.lessons : [];
-        lessonsArray.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-        setLessons(lessonsArray);
-        setProfile(pData);
 
-        try {
-          const sectionsRes = await fetch(`/api/courses/${courseId}/sections`, { cache: 'no-store' });
-          if (sectionsRes.ok) {
-            const sectionsData = await sectionsRes.json();
-            setSections(sectionsData.sections || []);
+        // Process course
+        if (cRes.status === 'fulfilled' && cRes.value.ok) {
+          const cData = await cRes.value.json();
+          setCourse(cData);
+          if (cData?.course_format) {
+            setCourseFormat(cData.course_format as CourseFormat);
           }
-        } catch (err) {
-          console.error('Error loading sections:', err);
+          if (courseId && cData?.id) {
+            logCourseAccess(courseId).catch(err => console.error('Failed to log course access:', err));
+          }
         }
 
-        if (courseId && cData?.id) {
-          logCourseAccess(courseId).catch(err => {
-            console.error('Failed to log course access:', err);
-          });
+        // Process lessons
+        if (lRes.status === 'fulfilled' && lRes.value.ok) {
+          const lData = await lRes.value.json();
+          const lessonsArray = Array.isArray(lData.lessons) ? lData.lessons : [];
+          lessonsArray.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+          setLessons(lessonsArray);
         }
-      } catch (error) {
-        console.error('Error loading course data:', error);
-      }
-    })();
-  }, [courseId, supabase]);
 
-  // Fetch course surveys
-  React.useEffect(() => {
-    (async () => {
-      if (!courseId) return;
-      try {
-        const res = await fetch(`/api/surveys?course_id=${courseId}&published=true`, { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
+        // Process profile
+        let pData: any = null;
+        if (profRes.status === 'fulfilled' && profRes.value.ok) {
+          pData = await profRes.value.json();
+          setProfile(pData);
+        }
+
+        // Process sections
+        if (sectionsRes.status === 'fulfilled' && sectionsRes.value.ok) {
+          const sectionsData = await sectionsRes.value.json();
+          setSections(sectionsData.sections || []);
+        }
+
+        // Process surveys
+        if (surveysRes.status === 'fulfilled' && surveysRes.value.ok) {
+          const data = await surveysRes.value.json();
           setCourseSurveys(data.surveys || []);
         }
-      } catch (error) {
-        console.error('Error loading course surveys:', error);
-      }
-    })();
-  }, [courseId]);
 
-  // Fetch course quizzes and assignments
-  React.useEffect(() => {
-    (async () => {
-      if (!courseId) return;
-      try {
-        const [quizzesResult, assignmentsResult, discussionsResult] = await Promise.allSettled([
-          fetch(`/api/quizzes?course_id=${courseId}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-          fetch(`/api/assignments?course_id=${courseId}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-          fetch(`/api/courses/${courseId}/discussions`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-        ]);
-
+        // Process quizzes, assignments, discussions
         if (quizzesResult.status === 'fulfilled' && quizzesResult.value) {
           setCourseQuizzes((quizzesResult.value.quizzes || []).filter((q: any) => q.published));
         }
@@ -163,79 +147,44 @@ export default function CourseDetailPage() {
         if (discussionsResult.status === 'fulfilled' && discussionsResult.value) {
           setGradedDiscussions((discussionsResult.value.discussions || []).filter((d: any) => d.is_graded));
         }
-      } catch (error) {
-        console.error('Error loading course assessments:', error);
-      }
-    })();
-  }, [courseId]);
 
-  React.useEffect(() => {
-    (async () => {
-      if (!profile?.id) return;
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) return;
+        // Fetch progress + enrollment in parallel (depend on profile)
+        if (pData?.id && session) {
+          const [progressRes, enrollRes] = await Promise.allSettled([
+            fetch(`/api/progress/${pData.id}/course/${courseId}`, { headers: authHeaders }),
+            fetch('/api/enrollments?me=1', { headers: authHeaders }),
+          ]);
 
-        const res = await fetch(`/api/progress/${profile.id}/course/${courseId}`, {
-          cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
+          if (progressRes.status === 'fulfilled' && progressRes.value.ok) {
+            const data = await progressRes.value.json();
+            setProgress(data);
+            if (data.lessons && Array.isArray(data.lessons)) {
+              setLessonProgress(data.lessons.map((lp: any) => ({
+                lesson_id: lp.lesson_id,
+                status: lp.status || 'not_started',
+                completed_at: lp.completed_at || null,
+              })));
+            }
           }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setProgress(data);
-          if (data.lessons && Array.isArray(data.lessons)) {
-            setLessonProgress(data.lessons.map((lp: any) => ({
-              lesson_id: lp.lesson_id,
-              status: lp.status || 'not_started',
-              completed_at: lp.completed_at || null,
-            })));
+
+          if (enrollRes.status === 'fulfilled' && enrollRes.value.ok) {
+            const data = await enrollRes.value.json();
+            const enrollments = Array.isArray(data.enrollments) ? data.enrollments : [];
+            const myEnrollment = enrollments.find((e: any) => e.course_id === courseId && e.status === 'active');
+            setEnrollmentStatus(myEnrollment ? 'enrolled' : 'not_enrolled');
+            setEnrolledSectionName(myEnrollment?.classes?.name || null);
+          } else {
+            setEnrollmentStatus('not_enrolled');
           }
-        }
-      } catch (error) {
-        console.error('Error loading progress:', error);
-      }
-    })();
-  }, [profile, courseId, supabase]);
-
-  // Check enrollment status
-  React.useEffect(() => {
-    (async () => {
-      if (!profile?.id) {
-        setEnrollmentStatus('not_enrolled');
-        return;
-      }
-
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
-          setEnrollmentStatus('not_enrolled');
-          return;
-        }
-
-        const res = await fetch('/api/enrollments?me=1', {
-          cache: 'no-store',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const enrollments = Array.isArray(data.enrollments) ? data.enrollments : [];
-          const myEnrollment = enrollments.find((e: any) => e.course_id === courseId && e.status === 'active');
-          setEnrollmentStatus(myEnrollment ? 'enrolled' : 'not_enrolled');
-          setEnrolledSectionName(myEnrollment?.classes?.name || null);
         } else {
           setEnrollmentStatus('not_enrolled');
         }
       } catch (error) {
-        console.error('Error checking enrollment status:', error);
+        console.error('Error loading course data:', error);
         setEnrollmentStatus('not_enrolled');
       }
     })();
-  }, [profile, courseId, supabase]);
+  }, [courseId, supabase]);
 
   const enroll = async () => {
     setEnrolling(true);

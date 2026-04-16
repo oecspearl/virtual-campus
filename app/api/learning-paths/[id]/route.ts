@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('learning_paths')
       .select(`
         *,
-        creator:users!learning_paths_created_by_fkey(id, full_name, avatar_url),
+        creator:users!learning_paths_created_by_fkey(id, name, email),
         courses:learning_path_courses(
           id,
           order,

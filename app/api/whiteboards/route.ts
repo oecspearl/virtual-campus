@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     let query = tq
       .from('whiteboards')
-      .select('*, creator:users!whiteboards_created_by_fkey(id, name, email, avatar_url)')
+      .select('*, creator:users!whiteboards_created_by_fkey(id, name, email)')
       .eq('tenant_id', tenantId)
       .order('updated_at', { ascending: false });
 

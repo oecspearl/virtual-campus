@@ -728,6 +728,7 @@ function SelfHostedPlayer({
         ref={videoRef}
         className="w-full aspect-video bg-black cursor-pointer"
         playsInline
+        crossOrigin="anonymous"
         onClick={togglePlay}
         preload="metadata"
       >

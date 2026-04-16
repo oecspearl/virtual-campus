@@ -60,65 +60,75 @@ export default function LessonViewerPage() {
     });
   };
 
+  // Load all lesson data — fire all independent fetches in parallel
   React.useEffect(()=>{ (async ()=>{
-    const [lRes, profRes, courseRes, aiTutorRes, scormRes] = await Promise.all([
-      fetch(`/api/lessons/${lessonId}`, { cache: 'no-store' }),
-      fetch('/api/auth/profile', { cache: 'no-store' }),
-      fetch(`/api/courses/${courseId}`, { cache: 'no-store' }),
-      fetch('/api/ai/tutor/preferences', { cache: 'no-store' }),
-      fetch(`/api/scorm/package/${lessonId}`, { cache: 'no-store' })
+    // Fetch lesson, profile, course, AI tutor, SCORM, and course lessons all at once
+    const [lRes, profRes, courseRes, aiTutorRes, scormRes, courseLessonsRes] = await Promise.allSettled([
+      fetch(`/api/lessons/${lessonId}`),
+      fetch('/api/auth/profile'),
+      fetch(`/api/courses/${courseId}`),
+      fetch('/api/ai/tutor/preferences'),
+      fetch(`/api/scorm/package/${lessonId}`),
+      fetch(`/api/lessons?course_id=${courseId}`),
     ]);
-    
-    // Check if lesson fetch was successful
-    if (!lRes.ok) {
-      const errorData = await lRes.json();
-      console.error('Lesson fetch error:', errorData);
-      setLesson({ error: errorData.error || 'Lesson not found' });
-    } else {
-      const lData = await lRes.json();
-      setLesson(lData);
-      
-      // Log lesson view activity
-      if (courseId && lessonId && lData?.id) {
-        logLessonView(courseId as string, lessonId, lData.title).catch(err => {
-          console.error('Failed to log lesson view:', err);
-        });
+
+    // Process lesson
+    if (lRes.status === 'fulfilled') {
+      if (!lRes.value.ok) {
+        const errorData = await lRes.value.json();
+        console.error('Lesson fetch error:', errorData);
+        setLesson({ error: errorData.error || 'Lesson not found' });
+      } else {
+        const lData = await lRes.value.json();
+        setLesson(lData);
+        if (courseId && lessonId && lData?.id) {
+          logLessonView(courseId as string, lessonId, lData.title).catch(err => {
+            console.error('Failed to log lesson view:', err);
+          });
+        }
       }
     }
-    
-    const pData = profRes.ok ? await profRes.json() : null;
-    setProfile(pData);
-    const cData = courseRes.ok ? await courseRes.json() : null;
-    setCourse(cData);
-    const aiTutorData = aiTutorRes.ok ? await aiTutorRes.json() : null;
-    if (aiTutorData?.preferences) {
-      setAiTutorPreferences(aiTutorData.preferences);
-      setAiTutorEnabled(aiTutorData.preferences.isEnabled);
+
+    // Process profile
+    let pData: any = null;
+    if (profRes.status === 'fulfilled' && profRes.value.ok) {
+      pData = await profRes.value.json();
+      setProfile(pData);
     }
-    
-    // Load SCORM package if available
-    if (scormRes.ok) {
-      const scormData = await scormRes.json();
+
+    // Process course
+    if (courseRes.status === 'fulfilled' && courseRes.value.ok) {
+      const cData = await courseRes.value.json();
+      setCourse(cData);
+    }
+
+    // Process AI tutor
+    if (aiTutorRes.status === 'fulfilled' && aiTutorRes.value.ok) {
+      const aiTutorData = await aiTutorRes.value.json();
+      if (aiTutorData?.preferences) {
+        setAiTutorPreferences(aiTutorData.preferences);
+        setAiTutorEnabled(aiTutorData.preferences.isEnabled);
+      }
+    }
+
+    // Process SCORM
+    if (scormRes.status === 'fulfilled' && scormRes.value.ok) {
+      const scormData = await scormRes.value.json();
       setScormPackage(scormData.scormPackage);
     }
-  })(); }, [lessonId, courseId]);
 
-  React.useEffect(()=>{ (async ()=>{
-    if (!courseId) return;
-    const res = await fetch(`/api/lessons?course_id=${courseId}`, { cache: 'no-store' });
-    const data = await res.json();
-    const lessons = Array.isArray(data.lessons)? data.lessons: [];
-    // Ensure lessons are sorted by order field
-    const sortedLessons = lessons.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-    setCourseLessons(sortedLessons);
-  })(); }, [courseId]);
+    // Process course lessons list
+    if (courseLessonsRes.status === 'fulfilled' && courseLessonsRes.value.ok) {
+      const data = await courseLessonsRes.value.json();
+      const lessons = Array.isArray(data.lessons) ? data.lessons : [];
+      const sortedLessons = lessons.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      setCourseLessons(sortedLessons);
+    }
 
-  // Fetch course progress for sidebar completion indicators
-  React.useEffect(() => {
-    const fetchCourseProgress = async () => {
-      if (!profile?.id || !courseId) return;
+    // Fetch progress (depends on profile)
+    if (pData?.id && courseId) {
       try {
-        const res = await fetch(`/api/progress/${profile.id}/course/${courseId}`, { cache: 'no-store' });
+        const res = await fetch(`/api/progress/${pData.id}/course/${courseId}`);
         if (res.ok) {
           const data = await res.json();
           const progressMap: Record<string, boolean> = {};
@@ -126,7 +136,6 @@ export default function LessonViewerPage() {
             progressMap[lesson.lesson_id] = lesson.completed;
           });
           setLessonProgressMap(progressMap);
-          // Check if current lesson is already completed
           if (progressMap[lessonId]) {
             setIsCompleted(true);
           }
@@ -134,9 +143,8 @@ export default function LessonViewerPage() {
       } catch (error) {
         console.error('Failed to fetch course progress:', error);
       }
-    };
-    fetchCourseProgress();
-  }, [profile?.id, courseId, lessonId]);
+    }
+  })(); }, [lessonId, courseId]);
 
   const markComplete = async () => {
     if (!profile?.id || isCompleting) return;

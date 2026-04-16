@@ -19,7 +19,7 @@ export async function GET(
 
     const { data: whiteboard, error } = await tq
       .from('whiteboards')
-      .select('*, creator:users!whiteboards_created_by_fkey(id, name, email, avatar_url)')
+      .select('*, creator:users!whiteboards_created_by_fkey(id, name, email)')
       .eq('id', id)
       .single();
 

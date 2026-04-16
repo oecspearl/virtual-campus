@@ -2,74 +2,13 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
+import { parseTranscript, condenseTranscript } from '@/lib/ai/transcript-utils';
 
 export const maxDuration = 30;
 
 function getOpenAIClient(): OpenAI | null {
   if (!process.env.OPENAI_API_KEY) return null;
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
-
-// Parse VTT/SRT transcript into text with timestamps
-function parseTranscript(raw: string): { time: number; text: string }[] {
-  const entries: { time: number; text: string }[] = [];
-  // Remove BOM and WEBVTT header
-  const cleaned = raw.replace(/^\uFEFF/, '').replace(/^WEBVTT.*\n\n?/i, '');
-  // Split into cue blocks (separated by blank lines)
-  const blocks = cleaned.split(/\n\s*\n/).filter(b => b.trim());
-
-  for (const block of blocks) {
-    const lines = block.trim().split('\n');
-    // Find the timestamp line (contains -->)
-    const tsLineIdx = lines.findIndex(l => l.includes('-->'));
-    if (tsLineIdx < 0) continue;
-
-    const tsLine = lines[tsLineIdx];
-    const match = tsLine.match(/(\d{1,2}:)?(\d{2}):(\d{2})[.,](\d{3})/);
-    if (!match) continue;
-
-    const hours = match[1] ? parseInt(match[1]) : 0;
-    const minutes = parseInt(match[2]);
-    const seconds = parseInt(match[3]);
-    const timeInSeconds = hours * 3600 + minutes * 60 + seconds;
-
-    // Text is everything after the timestamp line
-    const text = lines.slice(tsLineIdx + 1).join(' ').replace(/<[^>]+>/g, '').trim();
-    if (text) {
-      entries.push({ time: timeInSeconds, text });
-    }
-  }
-
-  return entries;
-}
-
-// Condense transcript entries into chunks (to fit context window)
-function condenseTranscript(entries: { time: number; text: string }[]): string {
-  if (entries.length === 0) return '';
-
-  // Group into ~30-second windows
-  const chunks: string[] = [];
-  let currentChunkStart = entries[0].time;
-  let currentTexts: string[] = [];
-
-  for (const entry of entries) {
-    if (entry.time - currentChunkStart > 30 && currentTexts.length > 0) {
-      const mins = Math.floor(currentChunkStart / 60);
-      const secs = currentChunkStart % 60;
-      chunks.push(`[${mins}:${secs.toString().padStart(2, '0')}] ${currentTexts.join(' ')}`);
-      currentChunkStart = entry.time;
-      currentTexts = [];
-    }
-    currentTexts.push(entry.text);
-  }
-  // Last chunk
-  if (currentTexts.length > 0) {
-    const mins = Math.floor(currentChunkStart / 60);
-    const secs = currentChunkStart % 60;
-    chunks.push(`[${mins}:${secs.toString().padStart(2, '0')}] ${currentTexts.join(' ')}`);
-  }
-
-  return chunks.join('\n');
 }
 
 export async function POST(request: Request) {

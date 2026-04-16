@@ -136,6 +136,29 @@ export async function POST(request: NextRequest) {
     const vttContent = segmentsToVTT(transcription.segments);
     const detectedLanguage = (transcription as any).language || language || 'en';
 
+    // ── Upload VTT to Supabase Storage so the <track> element can load it ──
+    const storagePath = `captions/${lessonId}_${detectedLanguage}_${Date.now()}.vtt`;
+    let captionPublicUrl = '';
+
+    const { data: uploadData, error: uploadError } = await tq.raw
+      .storage
+      .from('course-materials')
+      .upload(storagePath, vttContent, {
+        contentType: 'text/vtt',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Transcribe: Failed to upload VTT to storage, storing inline:', uploadError);
+      // Fall back to inline storage — AI Tutor can still read it, but <track> won't work
+    } else {
+      const { data: urlData } = tq.raw
+        .storage
+        .from('course-materials')
+        .getPublicUrl(storagePath);
+      captionPublicUrl = urlData.publicUrl;
+    }
+
     // ── Save to video_captions ──
     const captionData = {
       video_url: videoUrl,
@@ -143,7 +166,7 @@ export async function POST(request: NextRequest) {
       language: detectedLanguage,
       label: `${getLanguageName(detectedLanguage)} (Auto-generated)`,
       caption_format: 'vtt' as const,
-      caption_url: '',
+      caption_url: captionPublicUrl,
       caption_content: vttContent,
       auto_generated: true,
       is_default: true,

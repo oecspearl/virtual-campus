@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
@@ -32,6 +33,7 @@ interface Course {
 }
 
 export default function ManageCoursesPage() {
+  const router = useRouter();
   const { supabase } = useSupabase();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,8 +46,6 @@ export default function ManageCoursesPage() {
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCourse, setNewCourse] = useState<CourseFormValues>(EMPTY_COURSE_FORM);
-  const [editingCourse, setEditingCourse] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<CourseFormValues>(EMPTY_COURSE_FORM);
 
   // Bulk & clone
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
@@ -136,38 +136,6 @@ export default function ManageCoursesPage() {
     }
   }
 
-  function handleEditCourse(course: Course) {
-    setEditingCourse(course.id);
-    setEditForm({
-      title: course.title,
-      description: course.description,
-      thumbnail: course.thumbnail || '',
-      grade_level: course.grade_level,
-      subject_area: course.subject_area,
-      difficulty: course.difficulty,
-      modality: course.modality || 'self_paced',
-      estimated_duration: course.estimated_duration || '',
-      syllabus: course.syllabus,
-      published: course.published,
-      featured: course.featured || false,
-      course_format: (course.course_format as any) || 'lessons',
-    });
-  }
-
-  async function handleSaveEdit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingCourse) return;
-    try {
-      setError(''); setSuccess('');
-      await apiCall('PUT', `/api/courses/${editingCourse}`, editForm);
-      setSuccess('Course updated successfully!');
-      setEditingCourse(null);
-      loadData();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
-
   async function handleCloneCourse(courseId: string, title: string) {
     if (!confirm(`Create a copy of "${title}"? The copy will be unpublished.`)) return;
     try {
@@ -244,7 +212,7 @@ export default function ManageCoursesPage() {
 
   function handleTableAction(action: any) {
     switch (action.type) {
-      case 'edit': handleEditCourse(action.course); break;
+      case 'edit': router.push(`/admin/courses/manage/${action.course.id}/edit`); break;
       case 'togglePublish': handleTogglePublish(action.courseId, action.published); break;
       case 'toggleFeatured': handleToggleFeatured(action.courseId, action.featured); break;
       case 'clone': handleCloneCourse(action.courseId, action.title); break;
@@ -388,29 +356,6 @@ export default function ManageCoursesPage() {
           />
         </div>
       </div>
-
-      {/* Edit Modal */}
-      {editingCourse && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Edit Course</h2>
-              <button onClick={() => setEditingCourse(null)} className="text-gray-400 hover:text-gray-600">
-                <Icon icon="material-symbols:close" className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <CourseForm
-                values={editForm}
-                onChange={setEditForm}
-                onSubmit={handleSaveEdit}
-                onCancel={() => setEditingCourse(null)}
-                submitLabel="Save Changes"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </RoleGuard>
   );
 }

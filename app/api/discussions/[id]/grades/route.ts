@@ -47,7 +47,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         .from('discussion_grades')
         .select('*')
         .eq('discussion_id', discussionId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (gradesError) {
         console.error('Error fetching discussion grades:', gradesError);

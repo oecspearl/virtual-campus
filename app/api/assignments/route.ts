@@ -33,7 +33,7 @@ export const GET = withTenantAuth(async ({ user, request }) => {
     }
   }
 
-  const { data: assignments, error } = await query.order("created_at", { ascending: false });
+  const { data: assignments, error } = await query.order("created_at", { ascending: false }).limit(200);
 
   if (error) {
     console.error('Assignments fetch error:', error);

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import ProgressBar from '@/app/components/ui/ProgressBar';
 import Link from 'next/link';
 import { useSupabase } from '@/lib/supabase-provider';
@@ -290,10 +291,13 @@ export default function MyCoursesPage() {
                 {/* Course Image */}
                 <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                   {row.course.thumbnail ? (
-                    <img 
-                      src={row.course.thumbnail} 
-                      alt={row.course.title} 
-                      className="h-full w-full object-cover group- transition-transform duration-300" 
+                    <Image
+                      src={row.course.thumbnail}
+                      alt={row.course.title}
+                      className="h-full w-full object-cover group- transition-transform duration-300"
+                      width={400}
+                      height={192}
+                      unoptimized
                     />
                   ) : (
                     <div className="h-full w-full bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 flex items-center justify-center">

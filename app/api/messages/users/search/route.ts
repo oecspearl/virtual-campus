@@ -44,35 +44,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // If filtering by course, get enrolled students and instructors
+    // If filtering by course, get enrolled students and instructors in parallel
     if (courseId) {
-      // Get students enrolled in the course
-      const { data: enrollments } = await tq
-        .from("enrollments")
-        .select("student_id")
-        .eq("course_id", courseId)
-        .eq("status", "active");
+      const [enrollmentsResult, courseResult, instructorsResult] = await Promise.all([
+        tq.from("enrollments").select("student_id").eq("course_id", courseId).eq("status", "active"),
+        tq.from("courses").select("instructor_id").eq("id", courseId).single(),
+        tq.from("course_instructors").select("instructor_id").eq("course_id", courseId),
+      ]);
 
-      const enrolledIds = (enrollments || []).map((e) => e.student_id);
+      const enrolledIds = (enrollmentsResult.data || []).map((e) => e.student_id);
 
-      // Get course instructor
-      const { data: course } = await tq
-        .from("courses")
-        .select("instructor_id")
-        .eq("id", courseId)
-        .single();
-
-      if (course?.instructor_id) {
-        enrolledIds.push(course.instructor_id);
+      if (courseResult.data?.instructor_id) {
+        enrolledIds.push(courseResult.data.instructor_id);
       }
 
-      // Get additional instructors
-      const { data: courseInstructors } = await tq
-        .from("course_instructors")
-        .select("instructor_id")
-        .eq("course_id", courseId);
-
-      (courseInstructors || []).forEach((ci) => {
+      (instructorsResult.data || []).forEach((ci) => {
         if (!enrolledIds.includes(ci.instructor_id)) {
           enrolledIds.push(ci.instructor_id);
         }

@@ -1,7 +1,7 @@
 import { createServiceSupabaseClient } from './supabase-server';
 import type { Tenant } from './tenant';
 
-const CACHE_TTL = 60_000; // 1 minute
+const CACHE_TTL = 300_000; // 5 minutes
 
 interface CacheEntry {
   tenant: Tenant;

@@ -1,12 +1,30 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import TextEditor from '@/app/components/editor/TextEditor';
-import VideoPlayer from '@/app/components/media/VideoPlayer';
 import AudioPlayer from '@/app/components/media/AudioPlayer';
-import InteractiveVideoPlayer, { CheckpointQuestion } from '@/app/components/media/InteractiveVideoPlayer';
-import CodeSandbox from '@/app/components/media/CodeSandbox';
-import WhiteboardViewer from '@/app/components/whiteboard/WhiteboardViewer';
+import type { CheckpointQuestion } from '@/app/components/media/InteractiveVideoPlayer';
+
+const VideoPlayer = dynamic(() => import('@/app/components/media/VideoPlayer'), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
+});
+
+const InteractiveVideoPlayer = dynamic(() => import('@/app/components/media/InteractiveVideoPlayer'), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
+});
+
+const CodeSandbox = dynamic(() => import('@/app/components/media/CodeSandbox'), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
+});
+
+const WhiteboardViewer = dynamic(() => import('@/app/components/whiteboard/WhiteboardViewer'), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
+});
 import AutoResizeTextContent from '@/app/components/AutoResizeTextContent';
 import QuizStatusButton from '@/app/components/quiz/QuizStatusButton';
 import { sanitizeHtml } from '@/lib/sanitize';

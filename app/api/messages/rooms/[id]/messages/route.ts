@@ -52,7 +52,7 @@ export async function GET(
 
     const blockedIds = (blockedUsers || []).map((b) => b.blocked_id);
 
-    // Build messages query (without self-referential join for reply_to)
+    // Build messages query — filter blocked users at DB level
     let query = tq
       .from("student_chat_messages")
       .select(
@@ -62,16 +62,23 @@ export async function GET(
       `
       )
       .eq("room_id", roomId)
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+      .eq("is_deleted", false);
 
-    if (offset > 0) {
-      query = query.range(offset, offset + limit - 1);
+    // Exclude blocked users in the query instead of filtering in JS
+    if (blockedIds.length > 0) {
+      query = query.not("sender_id", "in", `(${blockedIds.join(",")})`);
     }
 
     if (before) {
       query = query.lt("created_at", before);
+    }
+
+    query = query.order("created_at", { ascending: false });
+
+    if (offset > 0) {
+      query = query.range(offset, offset + limit - 1);
+    } else {
+      query = query.limit(limit);
     }
 
     const { data: messages, error } = await query;
@@ -84,10 +91,7 @@ export async function GET(
       );
     }
 
-    // Filter out messages from blocked users
-    const filteredMessages = (messages || []).filter(
-      (m) => !blockedIds.includes(m.sender_id)
-    );
+    const filteredMessages = messages || [];
 
     // Fetch reply_to data for messages that have replies
     const replyIds = filteredMessages

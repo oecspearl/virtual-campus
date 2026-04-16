@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
       .in("id", roomIds)
       .eq("is_archived", false)
       .order("last_message_at", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(100);
 
     if (roomsError) {
       console.error("Error fetching rooms:", roomsError);

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
@@ -190,10 +191,13 @@ export default function ProgrammesPage() {
                   {/* Thumbnail or gradient */}
                   <div className="h-40 bg-gradient-to-br from-blue-600 to-blue-700 relative">
                     {programme.thumbnail ? (
-                      <img
+                      <Image
                         src={programme.thumbnail}
                         alt={programme.title}
                         className="w-full h-full object-cover"
+                        width={400}
+                        height={160}
+                        unoptimized
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -210,7 +214,7 @@ export default function ProgrammesPage() {
                             style={{ zIndex: 4 - i }}
                           >
                             {course.thumbnail ? (
-                              <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+                              <Image src={course.thumbnail} alt="" className="w-full h-full object-cover" width={32} height={32} unoptimized />
                             ) : (
                               <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                                 <Icon icon="material-symbols:book" className="w-4 h-4 text-gray-400" />

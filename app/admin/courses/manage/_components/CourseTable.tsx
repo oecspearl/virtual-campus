@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
 import { stripHtml } from '@/lib/utils';
@@ -106,7 +107,7 @@ export default function CourseTable({
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       {course.thumbnail && (
-                        <img className="h-10 w-10 rounded-lg object-cover mr-3" src={course.thumbnail} alt={course.title} />
+                        <Image className="h-10 w-10 rounded-lg object-cover mr-3" src={course.thumbnail} alt={course.title} width={40} height={40} unoptimized />
                       )}
                       <div>
                         <div className="text-sm font-medium text-gray-900">{course.title}</div>

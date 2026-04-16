@@ -20,35 +20,21 @@ export async function GET(
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    // Verify course exists and user has access
-    const { data: course, error: courseError } = await tq
-      .from("courses")
-      .select("id, title, instructor_id")
-      .eq("id", courseId)
-      .single();
+    // Verify course exists and user has access — all 3 checks in parallel
+    const [courseResult, enrollmentResult, courseInstructorResult] = await Promise.all([
+      tq.from("courses").select("id, title, instructor_id").eq("id", courseId).single(),
+      tq.from("enrollments").select("id").eq("course_id", courseId).eq("student_id", user.id).eq("status", "active").single(),
+      tq.from("course_instructors").select("id").eq("course_id", courseId).eq("instructor_id", user.id).single(),
+    ]);
 
+    const { data: course, error: courseError } = courseResult;
     if (courseError || !course) {
       return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
 
-    // Check if user is enrolled or is the instructor
     const isInstructor = course.instructor_id === user.id;
-
-    const { data: enrollment } = await tq
-      .from("enrollments")
-      .select("id")
-      .eq("course_id", courseId)
-      .eq("student_id", user.id)
-      .eq("status", "active")
-      .single();
-
-    // Also check course_instructors table
-    const { data: courseInstructor } = await tq
-      .from("course_instructors")
-      .select("id")
-      .eq("course_id", courseId)
-      .eq("instructor_id", user.id)
-      .single();
+    const { data: enrollment } = enrollmentResult;
+    const { data: courseInstructor } = courseInstructorResult;
 
     if (!isInstructor && !enrollment && !courseInstructor) {
       return NextResponse.json(

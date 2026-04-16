@@ -1,11 +1,28 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { getCurrentUser } from "@/lib/database-helpers";
 import Breadcrumb from "@/app/components/ui/Breadcrumb";
-import StudentDashboard from "./_components/StudentDashboard";
-import InstructorDashboard from "./_components/InstructorDashboard";
-import AdminDashboard from "./_components/AdminDashboard";
-import DesignerDashboard from "./_components/DesignerDashboard";
-import ParentDashboard from "./_components/ParentDashboard";
+
+const StudentDashboard = dynamic(() => import("./_components/StudentDashboard"));
+const InstructorDashboard = dynamic(() => import("./_components/InstructorDashboard"));
+const AdminDashboard = dynamic(() => import("./_components/AdminDashboard"));
+const DesignerDashboard = dynamic(() => import("./_components/DesignerDashboard"));
+const ParentDashboard = dynamic(() => import("./_components/ParentDashboard"));
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 bg-gray-200 rounded w-64" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-32 bg-gray-200 rounded-lg" />
+        ))}
+      </div>
+      <div className="h-64 bg-gray-200 rounded-lg" />
+    </div>
+  );
+}
 
 async function getUserRoleAndName() {
   try {
@@ -32,13 +49,15 @@ export default async function DashboardPage() {
           className="mb-6"
         />
 
-        {role === 'student' && <StudentDashboard name={name} />}
-        {role === 'instructor' && <InstructorDashboard name={name} />}
-        {(role === 'admin' || role === 'super_admin' || role === 'tenant_admin') && (
-          <AdminDashboard name={name} role={role!} />
-        )}
-        {role === 'curriculum_designer' && <DesignerDashboard name={name} />}
-        {role === 'parent' && <ParentDashboard name={name} />}
+        <Suspense fallback={<DashboardSkeleton />}>
+          {role === 'student' && <StudentDashboard name={name} />}
+          {role === 'instructor' && <InstructorDashboard name={name} />}
+          {(role === 'admin' || role === 'super_admin' || role === 'tenant_admin') && (
+            <AdminDashboard name={name} role={role!} />
+          )}
+          {role === 'curriculum_designer' && <DesignerDashboard name={name} />}
+          {role === 'parent' && <ParentDashboard name={name} />}
+        </Suspense>
 
         {!role && (
           <div className="flex items-center justify-center py-20">

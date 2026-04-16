@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { stripHtml } from '@/lib/utils';
 import { formatModality } from '@/app/components/course/helpers';
 
@@ -33,7 +34,7 @@ function CourseHeroInner({ course, lessonCount, sourceTenantName, sectionName }:
           {/* Thumbnail */}
           <div className="shrink-0 order-1 lg:order-2">
             {course.thumbnail ? (
-              <img src={course.thumbnail} alt="" className="w-full sm:w-48 lg:w-44 h-28 lg:h-28 rounded-lg object-cover ring-1 ring-white/10" />
+              <Image src={course.thumbnail} alt="" className="w-full sm:w-48 lg:w-44 h-28 lg:h-28 rounded-lg object-cover ring-1 ring-white/10" width={176} height={112} unoptimized />
             ) : (
               <div className="w-full sm:w-48 lg:w-44 h-28 lg:h-28 rounded-lg bg-white/[0.06] ring-1 ring-white/10 flex items-center justify-center">
                 <svg className="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { updateCompetenciesFromAssignment } from "@/lib/adaptive-learning";
+import { syncCrossTenantGrade } from "@/lib/enrollment-check";
 
 export async function POST(
   request: Request,
@@ -122,7 +123,7 @@ export async function POST(
             if (gradeItem) {
               // Update or create grade in course_grades
               const percentage = maxPoints > 0 ? (Number(grade) / maxPoints) * 100 : 0;
-              
+
               await serviceSupabase
                 .from("course_grades")
                 .upsert([{
@@ -140,6 +141,23 @@ export async function POST(
                 }], {
                   onConflict: "student_id,grade_item_id"
                 });
+
+              // Sync to cross_tenant_grades if student is from another tenant
+              try {
+                await syncCrossTenantGrade({
+                  studentId: submission.student_id,
+                  courseId: lesson.course_id,
+                  assessmentType: 'assignment',
+                  assessmentId: assignmentId,
+                  score: Number(grade),
+                  maxScore: maxPoints,
+                  percentage: Number(percentage.toFixed(2)),
+                  gradedBy: user.id,
+                  feedback: feedback || null,
+                });
+              } catch (crossSyncError) {
+                console.error('Cross-tenant grade sync error:', crossSyncError);
+              }
             }
           }
         }

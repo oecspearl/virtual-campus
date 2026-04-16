@@ -3,6 +3,7 @@ import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extensions";
+import { checkStudentEnrollment } from "@/lib/enrollment-check";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -160,6 +161,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     if ((existingAttempts?.length ?? 0) >= attemptsAllowed) {
       return NextResponse.json({ error: "No attempts left" }, { status: 400 });
+    }
+
+    // Verify student is enrolled (regular or cross-tenant)
+    if (courseId) {
+      const { enrolled } = await checkStudentEnrollment(user.id, courseId);
+      if (!enrolled) {
+        return NextResponse.json({ error: "You must be enrolled in this course to take quizzes" }, { status: 403 });
+      }
     }
 
     // Create quiz attempt with course_id

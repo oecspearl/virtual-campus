@@ -3,6 +3,7 @@ import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/s
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { generateAdaptiveRecommendations, updateCompetenciesFromQuiz } from "@/lib/adaptive-learning";
 import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extensions";
+import { syncCrossTenantGrade } from "@/lib/enrollment-check";
 
 // Helper function to calculate quiz total points from questions
 async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<number> {
@@ -343,7 +344,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await syncQuizToGradebook(supabase, id, attempt.course_id, user.id);
       } catch (syncError) {
         console.error('Gradebook sync error:', syncError);
-        // Don't fail the quiz submission if gradebook sync fails
+      }
+
+      // Also sync to cross_tenant_grades if student is from another tenant
+      if (attempt.course_id) {
+        try {
+          await syncCrossTenantGrade({
+            studentId: user.id,
+            courseId: attempt.course_id,
+            assessmentType: 'quiz',
+            assessmentId: id,
+            score,
+            maxScore: max,
+            percentage,
+          });
+        } catch (crossSyncError) {
+          console.error('Cross-tenant grade sync error:', crossSyncError);
+        }
       }
     }
 

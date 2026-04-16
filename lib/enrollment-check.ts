@@ -71,3 +71,51 @@ export async function getAllEnrolledStudentIds(courseId: string): Promise<string
 
   return Array.from(ids);
 }
+
+/**
+ * If the student is cross-tenant enrolled, syncs a grade to the cross_tenant_grades table
+ * so it appears in the student's home tenant gradebook.
+ *
+ * No-ops silently if the student is not cross-tenant (regular enrollment).
+ */
+export async function syncCrossTenantGrade(opts: {
+  studentId: string;
+  courseId: string;
+  assessmentType: 'quiz' | 'assignment' | 'discussion';
+  assessmentId: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  gradedBy?: string;
+  feedback?: string | null;
+}): Promise<void> {
+  const supabase = createServiceSupabaseClient();
+
+  const { data: crossEnrollment } = await supabase
+    .from('cross_tenant_enrollments')
+    .select('id, tenant_id')
+    .eq('source_course_id', opts.courseId)
+    .eq('student_id', opts.studentId)
+    .eq('status', 'active')
+    .single();
+
+  if (!crossEnrollment) return; // Not cross-tenant, nothing to sync
+
+  await supabase
+    .from('cross_tenant_grades')
+    .upsert({
+      tenant_id: crossEnrollment.tenant_id,
+      enrollment_id: crossEnrollment.id,
+      student_id: opts.studentId,
+      assessment_type: opts.assessmentType,
+      assessment_id: opts.assessmentId,
+      score: opts.score,
+      max_score: opts.maxScore,
+      percentage: opts.percentage,
+      graded_by: opts.gradedBy || null,
+      feedback: opts.feedback || null,
+      graded_at: new Date().toISOString(),
+    }, {
+      onConflict: 'enrollment_id,assessment_type,assessment_id',
+    });
+}

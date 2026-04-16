@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { getAllEnrolledStudentIds } from "@/lib/enrollment-check";
+import { getAllEnrolledStudentIds, syncCrossTenantGrade } from "@/lib/enrollment-check";
 
 // GET /api/discussions/[id]/grades - Get all grades for a discussion (instructor) or own grade (student)
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -249,6 +249,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         error: "Failed to save grade",
         details: gradeError.message || gradeError.code || 'Unknown error'
       }, { status: 500 });
+    }
+
+    // Sync to cross_tenant_grades if student is from another tenant
+    try {
+      await syncCrossTenantGrade({
+        studentId: student_id,
+        courseId: discussion.course_id,
+        assessmentType: 'discussion',
+        assessmentId: discussionId,
+        score,
+        maxScore: maxScore,
+        percentage,
+        gradedBy: user.id,
+        feedback: feedback || null,
+      });
+    } catch (crossSyncError) {
+      console.error('Cross-tenant grade sync error:', crossSyncError);
     }
 
     // Fetch student and grader info separately to avoid FK naming issues

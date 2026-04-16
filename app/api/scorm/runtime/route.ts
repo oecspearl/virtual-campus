@@ -64,25 +64,42 @@ function formatSCORMTime(seconds: number): string {
 export async function POST(request: NextRequest) {
   try {
     const authResult = await authenticateUser(request as any);
-    if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
+    if (!authResult.success) {
+      // Return SCORM-compatible error so the player doesn't crash
+      return NextResponse.json({
+        result: "false",
+        error: authResult.error || "Authentication failed",
+        scorm_error_code: "101"
+      }, { status: 401 });
+    }
     const user = authResult.userProfile!;
 
-    const body = await request.json();
-    const { 
-      action, 
-      scormPackageId, 
-      element, 
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({
+        result: "false",
+        error: "Invalid request body",
+        scorm_error_code: "201"
+      }, { status: 400 });
+    }
+
+    const {
+      action,
+      scormPackageId,
+      element,
       value,
       courseId,
       lessonId
     } = body;
 
     if (!scormPackageId) {
-      return NextResponse.json({ error: "scormPackageId is required" }, { status: 400 });
+      return NextResponse.json({ result: "false", error: "scormPackageId is required", scorm_error_code: "201" }, { status: 400 });
     }
 
     if (!action) {
-      return NextResponse.json({ error: "action is required" }, { status: 400 });
+      return NextResponse.json({ result: "false", error: "action is required", scorm_error_code: "201" }, { status: 400 });
     }
 
     const serviceSupabase = createServiceSupabaseClient();
@@ -168,17 +185,19 @@ export async function POST(request: NextRequest) {
 
       case 'GetValue': {
         if (!element) {
-          return NextResponse.json({ 
+          return NextResponse.json({
+            result: "false",
             error: "element is required",
             scorm_error_code: "201"
           }, { status: 400 });
         }
 
         if (!tracking) {
-          return NextResponse.json({ 
-            error: "Tracking not initialized",
-            scorm_error_code: "301"
-          }, { status: 400 });
+          // Return empty values instead of erroring — SCORM player may call GetValue before Initialize
+          return NextResponse.json({
+            result: "",
+            scorm_error_code: "0"
+          });
         }
 
         let result = '';
@@ -319,10 +338,11 @@ export async function POST(request: NextRequest) {
 
       case 'Commit': {
         if (!tracking) {
-          return NextResponse.json({ 
-            error: "Tracking not initialized",
-            scorm_error_code: "301"
-          }, { status: 400 });
+          // Silently succeed — nothing to commit if not initialized
+          return NextResponse.json({
+            result: "true",
+            scorm_error_code: "0"
+          });
         }
 
         // Update last saved timestamp
@@ -367,10 +387,11 @@ export async function POST(request: NextRequest) {
 
       case 'Terminate': {
         if (!tracking) {
-          return NextResponse.json({ 
-            error: "Tracking not initialized",
-            scorm_error_code: "301"
-          }, { status: 400 });
+          // Silently succeed — nothing to terminate if not initialized
+          return NextResponse.json({
+            result: "true",
+            scorm_error_code: "0"
+          });
         }
 
         // Final save
@@ -397,7 +418,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('SCORM Runtime API error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
+      result: "false",
       error: error.message || "Internal server error",
       scorm_error_code: "101"
     }, { status: 500 });

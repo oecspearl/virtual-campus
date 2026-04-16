@@ -221,6 +221,76 @@ export default function RichTextPlayer({
         )}
       </div>
 
+      {/* ══════ Mobile tab content sheet (below lg) ══════ */}
+      {activePanel !== 'player' && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setActivePanel('player')}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative bg-white rounded-t-2xl max-h-[70vh] flex flex-col animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle + header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-1 rounded-full bg-gray-300 absolute top-2 left-1/2 -translate-x-1/2" />
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {activePanel === 'outcomes' && 'Learning Outcomes'}
+                  {activePanel === 'instructions' && 'Instructions'}
+                  {activePanel === 'resources' && 'Resources'}
+                  {activePanel === 'discussions' && 'Discussions'}
+                  {activePanel === 'notes' && 'Notes'}
+                  {activePanel === 'ai-tutor' && 'AI Tutor'}
+                </h3>
+              </div>
+              <button onClick={() => setActivePanel('player')} className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            {/* Sheet body */}
+            {activePanel !== 'ai-tutor' && activePanel !== 'notes' && (
+              <div className="flex-1 overflow-y-auto p-4">
+                {activePanel === 'outcomes' && learningOutcomes && (
+                  <div className="space-y-0">
+                    {learningOutcomes.map((outcome, i) => (
+                      <div key={i} className="flex items-start gap-3 py-3 border-b last:border-0" style={{ borderColor: '#f0f0f0' }}>
+                        <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: T.tealLight, color: T.tealText }}>{i + 1}</span>
+                        <span className="text-[12px] text-gray-600 leading-relaxed pt-1">{outcome}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {activePanel === 'instructions' && instructions && (
+                  <div className="text-[12px] text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructions) }} />
+                  </div>
+                )}
+                {activePanel === 'resources' && (
+                  <div className="space-y-4 text-[12px]">
+                    <ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} />
+                    <SessionRecordingsCard courseId={courseId} lessonId={lessonId} />
+                  </div>
+                )}
+                {activePanel === 'discussions' && (
+                  <div className="text-[12px]">
+                    <LessonDiscussionsSidebar courseId={courseId} lessonId={lessonId} />
+                  </div>
+                )}
+              </div>
+            )}
+            {activePanel === 'notes' && (
+              <div className="flex-1 overflow-hidden min-h-[50vh]">
+                <InlineNotesPanel lessonId={lessonId} courseId={courseId} />
+              </div>
+            )}
+            {activePanel === 'ai-tutor' && (
+              <div className="flex-1 overflow-hidden min-h-[50vh]">
+                <AITutorPanel lessonId={lessonId} courseId={courseId} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ══════ BODY: Sections sidebar + Content + Right Rail ══════ */}
       <div className="flex flex-1 overflow-hidden">
 

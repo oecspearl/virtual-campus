@@ -62,7 +62,9 @@ export const GET = withTenantAuth(async ({ user, tq, request }) => {
   // Ensure lessons maintain their order after filtering
   filteredLessons.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
-  return NextResponse.json({ lessons: filteredLessons });
+  const response = NextResponse.json({ lessons: filteredLessons });
+  response.headers.set('Cache-Control', 'private, max-age=120, stale-while-revalidate=600');
+  return response;
 });
 
 export const POST = withTenantAuth(async ({ user, tq, request }) => {

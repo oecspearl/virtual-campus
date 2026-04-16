@@ -136,17 +136,17 @@ export async function GET(request: Request) {
       return acc;
     }, []) || [];
 
-    return NextResponse.json({
-      courses: uniqueCourses,
-      userRole,
-      accessType: userRole === 'admin' || userRole === 'super_admin' || userRole === 'curriculum_designer'
-        ? 'all'
-        : userRole === 'instructor'
-        ? 'teaching_and_published'
-        : userRole === 'student'
-        ? 'enrolled_and_published'
-        : 'published_only'
-    });
+    const accessType = userRole === 'admin' || userRole === 'super_admin' || userRole === 'curriculum_designer'
+      ? 'all'
+      : userRole === 'instructor'
+      ? 'teaching_and_published'
+      : userRole === 'student'
+      ? 'enrolled_and_published'
+      : 'published_only';
+
+    const response = NextResponse.json({ courses: uniqueCourses, userRole, accessType });
+    response.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300');
+    return response;
   } catch (e: any) {
     console.error('Courses API error:', e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

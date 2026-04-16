@@ -218,6 +218,185 @@ export default function SharedCourseLessonPage() {
     (lesson.content?.length > 0 && lesson.content[0]?.type === 'video' && lesson.content_type !== 'rich_text');
   const videoBlock = isVideoLesson ? lesson.content?.[0] : null;
 
+  // ─── VIDEO LESSON: 3-column immersive layout ──────────────────────────────
+
+  if (isVideoLesson && videoBlock) {
+    const vChapters = videoBlock.data?.chapters || [];
+    const hasChapters = vChapters.length > 0;
+    const vtabs: { id: string; label: string; icon: string }[] = [
+      ...(Array.isArray(lesson.learning_outcomes) && lesson.learning_outcomes.length > 0
+        ? [{ id: 'outcomes', label: 'Learning Outcomes', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' }] : []),
+      ...(lesson.lesson_instructions
+        ? [{ id: 'instructions', label: 'Instructions', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' }] : []),
+      { id: 'overview', label: 'Overview', icon: 'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+      { id: 'notes', label: 'Notes & Questions', icon: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z' },
+      { id: 'discussions', label: 'Discussions', icon: 'M20 12c0 1.363-.469 2.621-1.256 3.613-.236.297-.462.564-.676.808C17.012 17.547 12 20 12 20s-5.012-2.453-6.068-3.579a10.06 10.06 0 01-.676-.808A5.961 5.961 0 014 12c0-3.314 2.686-6 6-6a5.96 5.96 0 012 .344A5.96 5.96 0 0114 6c3.314 0 6 2.686 6 6z' },
+      { id: 'resources', label: 'Resources', icon: 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z' },
+    ];
+
+    const currentChapterIdx = vChapters.reduce((acc: number, ch: any, i: number) => (videoCurrentTime >= ch.time ? i : acc), 0);
+    const handleVideoTabClick = (key: string) => { setVideoTab((prev: string | null) => prev === key ? null : key); };
+    const fmtTs = (s: number) => { const m = Math.floor(s / 60), sec = Math.floor(s % 60); return `${m}:${sec.toString().padStart(2, '0')}`; };
+    const courseId = course?.id || '';
+
+    return (
+      <div className="flex flex-col h-screen overflow-hidden bg-white">
+        {/* Top nav bar */}
+        <div className="h-12 flex items-center justify-between px-2 sm:px-4 bg-gray-900 shrink-0 z-50" style={{ position: 'sticky', top: 0 }}>
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 mr-2">
+            <Link href={`/shared-courses/${shareId}`} className="flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" /></svg>
+              <span className="hidden sm:inline truncate max-w-[180px]">{course?.title || 'Course'}</span>
+            </Link>
+            <span className="text-gray-600 hidden sm:inline">/</span>
+            <span className="text-white text-sm font-medium truncate">{lesson.title}</span>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <span className="text-gray-400 text-sm tabular-nums">{progress}%</span>
+            <button onClick={() => prevId && navigateLesson(prevId)} disabled={!prevId} className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <button onClick={() => nextId && navigateLesson(nextId)} disabled={!nextId} className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+            {isCompleted ? (
+              <span className="px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium bg-gray-600 text-gray-400 cursor-default whitespace-nowrap">Completed</span>
+            ) : (
+              <button onClick={markComplete} disabled={isCompleting} className="px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors disabled:bg-gray-600 disabled:text-gray-400 whitespace-nowrap">
+                {isCompleting ? 'Saving...' : 'Mark complete'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="h-10 flex items-center bg-white border-b border-gray-200 shrink-0 z-40 overflow-x-auto" style={{ position: 'sticky', top: 48 }}>
+          {vtabs.map(tab => (
+            <button key={tab.id} onClick={() => handleVideoTabClick(tab.id)} className={`flex items-center gap-1.5 px-4 h-10 text-sm border-b-2 whitespace-nowrap transition-colors shrink-0 ${videoTab === tab.id ? 'border-blue-600 text-blue-600 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={tab.icon} /></svg>
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile tab content sheet */}
+        {videoTab && (
+          <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setVideoTab(null)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative bg-white rounded-t-2xl max-h-[70vh] flex flex-col animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
+                <span className="text-sm font-semibold text-gray-900">{vtabs.find(t => t.id === videoTab)?.label}</span>
+                <button onClick={() => setVideoTab(null)} className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {videoTab === 'outcomes' && Array.isArray(lesson.learning_outcomes) && (
+                  <ol className="space-y-3 p-4">{lesson.learning_outcomes.map((text: string, i: number) => (<li key={i} className="flex items-start gap-3"><span className="shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs flex items-center justify-center font-medium mt-0.5">{i + 1}</span><span className="text-sm text-gray-700 leading-relaxed">{text}</span></li>))}</ol>
+                )}
+                {videoTab === 'instructions' && lesson.lesson_instructions && (
+                  <div className="p-4"><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="prose prose-sm max-w-none text-amber-900" dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.lesson_instructions) }} /></div></div>
+                )}
+                {videoTab === 'overview' && (
+                  <div className="p-4 space-y-4">
+                    <h2 className="text-base font-bold text-gray-900">{lesson.title}</h2>
+                    {(videoBlock.data?.description || lesson.description) && (<div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(videoBlock.data?.description || lesson.description || '') }} />)}
+                  </div>
+                )}
+                {videoTab === 'notes' && (<VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Three-column video row */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Chapters sidebar */}
+          {hasChapters && (
+            <div className="hidden lg:flex flex-col shrink-0 bg-gray-950 overflow-hidden w-[140px] xl:w-[168px]">
+              <div className="flex border-b border-gray-800">
+                <button onClick={() => setOutcomesOpen(false)} className={`flex-1 py-2 text-xs font-medium transition-colors ${!outcomesOpen ? 'text-white bg-gray-800' : 'text-gray-500 hover:text-gray-300'}`}>Chapters</button>
+                <button onClick={() => setOutcomesOpen(true)} className={`flex-1 py-2 text-xs font-medium transition-colors ${outcomesOpen ? 'text-white bg-gray-800' : 'text-gray-500 hover:text-gray-300'}`}>Notes</button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {!outcomesOpen ? (
+                  <div>
+                    <p className="text-[10px] uppercase text-gray-600 px-3 pt-3 pb-1 tracking-wider">Chapters ({vChapters.length})</p>
+                    {vChapters.map((ch: any, i: number) => (
+                      <button key={i} onClick={() => videoSeekRef.current?.(ch.time)} className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs transition-colors border-l-2 ${i === currentChapterIdx ? 'text-white bg-gray-800 border-blue-500' : 'text-gray-400 hover:text-white hover:bg-gray-900 border-transparent'}`}>
+                        <span className="text-gray-600 text-[10px] w-8 shrink-0 font-mono">{fmtTs(ch.time)}</span>
+                        <span className="leading-snug flex-1">{ch.title}</span>
+                        {i === currentChapterIdx && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    <p className="text-[10px] uppercase text-gray-600 px-1 pt-1 pb-2 tracking-wider">Timestamped Notes</p>
+                    <p className="text-[10px] text-gray-600 px-1">Open the Notes tab to add notes.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Video player */}
+          <div className="flex-1 flex items-center bg-black overflow-hidden min-w-0">
+            <div className="w-full">
+              <VideoPlayer
+                src={videoBlock.data?.url || videoBlock.data}
+                title={videoBlock.data?.title || lesson.title}
+                lessonId={lessonId}
+                courseId={courseId}
+                captions={videoBlock.data?.captions}
+                audioDescriptionSrc={videoBlock.data?.audioDescriptionSrc}
+                preventSkipping={videoBlock.data?.preventSkipping}
+                onSeekRef={videoSeekRef}
+                onTimeUpdate={(t) => setVideoCurrentTime(t)}
+                onWatchProgress={(data) => setVideoCurrentTime(data.currentTime)}
+              />
+            </div>
+          </div>
+
+          {/* Tab content panel (desktop) */}
+          <div className={`hidden lg:flex flex-col shrink-0 bg-white border-l border-gray-200 overflow-hidden transition-all duration-200 ${videoTab ? 'w-[320px] xl:w-[400px] 2xl:w-[490px]' : 'w-0'}`}>
+            {videoTab && (
+              <>
+                <div className="h-10 flex items-center justify-between px-4 border-b border-gray-200 shrink-0">
+                  <span className="text-sm font-semibold text-gray-900">{vtabs.find(t => t.id === videoTab)?.label}</span>
+                  <button onClick={() => setVideoTab(null)} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close panel">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {videoTab === 'outcomes' && Array.isArray(lesson.learning_outcomes) && (
+                    <ol className="space-y-3 p-4">{lesson.learning_outcomes.map((text: string, i: number) => (<li key={i} className="flex items-start gap-3"><span className="shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs flex items-center justify-center font-medium mt-0.5">{i + 1}</span><span className="text-sm text-gray-700 leading-relaxed">{text}</span></li>))}</ol>
+                  )}
+                  {videoTab === 'instructions' && lesson.lesson_instructions && (
+                    <div className="p-4"><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="prose prose-sm max-w-none text-amber-900" dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.lesson_instructions) }} /></div></div>
+                  )}
+                  {videoTab === 'overview' && (
+                    <div className="p-4 space-y-4">
+                      <h2 className="text-base font-bold text-gray-900">{lesson.title}</h2>
+                      {(videoBlock.data?.description || lesson.description) && (<div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(videoBlock.data?.description || lesson.description || '') }} />)}
+                    </div>
+                  )}
+                  {videoTab === 'notes' && (<VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                  {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                  {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {NextLessonPrompt}
+      </div>
+    );
+  }
+
   // ─── RICH TEXT / DEFAULT LESSON → RichTextPlayer (immersive) ────────────────
 
   const isRichTextLesson = !lesson.content_type || lesson.content_type === 'rich_text' || lesson.content_type === 'text';

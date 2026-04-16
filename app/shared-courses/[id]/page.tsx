@@ -1,23 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Breadcrumb from '@/app/components/ui/Breadcrumb';
-import ProgressVisualization from '@/app/components/ProgressVisualization';
+import Link from 'next/link';
+import { Icon } from '@iconify/react';
+import { sanitizeHtml } from '@/lib/sanitize';
+import { formatModality } from '@/app/components/course/helpers';
 import type { CourseFormat } from '@/app/components/course/CourseFormatSelector';
+import type { Section } from '@/app/components/course/SectionManager';
 import SessionRecordingsCard from '@/app/components/conference/SessionRecordingsCard';
-import ResourceLinksSidebar from '@/app/components/lesson/ResourceLinksSidebar';
+import DiscussionList from '@/app/components/discussions/DiscussionList';
 
 import {
   CourseHero,
-  CourseOverview,
-  CourseStatistics,
   CourseLiveSessions,
   CourseCurriculum,
   CourseAssessments,
   CourseEvaluations,
-  CourseEnrollmentCard,
   CourseTeam,
+  CourseTabBar,
 } from '@/app/components/course';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -27,12 +28,6 @@ interface Lesson {
   estimated_time: number; content_type: string; published: boolean;
   completed: boolean; section_id?: string | null; difficulty?: number;
   prerequisite_lesson_id?: string | null;
-}
-
-interface CourseSection {
-  id: string; course_id?: string; title: string; description: string | null;
-  order: number; start_date: string | null; end_date: string | null;
-  collapsed?: boolean; published: boolean;
 }
 
 interface CourseDetail {
@@ -51,7 +46,7 @@ interface CourseDetail {
   assignments: Array<{ id: string; title: string; description: string | null; due_date: string | null; max_score: number | null; published: boolean }>;
   discussions: Array<{ id: string; title: string; description: string | null; is_graded: boolean; max_score: number | null }>;
   surveys: Array<{ id: string; title: string; description: string | null; published: boolean }>;
-  sections: CourseSection[];
+  sections: Array<{ id: string; course_id?: string; title: string; description: string | null; order: number; start_date: string | null; end_date: string | null; collapsed?: boolean; published: boolean }>;
   conferences: Array<{ id: string; title: string; description: string | null; status: string; meeting_url: string | null; video_provider: string; scheduled_at: string | null; instructor: { id: string; name: string; email: string } | null }>;
   resource_links: any[];
   recordings: any[];
@@ -69,6 +64,8 @@ export default function SharedCourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showEnrollmentSuccess, setShowEnrollmentSuccess] = useState(false);
 
   const fetchCourse = useCallback(async () => {
     try {
@@ -76,13 +73,12 @@ export default function SharedCourseDetailPage() {
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         setError(errData.error || `Failed to load shared course (${res.status})`);
-        console.error('Shared course API error:', res.status, errData);
         return;
       }
       setData(await res.json());
     } catch (err) {
       console.error('Shared course fetch error:', err);
-      setError('Network error loading course. Please check your connection.');
+      setError('Network error loading course.');
     } finally {
       setLoading(false);
     }
@@ -94,8 +90,13 @@ export default function SharedCourseDetailPage() {
     setEnrolling(true);
     try {
       const res = await fetch(`/api/shared-courses/${shareId}/enroll`, { method: 'POST' });
-      if (res.ok) fetchCourse();
-      else { const d = await res.json(); alert(d.error || 'Failed to enroll'); }
+      if (res.ok) {
+        await fetchCourse();
+        setShowEnrollmentSuccess(true);
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Failed to enroll');
+      }
     } catch { alert('Failed to enroll'); }
     finally { setEnrolling(false); }
   };
@@ -115,56 +116,33 @@ export default function SharedCourseDetailPage() {
       <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="w-16 h-16 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+            <Icon icon="mdi:alert-circle" className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-lg font-display text-gray-900 mb-2">Unable to Load Shared Course</h2>
-          <p className="text-sm text-gray-500 mb-3">{error}</p>
-          <div className="bg-gray-100 rounded-lg p-3 text-xs text-gray-500 mb-4 text-left font-mono">
-            Share ID: {shareId}
-          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Course</h2>
+          <p className="text-sm text-gray-500 mb-4">{error}</p>
           <div className="flex items-center justify-center gap-4">
-            <button onClick={() => { setError(null); setLoading(true); fetchCourse(); }} className="text-sm text-blue-600 hover:underline">
-              Try Again
-            </button>
-            <a href="/shared-courses" className="text-sm text-gray-500 hover:underline">
-              Back to Catalog
-            </a>
+            <button onClick={() => { setError(null); setLoading(true); fetchCourse(); }} className="text-sm text-blue-600 hover:underline">Try Again</button>
+            <a href="/shared-courses" className="text-sm text-gray-500 hover:underline">Back to Catalog</a>
           </div>
         </div>
       </div>
     );
   }
 
-  // ─── Loading skeleton (same as regular course page) ────────────────────────
+  // ─── Loading skeleton ──────────────────────────────────────────────────────
 
   if (loading || !data) {
     return (
       <div className="min-h-screen bg-gray-50/50">
-        <div className="h-64 sm:h-80 animate-pulse" style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))', opacity: 0.7 }}>
-          <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-              <div className="flex-1 space-y-4">
-                <div className="h-4 w-32 bg-white/20 rounded" />
-                <div className="h-10 w-3/4 bg-white/20 rounded" />
-                <div className="h-5 w-1/2 bg-white/15 rounded" />
-              </div>
-              <div className="w-full sm:w-80 h-48 sm:h-64 bg-white/10 rounded-lg" />
-            </div>
+        <div className="h-64 sm:h-80 animate-pulse" style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))', opacity: 0.7 }} />
+        <div className="h-10 bg-white border-b border-gray-200 animate-pulse" />
+        <div className="flex flex-col lg:flex-row min-h-[50vh]">
+          <div className="flex-1 p-6 space-y-4">
+            <div className="bg-white rounded-lg h-48 animate-pulse" />
+            <div className="bg-white rounded-lg h-64 animate-pulse" />
           </div>
-        </div>
-        <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-lg h-48 animate-pulse" />
-              <div className="bg-white rounded-lg h-24 animate-pulse" />
-              <div className="bg-white rounded-lg h-64 animate-pulse" />
-            </div>
-            <div className="space-y-4">
-              <div className="bg-white rounded-lg h-72 animate-pulse" />
-              <div className="bg-white rounded-lg h-32 animate-pulse" />
-            </div>
+          <div className="w-full lg:w-[340px] p-5 space-y-4 border-l border-gray-200">
+            <div className="bg-white rounded-lg h-72 animate-pulse" />
           </div>
         </div>
       </div>
@@ -173,7 +151,7 @@ export default function SharedCourseDetailPage() {
 
   const { course, lessons, instructors, quizzes, assignments, discussions, surveys, sections, conferences, enrollment } = data;
   const isEnrolled = enrollment?.status === 'active';
-  const publishedLessons = lessons.filter(l => l.published);
+  const publishedLessons = lessons.filter(l => l.published).sort((a, b) => a.order - b.order);
   const completedLessons = lessons.filter(l => l.completed).length;
   const totalLessons = lessons.length;
   const progressPct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
@@ -186,7 +164,7 @@ export default function SharedCourseDetailPage() {
     content_type: l.content_type, prerequisite_lesson_id: l.prerequisite_lesson_id || null,
   }));
 
-  const rendererSections = sections.map(s => ({
+  const rendererSections: Section[] = sections.map(s => ({
     id: s.id, course_id: course.id, title: s.title, description: s.description,
     order: s.order, start_date: s.start_date, end_date: s.end_date,
     collapsed: s.collapsed || false, published: s.published,
@@ -198,52 +176,201 @@ export default function SharedCourseDetailPage() {
     completed_at: null,
   }));
 
-  // ─── Course overview (same layout as regular course page) ─────────────────
+  const firstLesson = publishedLessons.find(l => !l.completed) || publishedLessons[0];
+
+  // ─── Sidebar ────────────────────────────────────────────────────────────────
+
+  const sidebar = (
+    <aside className="w-full lg:w-[340px] xl:w-[380px] 2xl:w-[420px] shrink-0 hidden lg:block bg-white border-l border-gray-200 overflow-y-auto">
+      <div className="p-5 space-y-4">
+
+        {/* Source tenant badge */}
+        {data.source_tenant && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100 text-xs text-blue-700">
+            <Icon icon="mdi:domain" className="w-4 h-4 shrink-0" />
+            <span>Shared by <strong>{data.source_tenant.name}</strong></span>
+          </div>
+        )}
+
+        {/* Enrollment / Get Started */}
+        <div className="rounded-lg border border-gray-200/60 overflow-hidden">
+          <div className="px-5 py-4 bg-gradient-to-r from-slate-900 to-slate-800">
+            <p className="text-sm font-bold text-white">Get started</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Enrol and begin learning</p>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 mb-4">
+              {[
+                ['Modality', course.modality || 'Self-paced'],
+                ['Difficulty', course.difficulty || 'All Levels'],
+                ['Duration', course.estimated_duration || 'Flexible'],
+                ['Lessons', String(publishedLessons.length)],
+              ].map(([k, v]) => (
+                <div key={k}>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400">{k}</p>
+                  <p className="text-[13px] font-semibold text-gray-800 mt-0.5">{v}</p>
+                </div>
+              ))}
+            </div>
+
+            {isEnrolled && progress && (
+              <div className="mb-4 p-3 rounded-lg bg-emerald-50">
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-emerald-700 font-medium">Progress</span>
+                  <span className="font-bold text-emerald-800">{progressPct}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-emerald-200/60">
+                  <div className="h-full rounded-full bg-emerald-600 transition-all duration-500" style={{ width: `${progressPct}%` }} />
+                </div>
+              </div>
+            )}
+
+            {isEnrolled ? (
+              <Link
+                href={firstLesson ? `/shared-courses/${shareId}/lesson/${firstLesson.id}` : '#'}
+                className="block w-full py-2.5 rounded-lg text-white text-[13px] font-semibold text-center bg-emerald-700 hover:bg-emerald-800 transition-colors"
+              >
+                Continue learning →
+              </Link>
+            ) : (
+              <button onClick={handleEnroll} disabled={enrolling} className="w-full py-2.5 rounded-lg text-white text-[13px] font-semibold bg-emerald-700 hover:bg-emerald-800 transition-colors disabled:opacity-50">
+                {enrolling ? 'Enrolling...' : 'Enrol now — Free'}
+              </button>
+            )}
+
+            {isEnrolled && (
+              <button onClick={handleDrop} className="w-full mt-2 py-2 rounded-lg text-xs text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors">
+                Drop course
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Live Sessions */}
+        <CourseLiveSessions courseId={course.id} isInstructor={false} conferences={conferences} isEnrolled={isEnrolled} collapsible />
+
+        {/* Session Recordings */}
+        <SessionRecordingsCard courseId={course.id} collapsible />
+      </div>
+    </aside>
+  );
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-[#f8f9fa]">
+      {/* Enrollment Success Overlay */}
+      {showEnrollmentSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-300">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, transparent)' }}
+            >
+              <Icon icon="mdi:check-circle" className="w-10 h-10" style={{ color: 'var(--theme-primary)' }} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">You&apos;re In!</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              You&apos;ve successfully enrolled in <span className="font-medium text-gray-700">{course.title}</span>
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <Icon icon="mdi:book-open-page-variant-outline" className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                <span>{publishedLessons.length} lesson{publishedLessons.length !== 1 ? 's' : ''} to complete</span>
+              </div>
+              {course.estimated_duration && (
+                <div className="flex items-center gap-3 text-sm text-gray-600 mt-2">
+                  <Icon icon="mdi:clock-outline" className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                  <span>Estimated {course.estimated_duration}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3 text-sm text-gray-600 mt-2">
+                <Icon icon="mdi:signal-cellular-3" className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
+                <span>{formatModality(course.modality)} learning</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {firstLesson ? (
+                <Link
+                  href={`/shared-courses/${shareId}/lesson/${firstLesson.id}`}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+                >
+                  <Icon icon="mdi:play-circle" className="w-5 h-5" />
+                  Start First Lesson
+                </Link>
+              ) : (
+                <button onClick={() => setShowEnrollmentSuccess(false)} className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90" style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}>
+                  Explore Course
+                </button>
+              )}
+              <button onClick={() => setShowEnrollmentSuccess(false)} className="text-sm text-gray-500 hover:text-gray-700 py-2 transition-colors">
+                View Course Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hero */}
       <CourseHero
         course={course}
-        lessonCount={lessons.length}
+        lessonCount={publishedLessons.length}
         sourceTenantName={data.source_tenant?.name}
         instructorNames={instructors.map(i => i.name)}
       />
 
-      <div className="mx-auto max-w-8xl px-4 py-8 sm:py-12 sm:px-6 lg:px-8">
-        <Breadcrumb
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'Shared Courses', href: '/shared-courses' },
-            { label: course.title },
-          ]}
-          className="mb-6"
-        />
+      {/* Tab Bar */}
+      <CourseTabBar
+        courseId={course.id}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userRole="student"
+      />
 
-        {progress && (
-          <div className="mb-6 bg-white rounded-lg border border-gray-200/80 p-5">
-            <ProgressVisualization
-              total={progress.total}
-              completed={progress.completed}
-              percentage={progress.percentage}
-              label="Course Progress"
-              size="lg"
-              variant="list"
-            />
-          </div>
+      {/* Mobile-only sticky action bar */}
+      <div className="lg:hidden sticky top-[41px] z-30 bg-white border-b border-gray-200/80 px-4 py-3">
+        {isEnrolled ? (
+          <Link
+            href={firstLesson ? `/shared-courses/${shareId}/lesson/${firstLesson.id}` : '#'}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-all"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+          >
+            <Icon icon="mdi:play-circle" className="w-4 h-4" />
+            {progress && progress.percentage > 0 ? `Continue (${progress.percentage}%)` : 'Start Learning'}
+          </Link>
+        ) : (
+          <button
+            onClick={handleEnroll}
+            disabled={enrolling}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-all disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+          >
+            <Icon icon="mdi:school" className="w-4 h-4" />
+            {enrolling ? 'Enrolling...' : 'Enroll in Course'}
+          </button>
         )}
+      </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6 lg:space-y-8">
-            <CourseOverview syllabus={course.syllabus} />
+      {/* Main content: two-column layout (persistent sidebar) */}
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-180px)]">
 
-            <CourseStatistics
-              lessonCount={lessons.length}
-              estimatedDuration={course.estimated_duration}
-              difficulty={course.difficulty || 'All Levels'}
-              modality={course.modality}
-            />
+        {/* Left: tab content */}
+        <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-10 py-6 space-y-6 overflow-y-auto overflow-x-hidden">
 
+          {activeTab === 'overview' && (
+            <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden">
+              <div className="px-6 py-5">
+                {course.syllabus ? (
+                  <div className="course-overview-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.syllabus) }} />
+                ) : (
+                  <p className="text-sm text-gray-400 py-8 text-center">No course overview has been added yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'curriculum' && (
             <CourseCurriculum
               courseId={course.id}
               lessons={rendererLessons}
@@ -256,66 +383,39 @@ export default function SharedCourseDetailPage() {
                 router.push(`/shared-courses/${shareId}/lesson/${lessonId}`);
               }}
             />
-          </div>
+          )}
 
-          {/* Sidebar */}
-          <div className="space-y-4 sm:space-y-6">
-            <CourseEnrollmentCard
-              course={course}
-              lessonCount={publishedLessons.length}
-              enrollmentStatus={isEnrolled ? 'enrolled' : 'not_enrolled'}
-              enrolling={enrolling}
-              onEnroll={handleEnroll}
-              onDrop={handleDrop}
-              onStartLearning={isEnrolled && publishedLessons.length > 0 ? () => {
-                const first = publishedLessons.find(l => !l.completed) || publishedLessons[0];
-                router.push(`/shared-courses/${shareId}/lesson/${first.id}`);
-              } : undefined}
-              sourceTenantName={data.source_tenant?.name}
-              progress={progress}
-              collapsible
-            />
+          {activeTab === 'discussions' && (
+            <DiscussionList courseId={course.id} />
+          )}
 
-            <CourseLiveSessions
-              courseId={course.id}
-              isInstructor={false}
-              conferences={conferences}
-              isEnrolled={isEnrolled}
-              collapsible
-            />
-
-            <CourseAssessments
-              courseId={course.id}
-              quizzes={quizzes}
-              assignments={assignments}
-              discussions={discussions.filter(d => d.is_graded)}
-              userRole={null}
-              isEnrolled={isEnrolled ?? false}
-              readOnly
-              collapsible
-            />
-
-            <CourseEvaluations
-              courseId={course.id}
-              surveys={surveys}
-              userRole={null}
-              isEnrolled={isEnrolled ?? false}
-              readOnly
-              collapsible
-            />
-
-            <CourseTeam
-              courseId={course.id}
-              instructors={instructors}
-              userRole={null}
-              editable={false}
-              collapsible
-            />
-
-            <SessionRecordingsCard courseId={course.id} collapsible />
-            <ResourceLinksSidebar courseId={course.id} collapsible />
-          </div>
+          {activeTab === 'grades' && isEnrolled && (
+            <div className="bg-white rounded-lg border border-gray-200/60 p-6">
+              <h2 className="text-base font-bold text-gray-900 mb-4">Grades</h2>
+              <CourseAssessments
+                courseId={course.id}
+                quizzes={quizzes}
+                assignments={assignments}
+                discussions={discussions.filter(d => d.is_graded)}
+                userRole={null}
+                isEnrolled={isEnrolled}
+                readOnly
+              />
+              <div className="mt-6">
+                <CourseEvaluations
+                  courseId={course.id}
+                  surveys={surveys}
+                  userRole={null}
+                  isEnrolled={isEnrolled}
+                  readOnly
+                />
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Right: persistent sidebar */}
+        {sidebar}
       </div>
     </div>
   );

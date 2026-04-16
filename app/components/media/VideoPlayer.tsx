@@ -725,18 +725,29 @@ function SelfHostedPlayer({
     }
   };
 
-  // Auto-hide controls
+  // Auto-hide controls (don't hide while a menu is open)
   const resetHideTimer = () => {
     setShowControls(true);
     if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
     if (isPlaying) {
-      hideControlsTimer.current = setTimeout(() => setShowControls(false), 3000);
+      hideControlsTimer.current = setTimeout(() => {
+        if (!showSpeedMenu && !showCaptionMenu) {
+          setShowControls(false);
+        }
+      }, 3000);
     }
   };
 
-  // Close menus on outside click
+  // Close menus on outside click (use refs to avoid closing when clicking inside)
+  const speedMenuRef = React.useRef<HTMLDivElement>(null);
+  const captionMenuRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
-    const handler = () => { setShowSpeedMenu(false); setShowCaptionMenu(false); };
+    const handler = (e: MouseEvent) => {
+      if (speedMenuRef.current?.contains(e.target as Node)) return;
+      if (captionMenuRef.current?.contains(e.target as Node)) return;
+      setShowSpeedMenu(false);
+      setShowCaptionMenu(false);
+    };
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, []);
@@ -924,7 +935,7 @@ function SelfHostedPlayer({
           )}
 
           {/* Speed */}
-          <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div ref={speedMenuRef} className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => { setShowSpeedMenu(!showSpeedMenu); setShowCaptionMenu(false); }}
               className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
@@ -952,7 +963,7 @@ function SelfHostedPlayer({
           </div>
 
           {/* Captions — always visible */}
-          <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div ref={captionMenuRef} className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => {
                 if (mergedCaptions && mergedCaptions.length > 0) {

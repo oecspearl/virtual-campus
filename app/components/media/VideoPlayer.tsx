@@ -368,7 +368,45 @@ function SelfHostedPlayer({
   const [activeCaptionIdx, setActiveCaptionIdx] = React.useState<number | null>(null);
   const [adEnabled, setAdEnabled] = React.useState(false);
   const [buffered, setBuffered] = React.useState(0);
+  const [dbCaptions, setDbCaptions] = React.useState<VideoCaption[]>([]);
   const hideControlsTimer = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Fetch captions from video_captions table (ensures captions work even if
+  // the instructor didn't save them into the lesson content block)
+  React.useEffect(() => {
+    if (!lessonId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/accessibility/captions?lesson_id=${lessonId}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const fetched: VideoCaption[] = (data.captions || [])
+          .filter((c: any) => c.caption_url)
+          .map((c: any) => ({
+            src: c.caption_url,
+            srclang: c.language?.length > 3
+              ? ({ english: 'en', spanish: 'es', french: 'fr', german: 'de', portuguese: 'pt', italian: 'it', dutch: 'nl', russian: 'ru', chinese: 'zh', japanese: 'ja', korean: 'ko', arabic: 'ar', hindi: 'hi' } as Record<string, string>)[c.language?.toLowerCase()] || c.language
+              : c.language || 'en',
+            label: c.label || c.language || 'English',
+            default: c.is_default || false,
+          }));
+        if (!cancelled && fetched.length > 0) setDbCaptions(fetched);
+      } catch {
+        // Silently fail — captions from props still work
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [lessonId]);
+
+  // Merge prop captions with DB captions (prop captions take priority)
+  const mergedCaptions = React.useMemo(() => {
+    // Start with prop captions that have a valid src
+    const fromProps = (captions || []).filter(c => c.src);
+    if (fromProps.length > 0) return fromProps;
+    // Fall back to DB captions
+    return dbCaptions;
+  }, [captions, dbCaptions]);
 
   // Resume playback: load saved position
   React.useEffect(() => {
@@ -392,11 +430,11 @@ function SelfHostedPlayer({
 
   // Set default caption
   React.useEffect(() => {
-    if (captions && captions.length > 0) {
-      const defaultIdx = captions.findIndex(c => c.default);
+    if (mergedCaptions && mergedCaptions.length > 0) {
+      const defaultIdx = mergedCaptions.findIndex(c => c.default);
       if (defaultIdx >= 0) setActiveCaptionIdx(defaultIdx);
     }
-  }, [captions]);
+  }, [mergedCaptions]);
 
   // Video event listeners
   React.useEffect(() => {
@@ -664,7 +702,7 @@ function SelfHostedPlayer({
         break;
       case 'c':
         e.preventDefault();
-        if (captions && captions.length > 0) {
+        if (mergedCaptions && mergedCaptions.length > 0) {
           toggleCaption(activeCaptionIdx === null ? 0 : null);
         }
         break;
@@ -733,7 +771,7 @@ function SelfHostedPlayer({
         preload="metadata"
       >
         <source src={src} />
-        {captions?.map((cap, i) => (
+        {mergedCaptions?.map((cap, i) => (
           <track
             key={i}
             kind="captions"
@@ -906,7 +944,7 @@ function SelfHostedPlayer({
           </div>
 
           {/* Captions */}
-          {captions && captions.length > 0 && (
+          {mergedCaptions && mergedCaptions.length > 0 && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => { setShowCaptionMenu(!showCaptionMenu); setShowSpeedMenu(false); }}
@@ -925,7 +963,7 @@ function SelfHostedPlayer({
                   >
                     Off
                   </button>
-                  {captions.map((cap, i) => (
+                  {mergedCaptions.map((cap, i) => (
                     <button
                       key={i}
                       onClick={() => toggleCaption(i)}

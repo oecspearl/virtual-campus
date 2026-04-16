@@ -33,13 +33,12 @@ type PanelId = 'player' | 'outcomes' | 'instructions' | 'resources' | 'discussio
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 
 const T = {
-  navy: '#0D1B2A',
+  navy: '#111827', // bg-gray-900 — matches video player
   teal: '#1C8B63',
   tealLight: '#E1F5EE',
   tealText: '#085041',
   orange: '#D85A30',
-  railW: 540,
-  ctxbarH: 36,
+  ctxbarH: 40, // matches video player tab bar h-10
 };
 
 // ─── CSS injected into the SCORM iframe to strip padding/max-width ───────────
@@ -394,60 +393,54 @@ export default function SCORMPlayer({
 
       {/* ══════ Context Tab Bar ══════ */}
       <div
-        className="flex items-center px-2 flex-shrink-0 border-b bg-white z-10"
-        style={{ height: T.ctxbarH, borderColor: '#e5e7eb' }}
+        className="flex items-center bg-white border-b border-gray-200 shrink-0 z-10 overflow-x-auto"
+        style={{ height: T.ctxbarH }}
         role="tablist"
         aria-label="Lesson panels"
       >
-        {visibleTabs.map((tab, i) => (
-          <React.Fragment key={tab.id}>
-            {i > 0 && <div className="w-px h-4 bg-gray-200 mx-1" />}
-            <button
-              role="tab"
-              aria-selected={activePanel === tab.id}
-              onClick={() => setActivePanel(activePanel === tab.id ? 'player' : tab.id)}
-              className="relative px-3 h-full text-[12px] font-medium transition-colors cursor-pointer"
-              style={{
-                color: activePanel === tab.id ? T.tealText : '#6b7280',
-                borderBottom: activePanel === tab.id ? `2px solid ${T.teal}` : '2px solid transparent',
-                fontWeight: activePanel === tab.id ? 600 : 400,
-              }}
-            >
-              {tab.label}
-              {tab.id === 'discussions' && hasUnread && (
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full" style={{ background: T.orange }} />
-              )}
-            </button>
-          </React.Fragment>
+        {visibleTabs.map(tab => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activePanel === tab.id}
+            onClick={() => setActivePanel(activePanel === tab.id ? 'player' : tab.id)}
+            className={`relative flex items-center gap-1.5 px-4 text-sm border-b-2 whitespace-nowrap transition-colors shrink-0 cursor-pointer ${
+              activePanel === tab.id
+                ? 'border-blue-600 text-blue-600 font-medium'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+            style={{ height: T.ctxbarH }}
+          >
+            {tab.label}
+            {tab.id === 'discussions' && hasUnread && (
+              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full" style={{ background: T.orange }} />
+            )}
+          </button>
         ))}
 
         {/* Right side: progress + mark complete + reload */}
-        <div className="ml-auto flex items-center gap-3 pr-1">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-3 pr-2 shrink-0">
           {score !== null && (
-            <span className="text-[11px] text-gray-500 flex items-center gap-1">
+            <span className="text-xs text-gray-500 flex items-center gap-1">
               <svg className="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
               {score}%
             </span>
           )}
-          <span className="text-[11px] text-gray-400 tabular-nums">{displayProgress}%</span>
+          <span className="text-xs text-gray-400 tabular-nums">{displayProgress}%</span>
           {sessionActive && (
-            <span className="hidden sm:inline text-[11px] text-gray-400 tabular-nums">{fmtTime(elapsed)}</span>
+            <span className="hidden sm:inline text-xs text-gray-400 tabular-nums">{fmtTime(elapsed)}</span>
           )}
           <button onClick={handleReload} className="p-1 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer" title="Reload content">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
           {scormComplete || isCompleted ? (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium" style={{ background: T.tealLight, color: T.tealText }}>
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-              Done
-            </span>
+            <span className="px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium bg-gray-600 text-gray-400 cursor-default whitespace-nowrap">Completed</span>
           ) : (
             <button
               onClick={handleMarkComplete}
-              className="px-3 py-0.5 rounded-full text-[11px] font-medium text-white transition-colors hover:opacity-90 cursor-pointer"
-              style={{ background: T.teal }}
+              className="px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors whitespace-nowrap cursor-pointer"
             >
               Mark complete
             </button>
@@ -458,8 +451,8 @@ export default function SCORMPlayer({
         {activePanel !== 'player' && (
           <button
             onClick={() => setActivePanel('player')}
-            className="ml-2 px-2 h-full text-[11px] font-medium transition-colors cursor-pointer"
-            style={{ color: T.tealText, borderBottom: `2px solid ${T.teal}` }}
+            className="px-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600 whitespace-nowrap shrink-0 cursor-pointer"
+            style={{ height: T.ctxbarH }}
           >
             ← Lesson
           </button>
@@ -556,8 +549,7 @@ export default function SCORMPlayer({
 
         {/* ── Right Rail (platform panel — outside the iframe) ── */}
         <div
-          className="hidden lg:flex flex-col flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden"
-          style={{ width: T.railW }}
+          className="hidden lg:flex flex-col flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden w-[320px] xl:w-[400px] 2xl:w-[490px]"
           role="tabpanel"
         >
           {activePanel === 'player' ? (

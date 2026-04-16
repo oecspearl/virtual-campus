@@ -43,14 +43,13 @@ type PanelId = 'player' | 'outcomes' | 'instructions' | 'resources' | 'discussio
 // ─── Design Tokens (matches SCORM/Video players) ─────────────────────────────
 
 const T = {
-  navy: '#0D1B2A',
+  navy: '#111827', // bg-gray-900 — matches video player
   teal: '#1C8B63',
   tealLight: '#E1F5EE',
   tealText: '#085041',
   orange: '#D85A30',
-  railW: 540,
   navH: 48,
-  ctxbarH: 36,
+  ctxbarH: 40, // matches video player tab bar h-10
 };
 
 // ─── Section helpers ─────────────────────────────────────────────────────────
@@ -125,24 +124,21 @@ export default function RichTextPlayer({
   return (
     <div className="flex flex-col overflow-hidden" style={{ height: '100%' }}>
 
-      {/* ══════ Top Nav Bar ══════ */}
-      <div
-        className="flex items-center justify-between px-4 flex-shrink-0 z-20"
-        style={{ height: T.navH, background: T.navy }}
-      >
+      {/* ══════ Top Nav Bar — matches video player ══════ */}
+      <div className="h-12 flex items-center justify-between px-2 sm:px-4 bg-gray-900 flex-shrink-0 z-20">
         {/* Left: back + breadcrumb */}
-        <div className="flex items-center gap-2 min-w-0 text-white">
-          <Link href={`/course/${courseId}`} className="flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 mr-2 text-white">
+          <Link href={`/course/${courseId}`} className="flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors shrink-0">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" /></svg>
             <span className="hidden sm:inline truncate max-w-[180px]">{courseTitle || 'Course'}</span>
           </Link>
-          <span className="text-gray-600">/</span>
-          <span className="text-[13px] font-medium opacity-95 truncate">{lessonTitle}</span>
+          <span className="text-gray-600 hidden sm:inline">/</span>
+          <span className="text-white text-sm font-medium truncate">{lessonTitle}</span>
         </div>
 
         {/* Right: progress + nav + mark complete */}
-        <div className="flex items-center gap-3">
-          <span className="text-[12px] text-white/70 tabular-nums">{courseProgress}%</span>
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <span className="text-gray-400 text-sm tabular-nums">{courseProgress}%</span>
           <button
             onClick={() => prevLessonId && onNavigate(prevLessonId)}
             disabled={!prevLessonId}
@@ -158,16 +154,12 @@ export default function RichTextPlayer({
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
           {isCompleted ? (
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium" style={{ background: T.tealLight, color: T.tealText }}>
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-              Completed
-            </span>
+            <span className="px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium bg-gray-600 text-gray-400 cursor-default whitespace-nowrap">Completed</span>
           ) : (
             <button
               onClick={onMarkComplete}
               disabled={isCompleting}
-              className="px-3.5 py-1 rounded-full text-[11px] font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50 cursor-pointer"
-              style={{ background: T.teal }}
+              className="px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium bg-green-600 hover:bg-green-500 text-white transition-colors disabled:bg-gray-600 disabled:text-gray-400 whitespace-nowrap cursor-pointer"
             >
               {isCompleting ? 'Saving...' : 'Mark complete'}
             </button>
@@ -180,41 +172,40 @@ export default function RichTextPlayer({
         </div>
       </div>
 
-      {/* ══════ Context Tab Bar ══════ */}
+      {/* ══════ Tab Bar — matches video player style ══════ */}
       <div
-        className="flex items-center px-2 flex-shrink-0 border-b bg-white z-10"
-        style={{ height: T.ctxbarH, borderColor: '#e5e7eb' }}
+        className="flex items-center bg-white border-b border-gray-200 shrink-0 z-10 overflow-x-auto"
+        style={{ height: T.ctxbarH }}
         role="tablist"
       >
-        {visibleTabs.map((tab, i) => (
-          <React.Fragment key={tab.id}>
-            {i > 0 && <div className="w-px h-4 bg-gray-200 mx-1" />}
-            <button
-              role="tab"
-              aria-selected={activePanel === tab.id}
-              onClick={() => setActivePanel(activePanel === tab.id ? 'player' : tab.id)}
-              className="relative px-3 h-full text-[12px] font-medium transition-colors cursor-pointer"
-              style={{
-                color: activePanel === tab.id ? T.tealText : '#6b7280',
-                borderBottom: activePanel === tab.id ? `2px solid ${T.teal}` : '2px solid transparent',
-                fontWeight: activePanel === tab.id ? 600 : 400,
-              }}
-            >
-              {tab.label}
-            </button>
-          </React.Fragment>
+        {visibleTabs.map(tab => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activePanel === tab.id}
+            onClick={() => setActivePanel(activePanel === tab.id ? 'player' : tab.id)}
+            className={`flex items-center gap-1.5 px-4 text-sm border-b-2 whitespace-nowrap transition-colors shrink-0 cursor-pointer ${
+              activePanel === tab.id
+                ? 'border-blue-600 text-blue-600 font-medium'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+            style={{ height: T.ctxbarH }}
+          >
+            <span className="hidden sm:inline">{tab.label}</span>
+            <span className="sm:hidden text-xs">{tab.label}</span>
+          </button>
         ))}
 
         {/* Section progress */}
-        <div className="ml-auto flex items-center gap-2 pr-2">
-          <span className="text-[11px] text-gray-400 tabular-nums">{sectionProgress}% read</span>
+        <div className="ml-auto flex items-center gap-2 pr-3 shrink-0">
+          <span className="text-xs text-gray-400 tabular-nums">{sectionProgress}%</span>
         </div>
 
         {activePanel !== 'player' && (
           <button
             onClick={() => setActivePanel('player')}
-            className="ml-2 px-2 h-full text-[11px] font-medium transition-colors cursor-pointer"
-            style={{ color: T.tealText, borderBottom: `2px solid ${T.teal}` }}
+            className="px-3 text-sm font-medium text-blue-600 border-b-2 border-blue-600 whitespace-nowrap shrink-0 cursor-pointer"
+            style={{ height: T.ctxbarH }}
           >
             ← Lesson
           </button>
@@ -296,7 +287,7 @@ export default function RichTextPlayer({
 
         {/* ── Left: Section navigation ── */}
         {sections.length > 1 && (
-          <div className="hidden lg:flex flex-col shrink-0 bg-gray-50 border-r border-gray-200 overflow-hidden" style={{ width: 220 }}>
+          <div className="hidden lg:flex flex-col shrink-0 bg-gray-50 border-r border-gray-200 overflow-hidden w-[160px] xl:w-[200px]">
             <div className="px-3 pt-3 pb-2">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                 Sections ({sections.length})
@@ -564,8 +555,7 @@ export default function RichTextPlayer({
 
         {/* ── Right Rail ── */}
         <div
-          className="hidden lg:flex flex-col flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden"
-          style={{ width: T.railW }}
+          className="hidden lg:flex flex-col flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden w-[320px] xl:w-[400px] 2xl:w-[490px]"
           role="tabpanel"
         >
           {activePanel === 'player' ? (

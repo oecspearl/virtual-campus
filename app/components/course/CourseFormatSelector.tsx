@@ -73,6 +73,7 @@ const CourseFormatSelector: React.FC<CourseFormatSelectorProps> = ({
       <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
         {FORMAT_OPTIONS.map((opt) => (
           <button
+            type="button"
             key={opt.value}
             onClick={() => onFormatChange(opt.value)}
             disabled={saving}
@@ -93,6 +94,7 @@ const CourseFormatSelector: React.FC<CourseFormatSelectorProps> = ({
           </div>
         )}
         <button
+          type="button"
           onClick={() => setShowDetails(!showDetails)}
           className="ml-1 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
           title="About course formats"
@@ -106,13 +108,14 @@ const CourseFormatSelector: React.FC<CourseFormatSelectorProps> = ({
         <div className="absolute right-0 top-full mt-2 z-50 w-[28rem] bg-white rounded-lg shadow-lg border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-bold text-gray-900">Choose a Course Format</h4>
-            <button onClick={() => setShowDetails(false)} className="text-gray-400 hover:text-gray-600">
+            <button type="button" onClick={() => setShowDetails(false)} className="text-gray-400 hover:text-gray-600">
               <Icon icon="material-symbols:close" className="w-4 h-4" />
             </button>
           </div>
           <div className="space-y-3">
             {FORMAT_OPTIONS.map((opt) => (
               <button
+                type="button"
                 key={opt.value}
                 onClick={() => { onFormatChange(opt.value); setShowDetails(false); }}
                 className={`w-full text-left p-3 rounded-lg border transition-all ${

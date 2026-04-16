@@ -619,7 +619,7 @@ export default function StudentActivityPage() {
 
                           {/* Lessons Table */}
                           {expandedCourses.has(course.course_id) && (
-                            <div className="border-t border-gray-200">
+                            <div className="border-t border-gray-200 overflow-x-auto">
                               <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                   <tr>

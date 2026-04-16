@@ -653,7 +653,7 @@ export default function LibraryResourcesPage() {
 
           {/* Resources Table View */}
           {viewMode === 'table' && (
-            <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
+            <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto mb-6">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>

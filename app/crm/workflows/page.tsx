@@ -569,7 +569,7 @@ export default function CRMWorkflowsPage() {
                   </div>
 
                   {/* Execution Log */}
-                  <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  <div className="border border-gray-100 rounded-lg overflow-hidden overflow-x-auto">
                     <div className="p-3 border-b border-gray-100 bg-gray-50">
                       <h3 className="text-sm font-bold text-gray-900">Execution Log</h3>
                     </div>

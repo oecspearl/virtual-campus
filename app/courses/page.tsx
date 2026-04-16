@@ -207,9 +207,9 @@ export default function CoursesPage() {
           </div>
           
           {/* Enhanced Search & Filters */}
-          <div className="mt-12 bg-white/95 backdrop-blur-sm rounded-lg border border-white/20 p-8 shadow-sm">
-            <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
-              <div className="lg:col-span-3">
+          <div className="mt-12 bg-white/95 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 lg:p-8 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-6">
+              <div className="sm:col-span-2 lg:col-span-3">
                 <label className="block text-lg font-bold text-gray-900 mb-4">
                   <svg className="w-5 h-5 inline mr-3" style={{ color: 'var(--theme-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -220,7 +220,7 @@ export default function CoursesPage() {
                   value={q}
                   onChange={(e)=>setQ(e.target.value)}
                   placeholder="Search by title, description, or keywords..."
-                  className="w-full px-6 py-4 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-gray-300/40 focus:border-gray-400 transition-all duration-200 text-lg shadow-sm"
+                  className="w-full px-4 py-3 sm:px-6 sm:py-4 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-gray-300/40 focus:border-gray-400 transition-all duration-200 text-lg shadow-sm"
                 />
               </div>
               <div className="lg:col-span-2">
@@ -231,7 +231,7 @@ export default function CoursesPage() {
                 <select
                   value={selectedCategory}
                   onChange={(e)=>setSelectedCategory(e.target.value)}
-                  className="w-full px-6 py-4 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 text-lg shadow-sm"
+                  className="w-full px-4 py-3 sm:px-6 sm:py-4 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-green-500/20 focus:border-green-500 transition-all duration-200 text-lg shadow-sm"
                 >
                   <option value="">All Categories</option>
                   {categories.map(cat => (
@@ -251,7 +251,7 @@ export default function CoursesPage() {
                 <select
                   value={difficulty}
                   onChange={(e)=>setDifficulty(e.target.value)}
-                  className="w-full px-6 py-4 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-purple-500 transition-all duration-200 text-lg shadow-sm"
+                  className="w-full px-4 py-3 sm:px-6 sm:py-4 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-purple-500 transition-all duration-200 text-lg shadow-sm"
                 >
                   <option value="">All Levels</option>
                   <option value="beginner">🌱 Beginner</option>

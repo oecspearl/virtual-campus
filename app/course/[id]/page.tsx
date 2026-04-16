@@ -367,7 +367,7 @@ export default function CourseDetailPage() {
 
   // Sidebar (always visible, shared across tabs)
   const sidebar = (
-    <aside className="w-full lg:w-[630px] xl:w-[660px] shrink-0 hidden lg:block bg-white border-l border-gray-200 overflow-y-auto">
+    <aside className="w-full lg:w-[340px] xl:w-[380px] 2xl:w-[420px] shrink-0 hidden lg:block bg-white border-l border-gray-200 overflow-y-auto">
       <div className="p-5 space-y-4">
 
       {/* Enrollment / Get Started */}
@@ -551,11 +551,35 @@ export default function CourseDetailPage() {
         userRole={profile?.role || 'student'}
       />
 
+      {/* Mobile-only sticky action bar — enroll/continue CTA */}
+      <div className="lg:hidden sticky top-[41px] z-30 bg-white border-b border-gray-200/80 px-4 py-3">
+        {enrollmentStatus === 'enrolled' ? (
+          <Link
+            href={lessons.length > 0 ? `/course/${courseId}/lesson/${lessons[0]?.id}` : '#'}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-all"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+          >
+            <Icon icon="mdi:play-circle" className="w-4 h-4" />
+            {progress && progress.percentage > 0 ? `Continue (${progress.percentage}%)` : 'Start Learning'}
+          </Link>
+        ) : enrollmentStatus === 'not_enrolled' ? (
+          <button
+            onClick={enroll}
+            disabled={enrolling}
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-all disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
+          >
+            <Icon icon="mdi:school" className="w-4 h-4" />
+            {enrolling ? 'Enrolling...' : 'Enroll in Course'}
+          </button>
+        ) : null}
+      </div>
+
       {/* Main content: two-column layout (persistent sidebar) */}
       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-180px)]">
 
         {/* Left: tab content */}
-        <div className="flex-1 min-w-0 px-6 sm:px-10 lg:px-12 py-6 space-y-6 overflow-y-auto">
+        <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-10 py-6 space-y-6 overflow-y-auto overflow-x-hidden">
 
             {activeTab === 'overview' && (
               <>

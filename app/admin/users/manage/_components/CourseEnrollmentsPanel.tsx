@@ -84,7 +84,7 @@ export default function CourseEnrollmentsPanel({ enrollments, users, onUnenroll 
 
               {isExpanded && (
                 <div className="px-6 pb-4">
-                  <div className="ml-8 border-l-2 border-gray-200 pl-4">
+                  <div className="ml-8 border-l-2 border-gray-200 pl-4 overflow-x-auto">
                     <table className="min-w-full">
                       <thead>
                         <tr className="text-xs text-gray-500 uppercase">

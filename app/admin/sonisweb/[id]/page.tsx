@@ -212,7 +212,7 @@ export default function SonisWebConnectionDetailPage() {
               </button>
             ))}
           </div>
-          <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="bg-white rounded-lg border overflow-hidden overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
@@ -246,7 +246,7 @@ export default function SonisWebConnectionDetailPage() {
 
       {/* Sync Logs Tab */}
       {activeTab === 'logs' && (
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="bg-white rounded-lg border overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>

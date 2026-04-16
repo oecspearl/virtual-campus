@@ -370,7 +370,7 @@ export default function CRMApplicationsPage() {
               ))}
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">

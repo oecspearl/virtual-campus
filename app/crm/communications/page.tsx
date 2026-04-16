@@ -306,7 +306,7 @@ export default function CRMCommunicationsPage() {
           <div className="bg-white rounded-lg border border-gray-100 p-4 mb-6 shadow-sm">
             <div className="flex gap-2">{[...Array(7)].map((_, i) => <div key={i} className="h-8 w-20 bg-gray-100 rounded-lg animate-pulse" />)}</div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
             <table className="w-full"><tbody className="divide-y divide-gray-100">
               {[...Array(5)].map((_, i) => (
                 <tr key={i}><td className="px-6 py-4"><div className="h-4 w-40 bg-gray-200 rounded-lg animate-pulse" /></td>
@@ -644,7 +644,7 @@ export default function CRMCommunicationsPage() {
                   </div>
 
                   {/* Recipients */}
-                  <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  <div className="border border-gray-100 rounded-lg overflow-hidden overflow-x-auto">
                     <div className="p-3 border-b border-gray-100 bg-gray-50">
                       <h3 className="text-sm font-bold text-gray-900">Recipients ({detailRecipientTotal})</h3>
                     </div>

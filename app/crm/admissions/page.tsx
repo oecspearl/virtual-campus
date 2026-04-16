@@ -303,7 +303,7 @@ export default function AdmissionsPage() {
               {forms.map(f => <option key={f.id} value={f.id}>{f.title}</option>)}
             </select>
 
-            <div className="relative flex-1 min-w-[200px]">
+            <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
               <Icon icon="mdi:magnify" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
@@ -373,6 +373,7 @@ export default function AdmissionsPage() {
               </p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50/80 border-b border-gray-100">
                 <tr>
@@ -420,6 +421,7 @@ export default function AdmissionsPage() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 

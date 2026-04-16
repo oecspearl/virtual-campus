@@ -497,7 +497,7 @@ export default function Student360Page() {
 
         {/* ENROLLMENTS TAB */}
         {activeTab === 'enrollments' && (
-          <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-slate-50/80">

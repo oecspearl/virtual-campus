@@ -576,14 +576,14 @@ export default function CRMSegmentsPage() {
                         <select
                           value={criterion.field}
                           onChange={(e) => updateCriterion(index, { field: e.target.value })}
-                          className="px-2 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 text-sm min-w-[140px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                          className="px-2 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 text-sm min-w-0 sm:min-w-[140px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                         >
                           {FILTER_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                         </select>
                         <select
                           value={criterion.operator}
                           onChange={(e) => updateCriterion(index, { operator: e.target.value })}
-                          className="px-2 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 text-sm min-w-[100px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                          className="px-2 py-2 rounded-lg bg-white border border-gray-200 text-gray-900 text-sm min-w-0 sm:min-w-[100px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                         >
                           {(fieldDef?.operators || ['eq']).map(op => <option key={op} value={op}>{OPERATOR_LABELS[op] || op}</option>)}
                         </select>
@@ -741,6 +741,7 @@ export default function CRMSegmentsPage() {
                       </div>
                     </div>
 
+                    <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -783,6 +784,7 @@ export default function CRMSegmentsPage() {
                         )}
                       </tbody>
                     </table>
+                    </div>
 
                     {detailTotalPages > 1 && (
                       <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">

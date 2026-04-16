@@ -380,6 +380,7 @@ export default function FormsListPage() {
               </button>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50/80 border-b border-gray-100">
                 <tr>
@@ -449,6 +450,7 @@ export default function FormsListPage() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>

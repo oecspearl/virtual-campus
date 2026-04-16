@@ -383,6 +383,7 @@ export default function EditLessonPage() {
                     content={content}
                     setContent={setContent}
                     title={title}
+                    lessonId={lessonId}
                     generatingChapters={generatingChapters}
                     setGeneratingChapters={setGeneratingChapters}
                   />

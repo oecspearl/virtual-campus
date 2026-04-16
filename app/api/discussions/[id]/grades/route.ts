@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
+import { getAllEnrolledStudentIds } from "@/lib/enrollment-check";
 
 // GET /api/discussions/[id]/grades - Get all grades for a discussion (instructor) or own grade (student)
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -76,15 +77,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         grader: usersMap.get(g.graded_by) ? { id: g.graded_by, name: usersMap.get(g.graded_by)!.name } : null
       })) || [];
 
-      // Get participation stats for all enrolled students
-      const { data: enrollments } = await tq
-        .from('enrollments')
-        .select('student_id')
-        .eq('course_id', discussion.course_id)
-        .eq('status', 'active');
-
-      // Get user info for enrolled students
-      const enrolledStudentIds = enrollments?.map(e => e.student_id) || [];
+      // Get participation stats for all enrolled students (including cross-tenant)
+      const enrolledStudentIds = await getAllEnrolledStudentIds(discussion.course_id);
       const { data: enrolledUsers } = await tq
         .from('users')
         .select('id, name, email')

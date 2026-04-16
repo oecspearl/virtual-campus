@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
+import { checkStudentEnrollment } from "@/lib/enrollment-check";
 
 export async function POST(
   request: Request,
@@ -55,14 +56,8 @@ export async function POST(
       assignmentCourseId = lesson?.course_id;
     }
     if (assignmentCourseId) {
-      const { data: enrollment } = await serviceSupabase
-        .from("enrollments")
-        .select("id")
-        .eq("course_id", assignmentCourseId)
-        .eq("student_id", user.id)
-        .eq("status", "active")
-        .single();
-      if (!enrollment) {
+      const { enrolled } = await checkStudentEnrollment(user.id, assignmentCourseId);
+      if (!enrolled) {
         return NextResponse.json({ error: "You must be enrolled in this course to submit" }, { status: 403 });
       }
     }

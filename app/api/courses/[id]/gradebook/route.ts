@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { getAllEnrolledStudentIds } from "@/lib/enrollment-check";
 
 // Helper function to calculate quiz total points from questions
 async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<number> {
@@ -71,27 +72,22 @@ export async function GET(
       return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
 
-    // Get enrolled students (only if instructor/admin)
-    let students = [];
+    // Get enrolled students including cross-tenant (only if instructor/admin)
+    let students: { id: string; name: string; email: string }[] = [];
     if (isInstructor || isAdmin) {
-      const { data: enrollments, error: enrollmentError } = await supabase
-        .from("enrollments")
-        .select(`
-          student_id,
-          users!enrollments_student_id_fkey(id, name, email)
-        `)
-        .eq("course_id", courseId)
-        .eq("status", "active");
+      const allStudentIds = await getAllEnrolledStudentIds(courseId);
+      if (allStudentIds.length > 0) {
+        const serviceClient = createServiceSupabaseClient();
+        const { data: users } = await serviceClient
+          .from("users")
+          .select("id, name, email")
+          .in("id", allStudentIds);
 
-      if (!enrollmentError && enrollments) {
-        students = enrollments.map(e => {
-          const u = (Array.isArray(e.users) ? e.users[0] : e.users) as any;
-          return {
-            id: u?.id,
-            name: u?.name,
-            email: u?.email
-          };
-        });
+        students = (users || []).map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+        }));
       }
     }
 

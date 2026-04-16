@@ -306,13 +306,13 @@ export default function CourseDetailPage() {
       </div>
       {/* Skeleton Content */}
       <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 lg:gap-8">
+          <div className="lg:col-span-4 space-y-6">
             <div className="bg-white rounded-lg h-48 animate-pulse" />
             <div className="bg-white rounded-lg h-24 animate-pulse" />
             <div className="bg-white rounded-lg h-64 animate-pulse" />
           </div>
-          <div className="space-y-4">
+          <div className="lg:col-span-2 space-y-4">
             <div className="bg-white rounded-lg h-72 animate-pulse" />
             <div className="bg-white rounded-lg h-32 animate-pulse" />
           </div>
@@ -367,7 +367,7 @@ export default function CourseDetailPage() {
 
   // Sidebar (always visible, shared across tabs)
   const sidebar = (
-    <aside className="w-full lg:w-[340px] xl:w-[380px] 2xl:w-[420px] shrink-0 hidden lg:block bg-white border-l border-gray-200 overflow-y-auto">
+    <aside className="lg:col-span-2 hidden lg:block bg-white border-l border-gray-200 overflow-y-auto">
       <div className="p-5 space-y-4">
 
       {/* Enrollment / Get Started */}
@@ -576,10 +576,10 @@ export default function CourseDetailPage() {
       </div>
 
       {/* Main content: two-column layout (persistent sidebar) */}
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-180px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-6 min-h-[calc(100vh-180px)]">
 
-        {/* Left: tab content */}
-        <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-10 py-6 space-y-6 overflow-y-auto overflow-x-hidden">
+        {/* Left: tab content (col-span-4) */}
+        <div className="lg:col-span-4 min-w-0 px-4 sm:px-6 lg:px-10 py-6 space-y-6 overflow-y-auto overflow-x-hidden">
 
             {activeTab === 'overview' && (
               <>

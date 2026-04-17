@@ -1,9 +1,16 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { Icon } from '@iconify/react';
 import type { SCORMSlide, SCORMQuizQuestion, QuestionType, MCQOption } from '@/lib/scorm/types';
-import Button from '@/app/components/ui/Button';
+import FileUpload, { type UploadResult } from '@/app/components/file-upload/FileUpload';
+
+// Dynamically load TextEditor to avoid SSR issues
+const TextEditor = dynamic(() => import('@/app/components/editor/TextEditor'), {
+  ssr: false,
+  loading: () => <div className="w-full border border-gray-200 rounded-lg animate-pulse bg-gray-50" style={{ minHeight: 180 }} />,
+});
 
 interface SlideEditorProps {
   slide: SCORMSlide;
@@ -16,9 +23,26 @@ interface SlideEditorProps {
 
 export default function SlideEditor({ slide, index, total, onChange, onDelete, onMove }: SlideEditorProps) {
   const [showQuiz, setShowQuiz] = React.useState(!!slide.quiz);
+  const [showImageInsert, setShowImageInsert] = React.useState(false);
+  const [imageUrl, setImageUrl] = React.useState('');
+  const [imageAlt, setImageAlt] = React.useState('');
 
   const updateField = <K extends keyof SCORMSlide>(key: K, value: SCORMSlide[K]) => {
     onChange({ ...slide, [key]: value });
+  };
+
+  // ─── Image insertion ──────────────────────────────────────────────────────
+  const insertImage = (url: string, alt?: string) => {
+    if (!url) return;
+    const imgTag = `<img src="${url}" alt="${alt || ''}" style="max-width:100%; border-radius:8px; margin:12px 0;" />`;
+    updateField('html', (slide.html || '') + '\n' + imgTag);
+    setImageUrl('');
+    setImageAlt('');
+    setShowImageInsert(false);
+  };
+
+  const handleFileUploaded = (result: UploadResult) => {
+    insertImage(result.fileUrl, result.fileName);
   };
 
   // ─── Quiz helpers ──────────────────────────────────────────────────────────
@@ -51,7 +75,6 @@ export default function SlideEditor({ slide, index, total, onChange, onDelete, o
     if (!slide.quiz?.options) return;
     const opts = [...slide.quiz.options];
     opts[optIdx] = { ...opts[optIdx], ...patch };
-    // If setting this option as correct, unmark others
     if (patch.correct) {
       opts.forEach((o, i) => { if (i !== optIdx) o.correct = false; });
     }
@@ -120,16 +143,80 @@ export default function SlideEditor({ slide, index, total, onChange, onDelete, o
 
       {/* ─── Slide content ────────────────────────────────────────────── */}
       <div className="p-4 space-y-4">
+        {/* Rich text editor */}
         <div>
-          <label className="text-xs font-medium text-gray-500 mb-1 block">Content (HTML supported)</label>
-          <textarea
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium text-gray-500">Slide Content</label>
+            <button
+              onClick={() => setShowImageInsert(!showImageInsert)}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+              title="Insert image"
+            >
+              <Icon icon="material-symbols:image" className="w-3.5 h-3.5" />
+              Insert Image
+            </button>
+          </div>
+          <TextEditor
             value={slide.html}
-            onChange={(e) => updateField('html', e.target.value)}
-            rows={6}
-            placeholder="<h2>Welcome</h2>\n<p>Write your slide content here...</p>"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-y"
+            onChange={(html: string) => updateField('html', html)}
+            placeholder="Write your slide content here..."
+            height={220}
           />
         </div>
+
+        {/* ─── Image insertion panel ─────────────────────────────────── */}
+        {showImageInsert && (
+          <div className="border border-blue-200 rounded-lg bg-blue-50/50 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Insert Image</span>
+              <button onClick={() => setShowImageInsert(false)} className="text-xs text-gray-500 hover:text-gray-700">Close</button>
+            </div>
+
+            {/* Option 1: URL */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-600">From URL</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                />
+                <input
+                  type="text"
+                  value={imageAlt}
+                  onChange={(e) => setImageAlt(e.target.value)}
+                  placeholder="Alt text"
+                  className="w-32 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                />
+                <button
+                  onClick={() => insertImage(imageUrl, imageAlt)}
+                  disabled={!imageUrl}
+                  className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-40"
+                >
+                  Insert
+                </button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-blue-200" />
+              <span className="text-[10px] text-blue-400 uppercase">or upload</span>
+              <div className="flex-1 h-px bg-blue-200" />
+            </div>
+
+            {/* Option 2: File upload */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Upload Image</label>
+              <FileUpload
+                onUploaded={handleFileUploaded}
+                maxSizeMB={10}
+              />
+            </div>
+          </div>
+        )}
 
         {/* ─── Embedded quiz question ───────────────────────────────── */}
         {!showQuiz && (

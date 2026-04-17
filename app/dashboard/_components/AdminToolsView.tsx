@@ -43,8 +43,8 @@ export default function AdminToolsView({ groups }: { groups: ToolGroup[] }) {
     });
   };
 
-  const sortLabel = sort === 'default' ? 'A-Z' : sort === 'asc' ? 'A-Z' : 'Z-A';
-  const sortIcon = sort === 'default' ? 'mdi:sort-alphabetical-ascending' : sort === 'asc' ? 'mdi:sort-alphabetical-ascending' : 'mdi:sort-alphabetical-descending';
+  const sortLabel = sort === 'default' ? 'Sort' : sort === 'asc' ? 'A-Z' : 'Z-A';
+  const sortIcon = sort === 'default' ? 'mdi:sort' : sort === 'asc' ? 'mdi:sort-alphabetical-ascending' : 'mdi:sort-alphabetical-descending';
 
   // Flatten all tools for ungrouped view
   const allToolsSorted = sortTools(groups.flatMap(g => g.tools));

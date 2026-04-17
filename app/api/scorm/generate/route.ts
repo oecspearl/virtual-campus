@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient, createServerSupabaseClient } from '@/lib/supabase-server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
-import { generateScormPackage } from '@/lib/scorm/generator';
+import { buildManifestXml } from '@/lib/scorm/manifest-builder';
+import { generateIndexHtml, generateStyleCss } from '@/lib/scorm/templates/slide-quiz';
+import { getScormRuntimeJs } from '@/lib/scorm/templates/base-runtime';
 import type { SCORMBuilderData } from '@/lib/scorm/types';
 import { DEFAULT_SETTINGS } from '@/lib/scorm/types';
 
-export const maxDuration = 60;
+export const maxDuration = 30;
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
@@ -35,7 +37,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'builderData with at least one slide is required' }, { status: 400 });
     }
 
-    // Apply defaults to settings
     builderData.settings = { ...DEFAULT_SETTINGS, ...builderData.settings };
 
     const supabase = await createServerSupabaseClient();
@@ -54,32 +55,30 @@ export async function POST(request: NextRequest) {
 
     const finalCourseId = courseId || lesson.course_id;
 
-    // ─── Generate SCORM ZIP ────────────────────────────────────────────────
-    const zipBuffer = await generateScormPackage(builderData);
+    // ─── Generate files in memory (no ZIP round-trip) ──────────────────────
+    const files: { name: string; content: string; contentType: string }[] = [
+      { name: 'imsmanifest.xml', content: buildManifestXml(builderData), contentType: 'application/xml' },
+      { name: 'index.html', content: generateIndexHtml(builderData), contentType: 'text/html; charset=utf-8' },
+      { name: 'style.css', content: generateStyleCss(builderData.settings.accentColor), contentType: 'text/css' },
+      { name: 'scorm-api.js', content: getScormRuntimeJs(), contentType: 'application/javascript' },
+      { name: 'builder-source.json', content: JSON.stringify(builderData), contentType: 'application/json' },
+    ];
 
-    // ─── Upload to Supabase Storage ────────────────────────────────────────
+    // ─── Upload directly to Supabase Storage ───────────────────────────────
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 15);
     const packageFolder = `scorm-packages/${timestamp}-${randomStr}`;
 
-    // Upload the ZIP so it can be re-downloaded if needed
-    const zipPath = `${packageFolder}/package.zip`;
-    await serviceSupabase.storage
-      .from('course-materials')
-      .upload(zipPath, zipBuffer, { contentType: 'application/zip', cacheControl: '3600', upsert: false });
-
-    // Also extract and upload individual files so the SCORM player can serve them
-    const JSZip = (await import('jszip')).default;
-    const zip = await JSZip.loadAsync(zipBuffer);
-    const filePaths = Object.keys(zip.files).filter((p) => !zip.files[p].dir);
-
     const uploadResults = await Promise.all(
-      filePaths.map(async (filePath) => {
-        const content = await zip.files[filePath].async('arraybuffer');
-        const storagePath = `${packageFolder}/${filePath}`;
+      files.map(async (file) => {
+        const storagePath = `${packageFolder}/${file.name}`;
         const { error } = await serviceSupabase.storage
           .from('course-materials')
-          .upload(storagePath, content, { contentType: 'application/octet-stream', cacheControl: '3600', upsert: false });
+          .upload(storagePath, file.content, {
+            contentType: file.contentType,
+            cacheControl: '3600',
+            upsert: false,
+          });
         return error ? null : storagePath;
       })
     );
@@ -90,6 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     const packageUrl = `${packageFolder}/index.html`;
+    const totalSize = files.reduce((sum, f) => sum + f.content.length, 0);
 
     // ─── Clean up previous SCORM package for this lesson ───────────────────
     const { data: existingPackage } = await serviceSupabase
@@ -99,7 +99,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingPackage?.package_url) {
-      const oldFolder = existingPackage.package_url.split('/').slice(0, 2).join('/');
+      // package_url is a storage path like scorm-packages/xxx/index.html
+      const oldFolder = existingPackage.package_url.split('/').slice(0, -1).join('/');
       const { data: oldFiles } = await serviceSupabase.storage.from('course-materials').list(oldFolder);
       if (oldFiles && oldFiles.length > 0) {
         await serviceSupabase.storage.from('course-materials').remove(oldFiles.map((f) => `${oldFolder}/${f.name}`));
@@ -114,8 +115,8 @@ export async function POST(request: NextRequest) {
       description: builderData.description || `Generated SCORM package with ${builderData.slides.length} slide(s)`,
       scorm_version: '2004' as const,
       package_url: packageUrl,
-      manifest_xml: '', // Generated manifest is inside the ZIP
-      package_size: zipBuffer.length,
+      manifest_xml: files[0].content,
+      package_size: totalSize,
       identifier: `scorm-gen-${timestamp}`,
       created_by: user.id,
     };
@@ -143,17 +144,6 @@ export async function POST(request: NextRequest) {
     // ─── Update lesson content_type ────────────────────────────────────────
     await serviceSupabase.from('lessons').update({ content_type: 'scorm' }).eq('id', lessonId);
 
-    // ─── Store builder source data so it can be re-edited ──────────────────
-    // We store it as a JSON file alongside the package
-    const sourceDataPath = `${packageFolder}/builder-source.json`;
-    await serviceSupabase.storage
-      .from('course-materials')
-      .upload(sourceDataPath, JSON.stringify(builderData), {
-        contentType: 'application/json',
-        cacheControl: '3600',
-        upsert: false,
-      });
-
     return NextResponse.json({
       success: true,
       scormPackage: {
@@ -162,7 +152,7 @@ export async function POST(request: NextRequest) {
         title: builderData.title,
         scorm_version: '2004',
         package_url: packageUrl,
-        package_size: zipBuffer.length,
+        package_size: totalSize,
         files_extracted: uploadedCount,
       },
     });

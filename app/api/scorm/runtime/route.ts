@@ -63,9 +63,33 @@ function formatSCORMTime(seconds: number): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await authenticateUser(request as any);
+    // Parse body first — sendBeacon may send text/plain which still parses as JSON
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      // sendBeacon with string payload may fail to parse — return SCORM-safe error
+      return NextResponse.json({
+        result: "false",
+        error: "Invalid request body",
+        scorm_error_code: "201"
+      }, { status: 400 });
+    }
+
+    let authResult;
+    try {
+      authResult = await authenticateUser(request as any);
+    } catch (authError: any) {
+      // authenticateUser may throw on malformed tokens — don't crash
+      console.error('[SCORM Runtime] Auth exception:', authError?.message);
+      return NextResponse.json({
+        result: "false",
+        error: "Authentication error",
+        scorm_error_code: "101"
+      }, { status: 401 });
+    }
+
     if (!authResult.success) {
-      // Return SCORM-compatible error so the player doesn't crash
       return NextResponse.json({
         result: "false",
         error: authResult.error || "Authentication failed",
@@ -73,17 +97,6 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
     const user = authResult.userProfile!;
-
-    let body: any;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({
-        result: "false",
-        error: "Invalid request body",
-        scorm_error_code: "201"
-      }, { status: 400 });
-    }
 
     const {
       action,
@@ -417,10 +430,14 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('SCORM Runtime API error:', error);
+    console.error('[SCORM Runtime] Unhandled error:', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+    });
     return NextResponse.json({
       result: "false",
-      error: error.message || "Internal server error",
+      error: "Internal server error",
       scorm_error_code: "101"
     }, { status: 500 });
   }

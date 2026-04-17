@@ -34,7 +34,10 @@ export default function SCORMBuilderPage() {
               const pkg = scormData.scormPackage;
               if (pkg?.package_url) {
                 // Try to load the builder-source.json alongside the package
-                const folder = pkg.package_url.split('/').slice(0, 2).join('/');
+                // package_url is a proxy URL like /api/scorm/serve/scorm-packages/xxx/index.html
+                // Strip the proxy prefix to get the storage path, then derive the folder
+                const storagePath = pkg.package_url.replace(/^\/api\/scorm\/serve\//, '');
+                const folder = storagePath.split('/').slice(0, -1).join('/');
                 const sourceRes = await fetch(`/api/scorm/serve/${folder}/builder-source.json`);
                 if (sourceRes.ok) {
                   const sourceData = await sourceRes.json();

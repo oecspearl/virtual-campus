@@ -1,7 +1,7 @@
 import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase-server';
 import WelcomeHeader from './WelcomeHeader';
 import AnnouncementBar from './AnnouncementBar';
-import AdminToolCard from './AdminToolCard';
+import AdminToolsView from './AdminToolsView';
 import AdminSidebar from './AdminSidebar';
 
 // Grouped admin tools by category for visual separation
@@ -131,24 +131,8 @@ export default async function AdminDashboard({ name, role }: { name: string; rol
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         {/* Main Content */}
-        <div className="flex-1 min-w-0 space-y-6">
-          {groups.map(group => (
-            <div key={group.title}>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{group.title}</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {group.tools.map(tool => (
-                  <AdminToolCard
-                    key={tool.href}
-                    icon={tool.icon}
-                    label={tool.label}
-                    description={tool.description}
-                    href={tool.href}
-                    color={tool.color}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+        <div className="flex-1 min-w-0">
+          <AdminToolsView groups={groups} />
         </div>
 
         {/* Sidebar */}

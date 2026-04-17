@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
 import SlideEditor from './SlideEditor';
 import QuizBlockEditor from './QuizBlockEditor';
+import AISCORMGenerator from './AISCORMGenerator';
 import type {
   SCORMBuilderData,
   SCORMBuilderSettings,
@@ -41,6 +42,7 @@ export default function SCORMBuilder({ lessonId, courseId, initialData, onGenera
   const [generating, setGenerating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+  const [showAIGenerator, setShowAIGenerator] = React.useState(false);
 
   // ─── Slide management ────────────────────────────────────────────────────
   const addSlide = () => {
@@ -71,6 +73,17 @@ export default function SCORMBuilder({ lessonId, courseId, initialData, onGenera
     const arr = [...slides];
     [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
     setSlides(arr);
+  };
+
+  // ─── AI populate ─────────────────────────────────────────────────────────
+  const handleAIGenerated = (data: SCORMBuilderData) => {
+    setTitle(data.title);
+    setDescription(data.description || '');
+    setSlides(data.slides);
+    setQuizQuestions(data.quizQuestions);
+    if (data.settings) setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+    setShowAIGenerator(false);
+    setActiveTab('slides');
   };
 
   // ─── Generate ────────────────────────────────────────────────────────────
@@ -127,6 +140,32 @@ export default function SCORMBuilder({ lessonId, courseId, initialData, onGenera
 
   return (
     <div className="space-y-5">
+      {/* ─── AI Generator Modal ────────────────────────────────────────── */}
+      {showAIGenerator && (
+        <AISCORMGenerator
+          lessonId={lessonId}
+          onGenerated={handleAIGenerated}
+          onClose={() => setShowAIGenerator(false)}
+        />
+      )}
+
+      {/* ─── AI Generate Banner ───────────────────────────────────────── */}
+      {!title && slides.length <= 1 && (
+        <button
+          onClick={() => setShowAIGenerator(true)}
+          className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-dashed border-purple-300 rounded-xl hover:border-purple-400 hover:from-purple-100 hover:to-blue-100 transition-all"
+        >
+          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+            <Icon icon="material-symbols:auto-awesome" className="w-5 h-5 text-purple-600" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-medium text-gray-900">Generate with AI</p>
+            <p className="text-xs text-gray-500">Paste content, enter a topic, or use lesson content — AI creates slides and quizzes for you</p>
+          </div>
+          <Icon icon="material-symbols:arrow-forward" className="w-5 h-5 text-purple-400 ml-auto" />
+        </button>
+      )}
+
       {/* ─── Header fields ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -152,7 +191,7 @@ export default function SCORMBuilder({ lessonId, courseId, initialData, onGenera
       </div>
 
       {/* ─── Tabs ─────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex items-center gap-1 border-b border-gray-200">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -170,6 +209,14 @@ export default function SCORMBuilder({ lessonId, courseId, initialData, onGenera
             )}
           </button>
         ))}
+        <button
+          onClick={() => setShowAIGenerator(true)}
+          className="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+          title="Generate content with AI"
+        >
+          <Icon icon="material-symbols:auto-awesome" className="w-3.5 h-3.5" />
+          AI Generate
+        </button>
       </div>
 
       {/* ─── Slides tab ───────────────────────────────────────────────── */}

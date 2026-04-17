@@ -316,62 +316,98 @@ export default function EditLessonPage() {
                   </div>
                 </div>
 
-                {/* SCORM upload */}
+                {/* SCORM upload or create */}
                 {contentType === 'scorm' && (
                   <div className="bg-white rounded-lg border border-gray-200 p-5">
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">SCORM Package</h3>
-                    <p className="text-xs text-gray-500 mb-4">Upload a SCORM 1.2 or 2004 package (ZIP). Max 200MB.</p>
-                    <input
-                      type="file"
-                      accept=".zip"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setUploadingSCORM(true);
-                        try {
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          formData.append('lessonId', lessonId);
-                          if (courseId) formData.append('courseId', courseId);
-                          const res = await fetch('/api/scorm/upload', { method: 'POST', body: formData });
-                          const ct = res.headers.get('content-type');
-                          let data;
-                          if (ct && ct.includes('application/json')) {
-                            data = await res.json();
-                          } else {
-                            alert(`Upload failed (Status ${res.status})`);
-                            return;
-                          }
-                          if (!res.ok) { alert(`Failed: ${data.error || 'Unknown error'}`); return; }
-                          setScormPackage(data.scormPackage);
-                          setContentType('scorm');
-                        } catch (error: any) {
-                          alert(`Failed: ${error.message || 'Network error'}`);
-                        } finally {
-                          setUploadingSCORM(false);
-                        }
-                      }}
-                      disabled={uploadingSCORM}
-                      className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 disabled:opacity-50"
-                    />
-                    {uploadingSCORM && <p className="mt-2 text-sm text-blue-600">Uploading and extracting...</p>}
+
+                    {/* Existing package display */}
                     {scormPackage && (
-                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                      <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-green-900">{scormPackage.title}</p>
                           <p className="text-xs text-green-700">SCORM {scormPackage.scorm_version} • {Math.round(scormPackage.package_size / 1024 / 1024)}MB</p>
                         </div>
-                        <button
-                          onClick={() => { if (confirm('Remove SCORM package?')) { setScormPackage(null); setContentType('rich_text'); } }}
-                          className="text-xs text-red-600 hover:text-red-800 underline"
-                        >
-                          Remove
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => router.push(`/lessons/${lessonId}/scorm-builder`)}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            Edit in Builder
+                          </button>
+                          <button
+                            onClick={() => { if (confirm('Remove SCORM package?')) { setScormPackage(null); setContentType('rich_text'); } }}
+                            className="text-xs text-red-600 hover:text-red-800 underline"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </div>
                     )}
+
+                    {/* Create or Upload options */}
                     {!scormPackage && (
-                      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-                        Upload your SCORM package above to enable SCORM content.
+                      <div className="space-y-4">
+                        {/* Create with builder */}
+                        <div
+                          onClick={() => router.push(`/lessons/${lessonId}/scorm-builder`)}
+                          className="flex items-center gap-4 p-4 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors"
+                        >
+                          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <Icon icon="material-symbols:build" className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">Create SCORM Content</p>
+                            <p className="text-xs text-gray-500">Build interactive slides and quizzes directly in the browser</p>
+                          </div>
+                          <Icon icon="material-symbols:arrow-forward" className="w-5 h-5 text-gray-400 ml-auto" />
+                        </div>
+
+                        {/* Divider */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-px bg-gray-200" />
+                          <span className="text-xs text-gray-400 uppercase">or</span>
+                          <div className="flex-1 h-px bg-gray-200" />
+                        </div>
+
+                        {/* Upload existing */}
+                        <div>
+                          <p className="text-xs text-gray-500 mb-2">Upload a SCORM 1.2 or 2004 package (ZIP). Max 200MB.</p>
+                          <input
+                            type="file"
+                            accept=".zip"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingSCORM(true);
+                              try {
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                formData.append('lessonId', lessonId);
+                                if (courseId) formData.append('courseId', courseId);
+                                const res = await fetch('/api/scorm/upload', { method: 'POST', body: formData });
+                                const ct = res.headers.get('content-type');
+                                let data;
+                                if (ct && ct.includes('application/json')) {
+                                  data = await res.json();
+                                } else {
+                                  alert(`Upload failed (Status ${res.status})`);
+                                  return;
+                                }
+                                if (!res.ok) { alert(`Failed: ${data.error || 'Unknown error'}`); return; }
+                                setScormPackage(data.scormPackage);
+                                setContentType('scorm');
+                              } catch (error: any) {
+                                alert(`Failed: ${error.message || 'Network error'}`);
+                              } finally {
+                                setUploadingSCORM(false);
+                              }
+                            }}
+                            disabled={uploadingSCORM}
+                            className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-600 file:text-white hover:file:bg-gray-700 disabled:opacity-50"
+                          />
+                          {uploadingSCORM && <p className="mt-2 text-sm text-blue-600">Uploading and extracting...</p>}
+                        </div>
                       </div>
                     )}
                   </div>

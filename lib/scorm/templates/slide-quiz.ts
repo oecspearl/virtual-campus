@@ -7,20 +7,33 @@ export function generateStyleCss(accent: string): string {
   return `
 :root { --accent: ${accent}; --accent-light: ${accent}22; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; color: #1a1a2e; }
-body { display: flex; flex-direction: column; }
+html, body { height: 100% !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; color: #1a1a2e; overflow: hidden !important; }
+
+/*
+ * The LMS SCORMPlayer injects CSS that sets body > *:first-child to height:100vh.
+ * We use a single #scorm-app wrapper as the only direct child of body so that
+ * rule targets the wrapper (good) rather than the topbar (bad).
+ */
+#scorm-app {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+}
 
 /* ─── Top bar ───────────────────────────────────────────── */
-.topbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: #111827; color: #fff; font-size: 14px; flex-shrink: 0; }
+.topbar { display: flex !important; align-items: center; justify-content: space-between; padding: 8px 16px; background: #111827; color: #fff; font-size: 14px; flex-shrink: 0 !important; flex-grow: 0 !important; height: auto !important; min-height: auto !important; max-height: 40px !important; }
 .topbar .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar .counter { font-size: 12px; opacity: 0.7; }
 
 /* ─── Progress bar ──────────────────────────────────────── */
-.progress-wrap { height: 4px; background: #e5e7eb; flex-shrink: 0; }
+.progress-wrap { height: 4px !important; min-height: 4px !important; max-height: 4px !important; background: #e5e7eb; flex-shrink: 0 !important; flex-grow: 0 !important; }
 .progress-bar { height: 100%; background: var(--accent); transition: width 0.3s ease; }
 
 /* ─── Slide area ────────────────────────────────────────── */
-.slide-area { flex: 1; overflow-y: auto; padding: 32px 24px; max-width: 900px; margin: 0 auto; width: 100%; }
+.slide-area { flex: 1 1 0% !important; overflow-y: auto !important; padding: 32px 24px; max-width: 900px; margin: 0 auto; width: 100%; height: auto !important; min-height: 0 !important; }
 .slide-area h1, .slide-area h2, .slide-area h3 { margin-bottom: 12px; }
 .slide-area p { line-height: 1.7; margin-bottom: 12px; }
 .slide-area img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
@@ -30,7 +43,7 @@ body { display: flex; flex-direction: column; }
 /* ─── Quiz block ────────────────────────────────────────── */
 .quiz-block { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-top: 24px; }
 .quiz-block .prompt { font-weight: 600; margin-bottom: 16px; font-size: 15px; }
-.quiz-block .option { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 8px; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-size: 14px; }
+.quiz-block .option { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 8px; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; transition: all 0.15s; font-size: 14px; height: auto !important; min-height: auto !important; }
 .quiz-block .option:hover { background: var(--accent-light); border-color: var(--accent); }
 .quiz-block .option.selected { background: var(--accent-light); border-color: var(--accent); font-weight: 500; }
 .quiz-block .option.correct { background: #d1fae5; border-color: #10b981; }
@@ -43,14 +56,14 @@ body { display: flex; flex-direction: column; }
 
 /* ─── Summary / results ────────────────────────────────── */
 .summary { text-align: center; padding: 48px 24px; }
-.summary .score-circle { display: inline-flex; align-items: center; justify-content: center; width: 120px; height: 120px; border-radius: 50%; font-size: 32px; font-weight: 700; margin-bottom: 16px; }
+.summary .score-circle { display: inline-flex; align-items: center; justify-content: center; width: 120px; height: 120px !important; min-height: 120px !important; border-radius: 50%; font-size: 32px; font-weight: 700; margin-bottom: 16px; }
 .summary .score-circle.passed { background: #d1fae5; color: #065f46; }
 .summary .score-circle.failed { background: #fee2e2; color: #991b1b; }
 .summary h2 { margin-bottom: 8px; }
 .summary p { color: #6b7280; }
 
 /* ─── Navigation ────────────────────────────────────────── */
-.nav-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid #e5e7eb; background: #f9fafb; flex-shrink: 0; }
+.nav-bar { display: flex !important; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid #e5e7eb; background: #f9fafb; flex-shrink: 0 !important; flex-grow: 0 !important; height: auto !important; min-height: auto !important; max-height: 52px !important; }
 .nav-btn { padding: 8px 20px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; font-size: 14px; cursor: pointer; transition: all 0.15s; }
 .nav-btn:hover { background: #f3f4f6; }
 .nav-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -135,15 +148,17 @@ export function generateIndexHtml(data: SCORMBuilderData): string {
   <script src="scorm-api.js"><\/script>
 </head>
 <body>
-  <div class="topbar">
-    <span class="title">${esc(data.title)}</span>
-    <span class="counter" id="counter"></span>
-  </div>
-  ${data.settings.showProgress ? '<div class="progress-wrap"><div class="progress-bar" id="progress" style="width:0%"></div></div>' : ''}
-  <div class="slide-area" id="slide-area"></div>
-  <div class="nav-bar">
-    <button class="nav-btn" id="btn-prev" onclick="prevSlide()">&#8592; Previous</button>
-    <button class="nav-btn primary" id="btn-next" onclick="nextSlide()">Next &#8594;</button>
+  <div id="scorm-app">
+    <div class="topbar">
+      <span class="title">${esc(data.title)}</span>
+      <span class="counter" id="counter"></span>
+    </div>
+    ${data.settings.showProgress ? '<div class="progress-wrap"><div class="progress-bar" id="progress" style="width:0%"></div></div>' : ''}
+    <div class="slide-area" id="slide-area"></div>
+    <div class="nav-bar">
+      <button class="nav-btn" id="btn-prev" onclick="prevSlide()">&#8592; Previous</button>
+      <button class="nav-btn primary" id="btn-next" onclick="nextSlide()">Next &#8594;</button>
+    </div>
   </div>
 
 <script>

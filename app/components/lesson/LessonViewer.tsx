@@ -39,6 +39,8 @@ import StudyToolbar from './viewer/StudyToolbar';
 import FullscreenContentOverlay from './viewer/FullscreenContentOverlay';
 import OrphanContentCard from './viewer/OrphanContentCard';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
+import { useContentProgress } from './viewer/hooks/useContentProgress';
+import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
@@ -74,16 +76,14 @@ interface LessonViewerProps {
 export default function LessonViewer({ content, lessonId, courseId, lessonTitle, isInstructor = false, onContentUpdate }: LessonViewerProps) {
   const { logActivity } = useActivityLogger();
   const [deleting, setDeleting] = React.useState<string | null>(null);
-  const [quizData, setQuizData] = React.useState<Record<string, any>>({});
-  const [assignmentData, setAssignmentData] = React.useState<Record<string, any>>({});
-  const [loadingData, setLoadingData] = React.useState<Set<string>>(new Set());
-  const [notFoundQuizzes, setNotFoundQuizzes] = React.useState<Set<string>>(new Set());
-  const [notFoundAssignments, setNotFoundAssignments] = React.useState<Set<string>>(new Set());
   const [isNotesPanelOpen, setIsNotesPanelOpen] = React.useState(false);
 
-  // Content progress state
-  const [contentProgress, setContentProgress] = React.useState<Record<number, boolean>>({});
-  const [profile, setProfile] = React.useState<{ id: string } | null>(null);
+  // Quiz + assignment records (auto-fetched based on content)
+  const { quizData, assignmentData, loadingData, notFoundQuizzes, notFoundAssignments } =
+    useQuizAssignmentData(content);
+
+  // Profile + content-progress (completion checkboxes)
+  const { profileId, contentProgress, toggleContentComplete } = useContentProgress(lessonId);
 
   // Fullscreen text content state
   const [fullscreenContent, setFullscreenContent] = React.useState<{ title: string; html: string } | null>(null);
@@ -111,33 +111,6 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
     collapsedCount,
     allCollapsed,
   } = useCollapseState(lessonId, content);
-
-  // Fetch profile and content progress on mount
-  React.useEffect(() => {
-    const fetchProgress = async () => {
-      try {
-        const profileRes = await fetch('/api/auth/profile', { cache: 'no-store' });
-        const profileData = profileRes.ok ? await profileRes.json() : null;
-        setProfile(profileData);
-
-        if (profileData?.id) {
-          const progressRes = await fetch(`/api/progress/${profileData.id}/${lessonId}/content`, { cache: 'no-store' });
-          if (progressRes.ok) {
-            const progressData = await progressRes.json();
-            const progressMap: Record<number, boolean> = {};
-            (progressData || []).forEach((item: { content_index: number; completed: boolean }) => {
-              progressMap[item.content_index] = item.completed;
-            });
-            setContentProgress(progressMap);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch content progress:', error);
-      }
-    };
-
-    fetchProgress();
-  }, [lessonId]);
 
   // Log lesson viewed activity (students only)
   React.useEffect(() => {
@@ -172,34 +145,6 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
     });
   };
 
-  // Toggle content item completion
-  const toggleContentComplete = async (index: number, item: ContentItem) => {
-    if (!profile?.id) return;
-
-    const newCompleted = !contentProgress[index];
-
-    // Optimistic update
-    setContentProgress(prev => ({ ...prev, [index]: newCompleted }));
-
-    try {
-      await fetch(`/api/progress/${profile.id}/${lessonId}/content`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content_index: index,
-          content_type: item.type,
-          content_title: item.title,
-          content_id: item.id,
-          completed: newCompleted
-        })
-      });
-    } catch (error) {
-      console.error('Failed to toggle content progress:', error);
-      // Revert on error
-      setContentProgress(prev => ({ ...prev, [index]: !newCompleted }));
-    }
-  };
-
   // Progress checkbox component
   const ContentProgressCheckbox = ({ index, item }: { index: number; item: ContentItem }) => {
     if (item.type === 'label') return null;
@@ -226,56 +171,6 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         )}
       </button>
     );
-  };
-
-  // Fetch quiz data
-  const fetchQuizData = async (quizId: string) => {
-    if (quizData[quizId] || loadingData.has(quizId) || notFoundQuizzes.has(quizId)) return;
-
-    setLoadingData(prev => new Set(prev).add(quizId));
-    try {
-      const response = await fetch(`/api/quizzes/${quizId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setQuizData(prev => ({ ...prev, [quizId]: data }));
-      } else if (response.status === 404) {
-        // Quiz was deleted - mark it as not found
-        setNotFoundQuizzes(prev => new Set(prev).add(quizId));
-      }
-    } catch (error) {
-      console.error('Error fetching quiz data:', error);
-    } finally {
-      setLoadingData(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(quizId);
-        return newSet;
-      });
-    }
-  };
-
-  // Fetch assignment data
-  const fetchAssignmentData = async (assignmentId: string) => {
-    if (assignmentData[assignmentId] || loadingData.has(assignmentId) || notFoundAssignments.has(assignmentId)) return;
-
-    setLoadingData(prev => new Set(prev).add(assignmentId));
-    try {
-      const response = await fetch(`/api/assignments/${assignmentId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAssignmentData(prev => ({ ...prev, [assignmentId]: data }));
-      } else if (response.status === 404) {
-        // Assignment was deleted - mark it as not found
-        setNotFoundAssignments(prev => new Set(prev).add(assignmentId));
-      }
-    } catch (error) {
-      console.error('Error fetching assignment data:', error);
-    } finally {
-      setLoadingData(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(assignmentId);
-        return newSet;
-      });
-    }
   };
 
   // Remove orphan content item (quiz or assignment that no longer exists)
@@ -325,17 +220,6 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
       alert("Failed to remove item. Please try again.");
     }
   };
-
-  // Fetch data for quizzes and assignments when content changes
-  React.useEffect(() => {
-    content.forEach(item => {
-      if (item.type === 'quiz' && item.data?.quizId) {
-        fetchQuizData(item.data.quizId);
-      } else if (item.type === 'assignment' && item.data?.assignmentId) {
-        fetchAssignmentData(item.data.assignmentId);
-      }
-    });
-  }, [content]);
 
   const deleteQuiz = async (quizId: string) => {
     if (!confirm("Are you sure you want to delete this quiz? This action cannot be undone.")) {
@@ -524,8 +408,8 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
                   }}
                   onWatchProgress={(data) => {
                     // Report watch progress to analytics API
-                    if (profile?.id) {
-                      fetch(`/api/progress/${profile.id}/${lessonId}/content`, {
+                    if (profileId) {
+                      fetch(`/api/progress/${profileId}/${lessonId}/content`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ export default function InviteUserModal({ isOpen, onClose, onInviteSuccess }: In
     setSuccess(false);
 
     try {
-      const response = await fetch('/api/admin/users/invite', {
+      const response = await tenantFetch('/api/admin/users/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, name, role, sendInvite: true })

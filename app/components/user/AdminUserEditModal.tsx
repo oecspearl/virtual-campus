@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { LazyMotion, domAnimation, m, AnimatePresence } from 'framer-motion';
 import { Icon } from '@iconify/react';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 
 interface UserProfile {
   id: string;
@@ -78,7 +79,7 @@ export default function AdminUserEditModal({
       setLoading(true);
       setError('');
 
-      const response = await fetch(`/api/admin/users/${userId}`);
+      const response = await tenantFetch(`/api/admin/users/${userId}`);
       if (!response.ok) {
         throw new Error('Failed to load user data');
       }
@@ -124,7 +125,7 @@ export default function AdminUserEditModal({
       setError('');
       setSuccess('');
 
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await tenantFetch(`/api/admin/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -164,7 +165,7 @@ export default function AdminUserEditModal({
       setError('');
       setSuccess('');
 
-      const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
+      const response = await tenantFetch(`/api/admin/users/${userId}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 import FileUploadDropzone from '@/app/components/file-upload/FileUploadDropzone';
 import CsvPreviewTable from '@/app/components/file-upload/CsvPreviewTable';
 
@@ -207,7 +208,7 @@ export default function BulkUserUpdate({ onUpdateComplete }: BulkUserUpdateProps
       const blob = new Blob([csvContent], { type: 'text/csv' });
       formData.append('csv', blob, 'update.csv');
 
-      const response = await fetch('/api/admin/users/bulk-update', {
+      const response = await tenantFetch('/api/admin/users/bulk-update', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`

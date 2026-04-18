@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSupabase } from '@/lib/supabase-provider';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
@@ -72,7 +73,14 @@ export default function UserManagementPage() {
   const [csvData, setCsvData] = useState('email,name,role\n');
   const [csvImporting, setCsvImporting] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    // Re-fetch when the admin switches tenants from the TenantSwitcher.
+    const handleTenantChange = () => loadData();
+    window.addEventListener('tenant-override-changed', handleTenantChange);
+    return () => window.removeEventListener('tenant-override-changed', handleTenantChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close tools dropdown on outside click
   useEffect(() => {
@@ -149,7 +157,7 @@ export default function UserManagementPage() {
     const token = await getToken();
     const headers: any = { Authorization: `Bearer ${token}` };
     if (body) headers['Content-Type'] = 'application/json';
-    const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    const res = await tenantFetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
     if (!res.ok) {
       const text = await res.text();
       let errMsg: string;
@@ -166,9 +174,9 @@ export default function UserManagementPage() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [usersRes, coursesRes, enrollmentsRes] = await Promise.all([
-        fetch('/api/admin/users', { headers }),
-        fetch('/api/courses?limit=500', { headers }),
-        fetch('/api/admin/enrollments', { headers }),
+        tenantFetch('/api/admin/users', { headers }),
+        tenantFetch('/api/courses?limit=500', { headers }),
+        tenantFetch('/api/admin/enrollments', { headers }),
       ]);
 
       if (!usersRes.ok) throw new Error('Failed to load users');
@@ -183,7 +191,7 @@ export default function UserManagementPage() {
       setEnrollments(enrollmentsData.enrollments || []);
 
       try {
-        const tenantsRes = await fetch('/api/admin/tenants', { headers });
+        const tenantsRes = await tenantFetch('/api/admin/tenants', { headers });
         if (tenantsRes.ok) {
           const td = await tenantsRes.json();
           setSchools((td.tenants || []).map((t: any) => ({ id: t.id, name: t.name })));

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 
 interface User {
   id: string;
@@ -38,7 +39,7 @@ export default function BulkEmailModal({
     setResults(null);
 
     try {
-      const response = await fetch('/api/admin/users/bulk-email', {
+      const response = await tenantFetch('/api/admin/users/bulk-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

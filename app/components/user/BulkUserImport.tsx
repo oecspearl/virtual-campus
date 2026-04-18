@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 import FileUploadDropzone from '@/app/components/file-upload/FileUploadDropzone';
 import CsvPreviewTable from '@/app/components/file-upload/CsvPreviewTable';
 import BulkImportProgress from '@/app/components/BulkImportProgress';
@@ -223,7 +224,7 @@ export default function BulkUserImport({ onImportComplete }: { onImportComplete?
       const formData = new FormData();
       formData.append('csv', csvFile);
 
-      const response = await fetch('/api/admin/users/upload', {
+      const response = await tenantFetch('/api/admin/users/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`

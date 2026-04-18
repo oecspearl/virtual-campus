@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useCallback, useId } from 'react';
+import { useEffect, useRef, useId } from 'react';
 import { X } from 'lucide-react';
-import { useFocusTrap, AriaHelpers, KeyboardNav, useAnnounce } from '@/lib/accessibility-utils';
+import { useFocusTrap, useAnnounce } from '@/lib/accessibility-utils';
 
 interface AccessibleModalProps {
   isOpen: boolean;
@@ -43,52 +43,62 @@ export default function AccessibleModal({
   const containerRef = useFocusTrap(isOpen);
   const announce = useAnnounce();
 
-  // Store the element that opened the modal
-  const triggerRef = typeof document !== 'undefined' ? document.activeElement as HTMLElement : null;
+  // The element that held focus when the modal opened — captured inside
+  // the open-effect so parent re-renders while the modal is open don't
+  // overwrite it (an earlier version reassigned triggerRef on every render,
+  // which made the effect re-run per keystroke and briefly steal focus
+  // from inputs inside the dialog).
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  // Keep the latest callbacks/flags in refs so the open-effect only has
+  // to depend on `isOpen`. Otherwise parents passing inline arrow props
+  // (onClose={() => setOpen(false)}) cause the effect to tear down and
+  // rebuild on every render.
+  const onCloseRef = useRef(onClose);
+  const closeOnEscapeRef = useRef(closeOnEscape);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => { closeOnEscapeRef.current = closeOnEscape; }, [closeOnEscape]);
 
   // Stable unique IDs for ARIA
   const reactId = useId();
   const titleId = `modal-title-${reactId}`;
   const descriptionId = description ? `modal-desc-${reactId}` : undefined;
 
-  // Handle escape key
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (closeOnEscape && KeyboardNav.isEscapeKey(event as unknown as React.KeyboardEvent)) {
-      event.preventDefault();
-      onClose();
-    }
-  }, [closeOnEscape, onClose]);
-
-  // Set up event listeners and body scroll lock
+  // Set up event listeners and body scroll lock — runs once per open/close.
   useEffect(() => {
     if (!isOpen) return;
 
-    // Announce modal opening
+    // Capture focus origin on open.
+    triggerRef.current =
+      typeof document !== 'undefined'
+        ? (document.activeElement as HTMLElement | null)
+        : null;
+
     announce(`${title} dialog opened`, 'polite');
 
-    // Lock body scroll
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    // Add escape key listener
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (closeOnEscapeRef.current && event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+      }
+    };
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      // Restore body scroll
       document.body.style.overflow = originalOverflow;
-
-      // Remove escape key listener
       document.removeEventListener('keydown', handleKeyDown);
 
-      // Return focus to trigger element
-      if (triggerRef && typeof triggerRef.focus === 'function') {
-        setTimeout(() => triggerRef.focus(), 0);
+      const trigger = triggerRef.current;
+      if (trigger && typeof trigger.focus === 'function') {
+        setTimeout(() => trigger.focus(), 0);
       }
 
-      // Announce modal closing
       announce('Dialog closed', 'polite');
     };
-  }, [isOpen, handleKeyDown, announce, title, triggerRef]);
+  }, [isOpen, title, announce]);
 
   // Handle backdrop click
   const handleBackdropClick = (event: React.MouseEvent) => {

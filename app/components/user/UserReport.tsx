@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
+import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 
 interface UserReportProps {
   onReportGenerated?: () => void;
@@ -121,7 +122,7 @@ export default function UserReport({ onReportGenerated }: UserReportProps) {
     setError('');
 
     try {
-      const response = await fetch('/api/admin/users/report', {
+      const response = await tenantFetch('/api/admin/users/report', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

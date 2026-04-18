@@ -1,18 +1,11 @@
 'use client';
 
 import React from 'react';
-import TextEditor from '@/app/components/editor/TextEditor';
-import QuizStatusButton from '@/app/components/quiz/QuizStatusButton';
-import { sanitizeHtml } from '@/lib/sanitize';
-import { BookmarkButton, NotesPanel } from '@/app/components/student';
-import Link from 'next/link';
-import { Bookmark, ChevronDown, ChevronUp } from 'lucide-react';
+import { NotesPanel } from '@/app/components/student';
 import { useActivityLogger, ACTIVITY_TYPES, ITEM_TYPES, ACTIONS } from '@/lib/hooks/useActivityLogger';
-import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 import StudyToolbar from './viewer/StudyToolbar';
 import FullscreenContentOverlay from './viewer/FullscreenContentOverlay';
 import OrphanContentCard from './viewer/OrphanContentCard';
-import ContentProgressCheckboxExtracted from './viewer/ContentProgressCheckbox';
 import LabelBlock from './viewer/blocks/LabelBlock';
 import ImageBlock from './viewer/blocks/ImageBlock';
 import EmbedBlock from './viewer/blocks/EmbedBlock';
@@ -25,6 +18,9 @@ import TextBlock from './viewer/blocks/TextBlock';
 import VideoBlock from './viewer/blocks/VideoBlock';
 import InteractiveVideoBlock from './viewer/blocks/InteractiveVideoBlock';
 import CodeSandboxBlock from './viewer/blocks/CodeSandboxBlock';
+import QuizBlock from './viewer/blocks/QuizBlock';
+import AssignmentBlock from './viewer/blocks/AssignmentBlock';
+import SurveyBlock from './viewer/blocks/SurveyBlock';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
 import { useContentProgress } from './viewer/hooks/useContentProgress';
 import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
@@ -116,19 +112,6 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         ...metadata
       }
     });
-  };
-
-  // Thin wrapper around the extracted ContentProgressCheckbox that binds
-  // the block index + item to the hook's toggle function and hides the
-  // checkbox entirely for label blocks.
-  const ContentProgressCheckbox = ({ index, item }: { index: number; item: ContentItem }) => {
-    if (item.type === 'label') return null;
-    return (
-      <ContentProgressCheckboxExtracted
-        isComplete={contentProgress[index] || false}
-        onToggle={() => toggleContentComplete(index, item)}
-      />
-    );
   };
 
   // Remove orphan content item (quiz or assignment that no longer exists)
@@ -465,250 +448,63 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         );
       }
 
-      case 'quiz':
-        // Check if this quiz was deleted (not found)
-        if (item.data?.quizId && notFoundQuizzes.has(item.data.quizId)) {
+      case 'quiz': {
+        const quizId: string | undefined = item.data?.quizId;
+        if (quizId && notFoundQuizzes.has(quizId)) {
           return (
             <OrphanContentCard
               kind="quiz"
               canRemove={isInstructor}
-              onRemove={() => removeOrphanContent('quiz', item.data.quizId)}
+              onRemove={() => removeOrphanContent('quiz', quizId)}
             />
           );
         }
-
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Quiz</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-              {item.data?.quizId ? (
-                <div className="border border-gray-100 rounded-md overflow-hidden" style={{ willChange: 'auto' }}>
-                  <div className="p-4 sm:p-5">
-                    <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
-                      <div className="flex-1 min-w-0 w-full min-h-[60px]">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-medium text-slate-800 text-sm sm:text-base">Quiz</h4>
-                          <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded uppercase tracking-wider">Assessment</span>
-                        </div>
-                        {loadingData.has(item.data.quizId) ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-500 pb-2">
-                            <LoadingIndicator variant="dots" size="xs" text="Loading quiz details..." />
-                          </div>
-                        ) : quizData[item.data.quizId] ? (
-                          <div className="space-y-3">
-                            <div className="text-sm sm:text-base text-gray-700 leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(quizData[item.data.quizId].description || "Test your knowledge and understanding") }} />
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                              <span>{quizData[item.data.quizId].points || 100} pts</span>
-                              <span className="text-slate-200">|</span>
-                              <span>{quizData[item.data.quizId].questions?.length || 0} questions</span>
-                              {quizData[item.data.quizId].time_limit && (
-                                <>
-                                  <span className="text-slate-200">|</span>
-                                  <span>{quizData[item.data.quizId].time_limit} min</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs sm:text-sm text-gray-600">Test your knowledge and understanding</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-6 w-full sm:w-auto min-h-[40px]">
-                      {quizData[item.data.quizId] ? (
-                        <QuizStatusButton quiz={quizData[item.data.quizId]} quizId={item.data.quizId} />
-                      ) : (
-                        <div className="px-4 py-2 bg-gray-200 text-gray-600 text-sm font-medium rounded-lg cursor-not-allowed self-start">
-                          Loading...
-                        </div>
-                      )}
-                      {isInstructor && (
-                        <>
-                          <Link
-                            href={`/quizzes/${item.data.quizId}/edit`}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md text-sm"
-                            title="Edit Quiz"
-                          >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            <span className="hidden sm:inline">Edit Quiz</span>
-                            <span className="sm:hidden">Edit</span>
-                          </Link>
-                          <button
-                            onClick={() => deleteQuiz(item.data.quizId)}
-                            disabled={deleting === item.data.quizId}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                            title="Delete Quiz"
-                          >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            <span className="hidden sm:inline">{deleting === item.data.quizId ? "Deleting..." : "Delete"}</span>
-                            <span className="sm:hidden">{deleting === item.data.quizId ? "Deleting..." : "Delete"}</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-12 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">
-                  <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-lg font-medium">Quiz not configured yet</p>
-                  <p className="text-sm">Create a quiz to test your students</p>
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
+          <QuizBlock
+            index={index}
+            title={item.title}
+            quizId={quizId}
+            quiz={quizId ? quizData[quizId] : undefined}
+            isLoading={quizId ? loadingData.has(quizId) : false}
+            isInstructor={isInstructor}
+            deletingId={deleting}
+            onDelete={deleteQuiz}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
+      }
 
-      case 'assignment':
-        // Check if this assignment was deleted (not found)
-        if (item.data?.assignmentId && notFoundAssignments.has(item.data.assignmentId)) {
+      case 'assignment': {
+        const assignmentId: string | undefined = item.data?.assignmentId;
+        if (assignmentId && notFoundAssignments.has(assignmentId)) {
           return (
             <OrphanContentCard
               kind="assignment"
               canRemove={isInstructor}
-              onRemove={() => removeOrphanContent('assignment', item.data.assignmentId)}
+              onRemove={() => removeOrphanContent('assignment', assignmentId)}
             />
           );
         }
-
         return (
-          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            <div
-              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-              onClick={() => toggleCollapse(index)}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Assignment</span>
-                  <span className="truncate">{item.title || 'Assignment'}</span>
-                </h3>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <ContentProgressCheckbox index={index} item={item} />
-                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                    {isCollapsed(index) ? (
-                      <ChevronDown className="w-4 h-4 text-white/50" />
-                    ) : (
-                      <ChevronUp className="w-4 h-4 text-white/50" />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-              {item.data?.assignmentId ? (
-                <div className="border border-gray-100 rounded-md overflow-hidden" style={{ willChange: 'auto' }}>
-                  <div className="p-4 sm:p-5">
-                    <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
-                      <div className="flex-1 min-w-0 w-full min-h-[60px]">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-medium text-slate-800 text-sm sm:text-base">Assignment</h4>
-                          <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-medium rounded uppercase tracking-wider">Submission</span>
-                        </div>
-                        {loadingData.has(item.data.assignmentId) ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-500 pb-2">
-                            <LoadingIndicator variant="dots" size="xs" text="Loading assignment details..." />
-                          </div>
-                        ) : assignmentData[item.data.assignmentId] ? (
-                          <div className="space-y-3">
-                            <div className="text-sm sm:text-base text-gray-700 leading-relaxed line-clamp-2 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(assignmentData[item.data.assignmentId].description || "Complete this assignment") }} />
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                              <span>{assignmentData[item.data.assignmentId].points || 100} pts</span>
-                              {assignmentData[item.data.assignmentId].due_date && (
-                                <>
-                                  <span className="text-slate-200">|</span>
-                                  <span>Due: {new Date(assignmentData[item.data.assignmentId].due_date).toLocaleDateString()}</span>
-                                </>
-                              )}
-                              <span className="text-slate-200">|</span>
-                              <span>{assignmentData[item.data.assignmentId].submission_types?.join(', ') || 'File'} submission</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs sm:text-sm text-gray-600">Complete this assignment</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-6 w-full sm:w-auto min-h-[40px]">
-                      <Link
-                        href={`/assignment/${item.data.assignmentId}`}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-teal-600 text-teal-700 hover:bg-teal-50 rounded-md text-sm transition-colors self-start"
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        View Assignment
-                      </Link>
-                      {isInstructor && (
-                        <>
-                          <Link
-                            href={`/assignments/${item.data.assignmentId}/edit`}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md text-sm"
-                            title="Edit Assignment"
-                          >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            <span className="hidden sm:inline">Edit Assignment</span>
-                            <span className="sm:hidden">Edit</span>
-                          </Link>
-                          <button
-                            onClick={() => deleteAssignment(item.data.assignmentId)}
-                            disabled={deleting === item.data.assignmentId}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                            title="Delete Assignment"
-                          >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            <span className="hidden sm:inline">{deleting === item.data.assignmentId ? "Deleting..." : "Delete"}</span>
-                            <span className="sm:hidden">{deleting === item.data.assignmentId ? "Deleting..." : "Delete"}</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500">
-                  Assignment not configured yet
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
+          <AssignmentBlock
+            index={index}
+            title={item.title}
+            assignmentId={assignmentId}
+            assignment={assignmentId ? assignmentData[assignmentId] : undefined}
+            isLoading={assignmentId ? loadingData.has(assignmentId) : false}
+            isInstructor={isInstructor}
+            deletingId={deleting}
+            onDelete={deleteAssignment}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
+      }
 
       case 'label':
         return (
@@ -720,88 +516,19 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         );
 
       case 'survey':
-        const surveyId = item.data?.surveyId;
         return (
-          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            <div
-              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-              onClick={() => toggleCollapse(index)}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Survey</span>
-                  <span className="truncate">{item.title || 'Survey'}</span>
-                </h3>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <ContentProgressCheckbox index={index} item={item} />
-                  <BookmarkButton
-                    type="lesson_content"
-                    id={lessonId}
-                    size="sm"
-                    className="text-white/50 hover:text-white/80"
-                    metadata={{ content_type: 'survey', content_title: item.title, content_index: index }}
-                  />
-                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                    {isCollapsed(index) ? (
-                      <ChevronDown className="w-4 h-4 text-white/50" />
-                    ) : (
-                      <ChevronUp className="w-4 h-4 text-white/50" />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-                {surveyId ? (
-                  <div className="space-y-4">
-                    <p className="text-sm text-slate-500">{item.data?.description || 'Please complete this survey to provide feedback.'}</p>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Link
-                        href={`/surveys/${surveyId}/take`}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-teal-600 text-teal-700 hover:bg-teal-50 rounded-md text-sm transition-colors"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                        </svg>
-                        Take Survey
-                      </Link>
-                      {isInstructor && (
-                        <>
-                          <Link
-                            href={`/surveys/${surveyId}/results`}
-                            className="inline-flex items-center justify-center px-6 py-3 border border-teal-600 text-teal-700 hover:bg-teal-50 rounded-lg font-medium transition-all duration-200 text-sm"
-                          >
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                            View Results
-                          </Link>
-                          <Link
-                            href={`/surveys/${surveyId}/edit`}
-                            className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-all duration-200 text-sm"
-                          >
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit Survey
-                          </Link>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                    <p className="text-lg font-medium">Survey not configured</p>
-                    <p className="text-sm">Add a survey ID to enable this content</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <SurveyBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            surveyId={item.data?.surveyId}
+            description={item.data?.description}
+            isInstructor={isInstructor}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
 
       default:

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizeInput, validateEmail, validateURL } from '../security'
+import { sanitizeInput } from '../security'
+import { isValidEmail, isValidHttpUrl } from '../validations'
+
+const validateEmail = isValidEmail
+const validateURL = isValidHttpUrl
 
 describe('sanitizeInput', () => {
   it('trims whitespace from strings', () => {

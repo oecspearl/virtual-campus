@@ -56,6 +56,24 @@ export const lessonUpdateSchema = z.object({
   estimated_duration: z.number().int().min(0).optional(),
 });
 
+// ── Standalone validators (single source of truth — used outside schemas) ──
+
+const emailSchema = z.string().email().max(254);
+const httpUrlSchema = z.string().url().refine(
+  (u) => {
+    try { return ['http:', 'https:'].includes(new URL(u).protocol); } catch { return false; }
+  },
+  { message: 'URL must use http:// or https://' }
+);
+
+export function isValidEmail(value: unknown): boolean {
+  return emailSchema.safeParse(value).success;
+}
+
+export function isValidHttpUrl(value: unknown): boolean {
+  return httpUrlSchema.safeParse(value).success;
+}
+
 // ── Helper ──
 
 /**

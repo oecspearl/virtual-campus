@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 
 export function addSecurityHeaders(response: NextResponse): NextResponse {
   // Security headers
@@ -78,23 +79,8 @@ export function sanitizeInput(input: any): any {
   return input;
 }
 
-export function validateEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email) && email.length <= 254;
-}
-
-export function validateURL(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return ['http:', 'https:'].includes(parsed.protocol);
-  } catch {
-    return false;
-  }
-}
-
 export function generateNonce(): string {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
+  return randomBytes(16).toString('hex');
 }
 
 export function createSecureResponse(data: any, status: number = 200): NextResponse {

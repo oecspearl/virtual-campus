@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, authorizeUser, createAuthResponse, checkAuthProfileRateLimit, checkRateLimit, getRateLimitHeaders } from "@/lib/api-auth";
-import { addSecurityHeaders, sanitizeInput, validateEmail, validateURL, createSecureResponse } from "@/lib/security";
+import { addSecurityHeaders, sanitizeInput, createSecureResponse } from "@/lib/security";
+import { isValidHttpUrl } from "@/lib/validations";
 
 interface UserProfileDoc {
   email: string;
@@ -171,7 +172,7 @@ export async function PUT(request: Request) {
 
     // Validate and sanitize profile data
     const sanitizedBio = typeof bio === 'string' ? sanitizeInput(bio) : "";
-    const sanitizedAvatar = typeof avatar === 'string' && validateURL(avatar) ? sanitizeInput(avatar) : "";
+    const sanitizedAvatar = typeof avatar === 'string' && isValidHttpUrl(avatar) ? sanitizeInput(avatar) : "";
     const sanitizedLearningPreferences = typeof learning_preferences === 'object' && learning_preferences !== null ? sanitizeInput(learning_preferences) : {};
 
     // Update user_profiles table

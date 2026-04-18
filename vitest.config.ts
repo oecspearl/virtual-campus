@@ -39,14 +39,14 @@ export default defineConfig({
         'lib/hooks/**',
         'lib/supabase-provider.tsx',
       ],
-      // Current baseline (April 2026): 18% lines, 18.5% statements, 15%
-      // functions, 23% branches. Thresholds are set just below baseline as a
+      // Current baseline (April 2026): 20% lines, 20% statements, 17%
+      // functions, 24% branches. Thresholds are set just below baseline as a
       // regression floor. Ratchet upward as new tests land — do NOT lower them.
       thresholds: {
-        lines: 17,
-        functions: 14,
-        statements: 17,
-        branches: 22,
+        lines: 19,
+        functions: 16,
+        statements: 19,
+        branches: 23,
       },
     },
   },

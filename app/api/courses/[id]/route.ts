@@ -1,217 +1,87 @@
-import { NextResponse } from "next/server";
-import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
-import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
-import { hasRole } from '@/lib/rbac';
-import { courseUpdateSchema, validateBody } from "@/lib/validations";
-import { CACHE_SHORT } from "@/lib/cache-headers";
+import { NextResponse } from 'next/server';
+import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { withTenantAuth } from '@/lib/with-tenant-auth';
+import { courseUpdateSchema, validateBody } from '@/lib/validations';
+import { CACHE_SHORT } from '@/lib/cache-headers';
+import {
+  getCourse,
+  updateCourse,
+  deleteCourse,
+  canDeleteCourse,
+  CourseNotFoundError,
+  CoursePermissionError,
+} from '@/lib/services/course-service';
+
+// ─── GET — public (respects optional auth) ─────────────────────────────────
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-
-    const tenantId = getTenantIdFromRequest(request as any);
+    const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    const { data: course, error } = await tq
-      .from('courses')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error || !course) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
-    }
-
+    const course = await getCourse(tq, id);
     return NextResponse.json(course, { headers: CACHE_SHORT });
-  } catch (e: any) {
-    console.error('Course GET API error:', e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error) {
+    if (error instanceof CourseNotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    console.error('Course GET error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+// ─── PUT — instructor-or-admin ──────────────────────────────────────────────
+
+export const PUT = withTenantAuth(async ({ user, tq, request }) => {
   try {
-    const { id } = await params;
-
-    // Authenticate user
-    const authResult = await authenticateUser(request as any);
-    if (!authResult.success) {
-      return createAuthResponse(authResult.error!, authResult.status!);
-    }
-
-    const { user, userProfile } = authResult;
-    const tenantId = getTenantIdFromRequest(request as any);
-    const tq = createTenantQuery(tenantId);
-
-    // Check if user has permission to update this course
-    // Must be: course instructor or admin
-    const { data: course } = await tq
-      .from('courses')
-      .select('id')
-      .eq('id', id)
-      .single();
-
-    if (!course) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
-    }
-
-    const isAdmin = hasRole(userProfile.role, ["admin", "super_admin", "curriculum_designer"]);
-
-    // Check if user is an instructor for this course
-    const { data: instructorCheck } = await tq
-      .from('course_instructors')
-      .select('id')
-      .eq('course_id', id)
-      .eq('instructor_id', user.id)
-      .single();
-    const isInstructor = !!instructorCheck;
-
-    if (!isAdmin && !isInstructor) {
-      return NextResponse.json({ error: "You don't have permission to update this course" }, { status: 403 });
-    }
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').filter(Boolean).pop()!;
 
     const body = await request.json();
-
-    // Validate input
     const validation = validateBody(courseUpdateSchema, body);
     if (!validation.success) return validation.response;
 
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-      ...validation.data,
-    };
+    const updated = await updateCourse(tq, id, validation.data, {
+      userId: user.id,
+      userRole: user.role,
+    });
 
-    // Use tenant query to ensure update works with tenant scoping
-    const { data: updatedCourse, error } = await tq
-      .from('courses')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-
-    if (error) {
-      console.error('Course update error:', error);
-      return NextResponse.json({ error: "Failed to update course" }, { status: 500 });
+    return NextResponse.json(updated);
+  } catch (error) {
+    if (error instanceof CourseNotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    if (!updatedCourse) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    if (error instanceof CoursePermissionError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
-
-    return NextResponse.json(updatedCourse);
-  } catch (e: any) {
-    console.error('Course PUT API error:', e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error('Course PUT error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+// ─── DELETE — admin-only ────────────────────────────────────────────────────
+
+export const DELETE = withTenantAuth(async ({ user, tq, request }) => {
   try {
-    const { id } = await params;
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').filter(Boolean).pop()!;
 
     if (!id) {
-      return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
+      return NextResponse.json({ error: 'Course ID is required' }, { status: 400 });
     }
 
-    // Authenticate user
-    const authResult = await authenticateUser(request as any);
-    if (!authResult.success) {
-      return createAuthResponse(authResult.error!, authResult.status!);
+    if (!canDeleteCourse(user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { userProfile } = authResult;
-
-    // Only admins can delete courses
-    if (!hasRole(userProfile.role, ["admin", "super_admin"])) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    await deleteCourse(tq, id);
+    return NextResponse.json({ success: true, message: 'Course deleted successfully' });
+  } catch (error) {
+    if (error instanceof CourseNotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
-
-    // Use tenant query for admin operations
-    const tenantId = getTenantIdFromRequest(request as any);
-    const tq = createTenantQuery(tenantId);
-
-    // Verify the course exists
-    const { data: course, error: fetchError } = await tq
-      .from('courses')
-      .select('id, title')
-      .eq('id', id)
-      .single();
-
-    if (fetchError || !course) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
-    }
-
-    // Delete related records in order of dependencies
-    const deletionOrder = [
-      'course_grades',
-      'course_grade_items',
-      'course_gradebook_settings',
-      'quiz_attempts',
-      'quizzes',
-      'assignments',
-      'assignment_submissions',
-      'lesson_progress',
-      'lessons',
-      'subjects',
-      'enrollments',
-      'course_instructors',
-      'course_announcements',
-      'course_discussions',
-      'discussions',
-      'lesson_discussions',
-      'classes',
-      'resource_links',
-      'scorm_tracking',
-      'scorm_packages',
-      'video_conferences',
-      'ai_tutor_analytics',
-      'ai_tutor_conversations',
-      'user_badges',
-      'certificates',
-      'ceu_credits',
-      'student_activity_log',
-      'course_sections',
-    ];
-
-    // Delete related records in parallel (ignore errors for tables that might not exist)
-    await Promise.allSettled(
-      deletionOrder.map(tableName =>
-        tq.from(tableName).delete().eq('course_id', id)
-      )
-    );
-
-    // Handle tables with ON DELETE SET NULL (parallel)
-    const setNullTables = [
-      'student_risk_indicators',
-      'learning_analytics_predictions',
-      'engagement_metrics',
-      'proctoring_sessions',
-      'plagiarism_checks',
-      'lti_launches',
-      'lti_grade_passback',
-      'oneroster_classes',
-      'files',
-    ];
-
-    await Promise.allSettled(
-      setNullTables.map(tableName =>
-        tq.from(tableName).update({ course_id: null }).eq('course_id', id)
-      )
-    );
-
-    // Delete the course
-    const { error: deleteError } = await tq
-      .from('courses')
-      .delete()
-      .eq('id', id);
-
-    if (deleteError) {
-      console.error('Course delete error:', deleteError);
-      return NextResponse.json({ error: "Failed to delete course" }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, message: "Course deleted successfully" });
-  } catch (e: any) {
-    console.error('Course DELETE API error:', e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error('Course DELETE error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

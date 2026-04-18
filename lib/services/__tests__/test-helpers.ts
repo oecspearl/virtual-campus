@@ -81,12 +81,16 @@ export function makeTenantQueryMock(tables: TenantQueryMockOptions = {}, rpcResu
     return chain;
   });
 
-  chain.single = vi.fn(() => {
+  const terminal = () => {
     const stubs = tables[currentTable ?? ''];
     if (lastOp === 'insert' && stubs?.insert) return Promise.resolve(stubs.insert);
+    if (lastOp === 'update' && stubs?.update) return Promise.resolve(stubs.update);
     if (lastOp === 'select' && stubs?.select) return Promise.resolve(stubs.select);
     return Promise.resolve({ data: null, error: null });
-  });
+  };
+
+  chain.single = vi.fn(terminal);
+  chain.maybeSingle = vi.fn(terminal);
 
   // Make the chain thenable for awaits without .single()
   chain.then = (onFulfilled: (v: Result) => unknown) => {

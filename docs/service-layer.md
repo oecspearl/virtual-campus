@@ -80,6 +80,7 @@ export const POST = withTenantAuth(async ({ user, tq, request }) => {
 | `enrollment-service.ts` | List student enrollments (self or all) | `app/api/enrollments/route.ts` |
 | `quiz-service.ts` | Create quiz + append to lesson content + sync gradebook | `app/api/quizzes/route.ts` |
 | `assignment-service.ts` | Create assignment + append to lesson content + sync gradebook | `app/api/assignments/route.ts` |
+| `course-service.ts` | Course get/update/delete + permission checks + cascade cleanup | `app/api/courses/[id]/route.ts` |
 | `gradebook-service.ts` | Shared: idempotent `course_grade_items` creation for any assessment | quiz-service, assignment-service |
 | `lesson-content-helpers.ts` | Shared: atomic append-to-lesson-content (RPC + fallback) | quiz-service, assignment-service |
 
@@ -90,14 +91,24 @@ shared helper rather than duplicating it. Examples above: both quiz and
 assignment creation need to append a content block to a lesson and sync
 to the gradebook, so those live in shared modules and get tested once.
 
+## Known tech debt
+
+- **Hard-coded cascade-delete list** in `course-service.ts` (Issue #8). The
+  service holds the single source of truth for the ~28 child tables that
+  need to be cleaned up when a course is deleted, but the correct long-term
+  fix is `ON DELETE CASCADE` foreign keys at the database level. A schema
+  audit + migration is scheduled as a separate work item; until then,
+  **any new table added that references `course_id` MUST be added to the
+  list in `course-service.ts` or its rows will leak on course deletion**.
+
 ## What's NOT yet extracted
 
 Top candidates for future extraction (from the Horizon 3 roadmap):
 
-- **course-service** — course CRUD, cascade delete, cloning (Issue #8 territory)
 - **discussion-service** — discussion CRUD, reply trees, voting
 - **notification-service** — omnichannel send logic
 - **user-service** — user creation/invite, tenant membership, password reset
+- **submission-service** — assignment/quiz submission grading flows
 
 When extracting a new domain:
 1. Read the source route(s) for the domain.

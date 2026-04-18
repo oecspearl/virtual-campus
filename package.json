@@ -14,7 +14,8 @@
     "postinstall": "npm rebuild @tailwindcss/postcss || true",
     "heroku-postbuild": "next build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && rm -rf .next/cache .next/server .next/types app lib components database docs md",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -135,6 +136,7 @@
     "@types/react-syntax-highlighter": "^15.5.11",
     "@types/xml2js": "^0.4.14",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.4",
     "concurrently": "^9.1.2",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
-import ChapterSidebar, { type VideoChapter } from './ChapterSidebar';
+import { type VideoChapter } from './ChapterSidebar';
+import VideoSidebar from './VideoSidebar';
 import { getEmbedUrl, isYouTubeUrl, isVimeoUrl } from '@/lib/video/utils';
 
 interface EmbedPlayerProps {
@@ -16,10 +16,11 @@ interface EmbedPlayerProps {
 }
 
 /**
- * Thin iframe wrapper for YouTube and Vimeo videos, with an optional
- * sidebar that shows chapters and/or a notes panel. Supports programmatic
- * seeking via `onSeekRef` — the parent sets `.current` to a seek function
- * that rebuilds the embed URL with a start time.
+ * Thin iframe wrapper for YouTube and Vimeo videos. The sidebar layout
+ * (chapters + notes) is delegated to the shared VideoSidebar component.
+ * Supports programmatic seeking via `onSeekRef` — the parent sets
+ * `.current` to a seek function that rebuilds the embed URL with a
+ * start time.
  */
 export default function EmbedPlayer({
   src,
@@ -35,7 +36,6 @@ export default function EmbedPlayer({
 
   const [embedUrl, setEmbedUrl] = React.useState(() => getEmbedUrl(src));
   const [seekTime, setSeekTime] = React.useState(0);
-  const [sidebarTab, setSidebarTab] = React.useState<'chapters' | 'notes'>('chapters');
 
   const handleSeek = React.useCallback(
     (time: number) => {
@@ -76,69 +76,16 @@ export default function EmbedPlayer({
     </div>
   );
 
-  const hasChapters = chapters.length > 0;
-  const hasSidebar = hasChapters || showNotes;
-
-  if (!hasSidebar) {
-    return <div className="w-full mx-auto max-w-full">{videoEl}</div>;
-  }
-
   return (
-    <div className="w-full mx-auto max-w-full flex flex-col lg:flex-row gap-0 rounded-lg overflow-hidden border border-gray-200">
-      <div className="lg:w-56 xl:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white max-h-48 lg:max-h-[400px] overflow-hidden flex flex-col">
-        {hasChapters && showNotes ? (
-          <>
-            <div className="flex border-b border-gray-200 flex-shrink-0">
-              <button
-                onClick={() => setSidebarTab('chapters')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  sidebarTab === 'chapters'
-                    ? 'text-blue-700 border-b-2 border-blue-600 bg-blue-50/50'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Chapters
-              </button>
-              <button
-                onClick={() => setSidebarTab('notes')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  sidebarTab === 'notes'
-                    ? 'text-blue-700 border-b-2 border-blue-600 bg-blue-50/50'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Notes
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {sidebarTab === 'chapters' ? (
-                <ChapterSidebar chapters={chapters} onSeek={handleSeek} currentTime={seekTime} />
-              ) : lessonId ? (
-                <VideoNotesPanel
-                  lessonId={lessonId}
-                  courseId={courseId}
-                  currentTime={seekTime}
-                  onSeek={handleSeek}
-                />
-              ) : (
-                <div className="p-3 text-xs text-gray-400 text-center">
-                  Notes require a saved lesson
-                </div>
-              )}
-            </div>
-          </>
-        ) : hasChapters ? (
-          <ChapterSidebar chapters={chapters} onSeek={handleSeek} currentTime={seekTime} />
-        ) : showNotes && lessonId ? (
-          <VideoNotesPanel
-            lessonId={lessonId}
-            courseId={courseId}
-            currentTime={seekTime}
-            onSeek={handleSeek}
-          />
-        ) : null}
-      </div>
-      <div className="flex-1 min-w-0">{videoEl}</div>
-    </div>
+    <VideoSidebar
+      chapters={chapters}
+      showNotes={showNotes}
+      lessonId={lessonId}
+      courseId={courseId}
+      currentTime={seekTime}
+      onSeek={handleSeek}
+    >
+      {videoEl}
+    </VideoSidebar>
   );
 }

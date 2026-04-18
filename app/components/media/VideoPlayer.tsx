@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
-import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
-import ChapterSidebar, { type VideoChapter } from '@/app/components/media/video/ChapterSidebar';
+import { type VideoChapter } from '@/app/components/media/video/ChapterSidebar';
 import EmbedPlayer from '@/app/components/media/video/EmbedPlayer';
 import SpeedMenu, { SPEED_OPTIONS } from '@/app/components/media/video/SpeedMenu';
 import CaptionMenu from '@/app/components/media/video/CaptionMenu';
+import VideoSidebar from '@/app/components/media/video/VideoSidebar';
+import PlayOverlay from '@/app/components/media/video/PlayOverlay';
 import { formatTime, getStorageKey, calcPercentWatched, isYouTubeUrl, isVimeoUrl } from '@/lib/video/utils';
 
 export type { VideoChapter };
@@ -115,7 +116,6 @@ function SelfHostedPlayer({
   courseId,
   onSeekRef,
 }: Omit<VideoPlayerProps, 'src'> & { src: string }) {
-  const [sidebarTab, setSidebarTab] = React.useState<'chapters' | 'notes'>('chapters');
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const adAudioRef = React.useRef<HTMLAudioElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -570,19 +570,7 @@ function SelfHostedPlayer({
       )}
 
       {/* Play overlay when paused */}
-      {!isPlaying && (
-        <button
-          onClick={togglePlay}
-          className="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity"
-          aria-label="Play video"
-        >
-          <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-            <svg className="w-8 h-8 text-gray-900 ml-1" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </button>
-      )}
+      {!isPlaying && <PlayOverlay onPlay={togglePlay} />}
 
       {/* Controls Overlay */}
       <div
@@ -765,60 +753,17 @@ function SelfHostedPlayer({
     </div>
   );
 
-  const hasChapters = sortedChapters.length > 0;
-  const hasSidebar = hasChapters || showNotes;
-
-  if (!hasSidebar) return videoPlayer;
-
   return (
-    <div className="w-full mx-auto max-w-full flex flex-col lg:flex-row gap-0 rounded-lg overflow-hidden border border-gray-200">
-      <div className="lg:w-56 xl:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white max-h-48 lg:max-h-[500px] overflow-hidden flex flex-col">
-        {/* Sidebar tabs when both chapters and notes are available */}
-        {hasChapters && showNotes ? (
-          <>
-            <div className="flex border-b border-gray-200 flex-shrink-0">
-              <button
-                onClick={() => setSidebarTab('chapters')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  sidebarTab === 'chapters'
-                    ? 'text-blue-700 border-b-2 border-blue-600 bg-blue-50/50'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Chapters
-              </button>
-              <button
-                onClick={() => setSidebarTab('notes')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  sidebarTab === 'notes'
-                    ? 'text-blue-700 border-b-2 border-blue-600 bg-blue-50/50'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Notes
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {sidebarTab === 'chapters' ? (
-                <ChapterSidebar chapters={sortedChapters} onSeek={seekTo} currentTime={currentTime} />
-              ) : (
-                lessonId ? (
-                  <VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={currentTime} onSeek={seekTo} />
-                ) : (
-                  <div className="p-3 text-xs text-gray-400 text-center">Notes require a saved lesson</div>
-                )
-              )}
-            </div>
-          </>
-        ) : hasChapters ? (
-          <ChapterSidebar chapters={sortedChapters} onSeek={seekTo} currentTime={currentTime} />
-        ) : showNotes && lessonId ? (
-          <VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={currentTime} onSeek={seekTo} />
-        ) : null}
-      </div>
-      <div className="flex-1 min-w-0">
-        {videoPlayer}
-      </div>
-    </div>
+    <VideoSidebar
+      chapters={sortedChapters}
+      showNotes={showNotes}
+      lessonId={lessonId}
+      courseId={courseId}
+      currentTime={currentTime}
+      onSeek={seekTo}
+      maxHeightClass="lg:max-h-[500px]"
+    >
+      {videoPlayer}
+    </VideoSidebar>
   );
 }

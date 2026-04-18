@@ -38,6 +38,7 @@ import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 import StudyToolbar from './viewer/StudyToolbar';
 import FullscreenContentOverlay from './viewer/FullscreenContentOverlay';
 import OrphanContentCard from './viewer/OrphanContentCard';
+import { useCollapseState } from './viewer/hooks/useCollapseState';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
@@ -101,64 +102,15 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
     };
   }, [fullscreenContent]);
 
-  // Collapsible content state
-  const [collapsedItems, setCollapsedItems] = React.useState<Set<number>>(new Set());
-
-  // Load collapsed state from localStorage on mount
-  React.useEffect(() => {
-    const storageKey = `lesson-collapsed-${lessonId}`;
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setCollapsedItems(new Set(parsed));
-        }
-      }
-    } catch (e) {
-      console.error('Error loading collapsed state:', e);
-    }
-  }, [lessonId]);
-
-  // Save collapsed state to localStorage when it changes
-  React.useEffect(() => {
-    const storageKey = `lesson-collapsed-${lessonId}`;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(Array.from(collapsedItems)));
-    } catch (e) {
-      console.error('Error saving collapsed state:', e);
-    }
-  }, [collapsedItems, lessonId]);
-
-  // Toggle collapse for a single item
-  const toggleCollapse = (index: number) => {
-    setCollapsedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
-  };
-
-  // Collapse all items
-  const collapseAll = () => {
-    const allIndices = content.map((_, index) => index).filter(index => {
-      // Don't collapse labels
-      return content[index].type !== 'label';
-    });
-    setCollapsedItems(new Set(allIndices));
-  };
-
-  // Expand all items
-  const expandAll = () => {
-    setCollapsedItems(new Set());
-  };
-
-  // Check if item is collapsed
-  const isCollapsed = (index: number) => collapsedItems.has(index);
+  // Collapsible content state — localStorage-backed, labels never auto-collapse.
+  const {
+    toggleCollapse,
+    collapseAll,
+    expandAll,
+    isCollapsed,
+    collapsedCount,
+    allCollapsed,
+  } = useCollapseState(lessonId, content);
 
   // Fetch profile and content progress on mount
   React.useEffect(() => {
@@ -1572,11 +1524,6 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
       </div>
     );
   }
-
-  // Calculate how many items are collapsed (excluding labels)
-  const collapsibleCount = content.filter(item => item.type !== 'label').length;
-  const collapsedCount = Array.from(collapsedItems).filter(idx => content[idx]?.type !== 'label').length;
-  const allCollapsed = collapsedCount === collapsibleCount && collapsibleCount > 0;
 
   return (
     <div className="relative">

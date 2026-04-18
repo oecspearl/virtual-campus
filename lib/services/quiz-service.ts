@@ -7,6 +7,8 @@
  */
 
 import type { TenantQuery } from '@/lib/tenant-query';
+import { appendLessonContentBlock } from './lesson-content-helpers';
+import { syncAssessmentToGradebook } from './gradebook-service';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,8 +51,7 @@ export interface CreateQuizResult {
 /**
  * Create a quiz with all its side effects:
  *   1. Insert the quiz row.
- *   2. If attached to a lesson, append a quiz content block to that lesson
- *      (using the `append_lesson_content` RPC, with a read-modify-write fallback).
+ *   2. If attached to a lesson, append a quiz content block to that lesson.
  *   3. If the lesson has a course, create a gradebook item for the quiz,
  *      using the sum of question points when available.
  *
@@ -82,12 +83,23 @@ export async function createQuizWithSideEffects(
   let gradebookSynced = false;
 
   if (quiz.lesson_id) {
-    addedToLesson = await appendQuizToLesson(tq, quiz).catch((e) => {
+    addedToLesson = await appendLessonContentBlock(tq, quiz.lesson_id, {
+      type: 'quiz',
+      title: quiz.title,
+      id: `quiz-${quiz.id}`,
+      data: {
+        quizId: quiz.id,
+        description: quiz.description || '',
+        points: quiz.points || 100,
+        timeLimit: quiz.time_limit,
+        attemptsAllowed: quiz.attempts_allowed || 1,
+      },
+    }).catch((e) => {
       console.error('Error adding quiz to lesson content:', e);
       return false;
     });
 
-    gradebookSynced = await syncQuizToGradebook(tq, quiz).catch((e) => {
+    gradebookSynced = await syncQuizGradebook(tq, quiz).catch((e) => {
       console.error('Error creating gradebook item for quiz:', e);
       return false;
     });
@@ -161,6 +173,7 @@ function buildQuizPayload(input: CreateQuizInput, courseId: string, creatorId: s
 interface QuizRow {
   id: string;
   lesson_id: string | null;
+  course_id?: string | null;
   title: string;
   description: string | null;
   points: number | null;
@@ -170,65 +183,11 @@ interface QuizRow {
 }
 
 /**
- * Append a quiz content block to the lesson's content array. Uses an atomic
- * Postgres RPC when available, falls back to read-modify-write otherwise.
+ * Sum question points from the DB; fall back to the quiz's configured points
+ * (or 100) when no questions exist yet. Delegates the actual DB write to the
+ * gradebook service.
  */
-async function appendQuizToLesson(tq: TenantQuery, quiz: QuizRow): Promise<boolean> {
-  if (!quiz.lesson_id) return false;
-
-  const contentItem = {
-    type: 'quiz',
-    title: quiz.title,
-    data: {
-      quizId: quiz.id,
-      description: quiz.description || '',
-      points: quiz.points || 100,
-      timeLimit: quiz.time_limit,
-      attemptsAllowed: quiz.attempts_allowed || 1,
-    },
-    id: `quiz-${quiz.id}`,
-  };
-
-  const { error: rpcError } = await tq.raw.rpc('append_lesson_content', {
-    p_lesson_id: quiz.lesson_id,
-    p_content_item: contentItem,
-  });
-
-  if (!rpcError) return true;
-
-  // Fallback when RPC doesn't exist (Postgres error 42883 = undefined function)
-  if (rpcError.code !== '42883') {
-    throw new Error(`RPC failed: ${rpcError.message}`);
-  }
-
-  const { data: lesson } = await tq
-    .from('lessons')
-    .select('content, course_id')
-    .eq('id', quiz.lesson_id)
-    .single();
-
-  if (!lesson) return false;
-
-  const currentContent = lesson.content || [];
-  const alreadyExists = currentContent.some((item: { id?: string }) => item.id === `quiz-${quiz.id}`);
-
-  if (alreadyExists) return true;
-
-  await tq
-    .from('lessons')
-    .update({ content: [...currentContent, contentItem], updated_at: new Date().toISOString() })
-    .eq('id', quiz.lesson_id);
-
-  return true;
-}
-
-/**
- * Create a `course_grade_items` row so the quiz shows up in the gradebook.
- * Idempotent — skips if an item already exists for this quiz.
- * Point total is computed from question points when available, falling back
- * to the quiz's configured points (or 100).
- */
-async function syncQuizToGradebook(tq: TenantQuery, quiz: QuizRow): Promise<boolean> {
+async function syncQuizGradebook(tq: TenantQuery, quiz: QuizRow): Promise<boolean> {
   if (!quiz.lesson_id) return false;
 
   const { data: lesson } = await tq
@@ -239,46 +198,21 @@ async function syncQuizToGradebook(tq: TenantQuery, quiz: QuizRow): Promise<bool
 
   if (!lesson?.course_id) return false;
 
-  const { data: existingGradeItem } = await tq
-    .from('course_grade_items')
-    .select('id')
-    .eq('course_id', lesson.course_id)
-    .eq('type', 'quiz')
-    .eq('assessment_id', quiz.id)
-    .single();
-
-  if (existingGradeItem) return true;
-
-  const { data: questions } = await tq
-    .from('questions')
-    .select('points')
-    .eq('quiz_id', quiz.id);
-
+  const { data: questions } = await tq.from('questions').select('points').eq('quiz_id', quiz.id);
   const totalFromQuestions = (questions || []).reduce(
     (sum: number, q: { points?: number | null }) => sum + Number(q.points ?? 0),
     0
   );
   const pointsToUse = totalFromQuestions > 0 ? totalFromQuestions : (quiz.points || 100);
 
-  const { error } = await tq.from('course_grade_items').insert([
-    {
-      course_id: lesson.course_id,
-      title: quiz.title,
-      type: 'quiz',
-      category: 'Quizzes',
-      points: pointsToUse,
-      assessment_id: quiz.id,
-      due_date: quiz.due_date,
-      weight: 1.0,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ]);
+  const result = await syncAssessmentToGradebook(tq, {
+    courseId: lesson.course_id,
+    assessmentId: quiz.id,
+    type: 'quiz',
+    title: quiz.title,
+    dueDate: quiz.due_date,
+    points: pointsToUse,
+  });
 
-  if (error) {
-    throw new Error(`Failed to create gradebook item: ${error.message}`);
-  }
-
-  return true;
+  return result.synced || result.alreadyExists;
 }

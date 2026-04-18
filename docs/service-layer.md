@@ -79,16 +79,25 @@ export const POST = withTenantAuth(async ({ user, tq, request }) => {
 |---------|-------------|-------------------|
 | `enrollment-service.ts` | List student enrollments (self or all) | `app/api/enrollments/route.ts` |
 | `quiz-service.ts` | Create quiz + append to lesson content + sync gradebook | `app/api/quizzes/route.ts` |
+| `assignment-service.ts` | Create assignment + append to lesson content + sync gradebook | `app/api/assignments/route.ts` |
+| `gradebook-service.ts` | Shared: idempotent `course_grade_items` creation for any assessment | quiz-service, assignment-service |
+| `lesson-content-helpers.ts` | Shared: atomic append-to-lesson-content (RPC + fallback) | quiz-service, assignment-service |
+
+## Shared helpers
+
+When two domain services need the same sub-operation, extract it into a
+shared helper rather than duplicating it. Examples above: both quiz and
+assignment creation need to append a content block to a lesson and sync
+to the gradebook, so those live in shared modules and get tested once.
 
 ## What's NOT yet extracted
 
 Top candidates for future extraction (from the Horizon 3 roadmap):
 
-- **course-service** — course CRUD, cascade delete, cloning
-- **assignment-service** — assignment creation (currently has feature-parity
-  gap with quiz — missing gradebook sync)
+- **course-service** — course CRUD, cascade delete, cloning (Issue #8 territory)
 - **discussion-service** — discussion CRUD, reply trees, voting
 - **notification-service** — omnichannel send logic
+- **user-service** — user creation/invite, tenant membership, password reset
 
 When extracting a new domain:
 1. Read the source route(s) for the domain.

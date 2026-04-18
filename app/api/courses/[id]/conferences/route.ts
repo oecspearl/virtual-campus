@@ -10,6 +10,13 @@ export async function GET(
     const tq = createTenantQuery(tenantId);
 
     const { id: courseId } = await params;
+
+    // Guard against invalid/missing course IDs (e.g. callers passing "undefined")
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!courseId || !UUID_RE.test(courseId)) {
+      return NextResponse.json({ conferences: [] });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 

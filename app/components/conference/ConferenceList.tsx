@@ -35,6 +35,11 @@ export default function ConferenceList({
   const [whiteboardConference, setWhiteboardConference] = useState<VideoConference | null>(null);
 
   useEffect(() => {
+    if (!courseId) {
+      setLoading(false);
+      setConferences([]);
+      return;
+    }
     fetchConferences();
   }, [courseId, filter]);
 

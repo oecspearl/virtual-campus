@@ -37,6 +37,11 @@ export default function SessionRecordingsCard({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   useEffect(() => {
+    if (!courseId) {
+      setLoading(false);
+      setRecordings([]);
+      return;
+    }
     fetchRecordings();
   }, [courseId, lessonId]);
 

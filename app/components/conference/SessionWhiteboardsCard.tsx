@@ -37,6 +37,11 @@ export default function SessionWhiteboardsCard({
   const [selectedBoard, setSelectedBoard] = useState<SessionBoard | null>(null);
 
   useEffect(() => {
+    if (!courseId) {
+      setLoading(false);
+      setBoards([]);
+      return;
+    }
     fetchBoards();
   }, [courseId]);
 

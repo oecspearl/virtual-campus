@@ -10,6 +10,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import ReplyForm from './ReplyForm';
 import ReplyItem from './ReplyItem';
 import DiscussionEditForm from './DiscussionEditForm';
+import GradingInfoPanel from './GradingInfoPanel';
 import { useDiscussionData } from './hooks/useDiscussionData';
 import { useUserRole } from './hooks/useUserRole';
 
@@ -36,7 +37,6 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showGrader, setShowGrader] = useState(false);
-  const [showGradingInfo, setShowGradingInfo] = useState(false);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -118,117 +118,14 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
               )}
             </div>
 
-            {/* Grading Info Button for Students */}
             {discussion.is_graded && !isInstructor && (
-              <div className="mb-4">
-                <button
-                  onClick={() => setShowGradingInfo(!showGradingInfo)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                >
-                  <Icon icon="material-symbols:grading" className="w-5 h-5" />
-                  Grading Information
-                  <Icon
-                    icon={showGradingInfo ? "material-symbols:expand-less" : "material-symbols:expand-more"}
-                    className="w-5 h-5"
-                  />
-                </button>
-
-                {/* Collapsible Grading Info Section */}
-                {showGradingInfo && (
-                  <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-4 animate-in slide-in-from-top-2 duration-200">
-                    {/* Grading Criteria */}
-                    {discussion.grading_criteria && (
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold text-green-800 mb-1">Grading Criteria:</p>
-                        <p className="text-sm text-green-700">{discussion.grading_criteria}</p>
-                      </div>
-                    )}
-
-                    {/* Rubric Display - Fixed to handle levels array */}
-                    {discussion.rubric && Array.isArray(discussion.rubric) && discussion.rubric.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm font-semibold text-green-800 mb-3">Scoring Rubric:</p>
-                        <div className="space-y-4">
-                          {discussion.rubric.map((criterion: any, index: number) => {
-                            // Get the criteria name (handle both formats)
-                            const criteriaName = criterion.criteria || criterion.criterion || criterion.name || `Criterion ${index + 1}`;
-                            // Get levels array or create from flat structure
-                            const levels = criterion.levels || [
-                              { name: 'Full Credit', points: criterion.points || criterion.maxPoints || 0, description: criterion.description || '' }
-                            ];
-                            const maxPoints = levels.length > 0 ? Math.max(...levels.map((l: any) => l.points || 0)) : 0;
-
-                            return (
-                              <div key={criterion.id || index} className="bg-white rounded-lg border border-green-200 overflow-hidden">
-                                {/* Criterion Header */}
-                                <div className="bg-green-100 px-4 py-2 flex items-center justify-between">
-                                  <span className="font-medium text-green-800">{criteriaName}</span>
-                                  <span className="text-sm text-green-700">Max: {maxPoints} pts</span>
-                                </div>
-
-                                {/* Levels Table */}
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
-                                      <tr>
-                                        <th className="text-left px-4 py-2 font-medium text-gray-700 w-32">Level</th>
-                                        <th className="text-center px-4 py-2 font-medium text-gray-700 w-20">Points</th>
-                                        <th className="text-left px-4 py-2 font-medium text-gray-700">Description</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {levels.map((level: any, levelIdx: number) => (
-                                        <tr key={levelIdx} className="border-t border-gray-100">
-                                          <td className="px-4 py-2 text-gray-800 font-medium">{level.name || `Level ${levelIdx + 1}`}</td>
-                                          <td className="px-4 py-2 text-center">
-                                            <span className="inline-flex items-center justify-center w-10 h-6 rounded bg-green-100 text-green-800 font-medium">
-                                              {level.points}
-                                            </span>
-                                          </td>
-                                          <td className="px-4 py-2 text-gray-600">{level.description || '-'}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Total Points Summary */}
-                        <div className="mt-3 p-3 bg-green-100 rounded-lg">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-green-800">Total Possible Points:</span>
-                            <span className="font-bold text-green-900">{discussion.points} pts</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Requirements */}
-                    {(discussion.min_replies || discussion.min_words) && (
-                      <div className="border-t border-green-200 pt-3 mt-3">
-                        <p className="text-sm font-semibold text-green-800 mb-2">Requirements:</p>
-                        <div className="flex flex-wrap gap-4 text-sm text-green-700">
-                          {discussion.min_replies && discussion.min_replies > 0 && (
-                            <span className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-green-200">
-                              <Icon icon="material-symbols:chat" className="w-4 h-4 text-green-600" />
-                              Minimum replies: <strong>{discussion.min_replies}</strong>
-                            </span>
-                          )}
-                          {discussion.min_words && discussion.min_words > 0 && (
-                            <span className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-green-200">
-                              <Icon icon="material-symbols:text-fields" className="w-4 h-4 text-green-600" />
-                              Minimum words: <strong>{discussion.min_words}</strong>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <GradingInfoPanel
+                gradingCriteria={discussion.grading_criteria}
+                rubric={discussion.rubric}
+                totalPoints={discussion.points}
+                minReplies={discussion.min_replies}
+                minWords={discussion.min_words}
+              />
             )}
 
             {/* Instructor Grading Actions */}

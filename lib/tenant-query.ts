@@ -1,5 +1,7 @@
 import { createServiceSupabaseClient } from './supabase-server';
 
+type ServiceClient = ReturnType<typeof createServiceSupabaseClient>;
+
 /**
  * Creates a tenant-scoped query builder that automatically applies
  * tenant_id filtering on all operations. This is the primary mechanism
@@ -11,6 +13,11 @@ import { createServiceSupabaseClient } from './supabase-server';
  *   const tq = createTenantQuery(tenantId);
  *   const { data } = await tq.from('courses').select('*');
  *   // Automatically filtered to tenant
+ *
+ * For stricter row typing, pass a row shape generic on individual methods:
+ *   type Course = { id: string; title: string; tenant_id: string };
+ *   const { data } = await tq.from('courses').select<Course>('*');
+ *   // data is now Course[] | null
  */
 export function createTenantQuery(tenantId: string) {
   if (!tenantId) {
@@ -41,11 +48,12 @@ export function createTenantQuery(tenantId: string) {
 }
 
 class TenantFilteredQuery {
-  private supabase: any;
+  // Client is strongly typed — callers get autocomplete on Supabase methods.
+  private supabase: ServiceClient;
   private table: string;
   private tenantId: string;
 
-  constructor(supabase: any, table: string, tenantId: string) {
+  constructor(supabase: ServiceClient, table: string, tenantId: string) {
     this.supabase = supabase;
     this.table = table;
     this.tenantId = tenantId;
@@ -54,46 +62,68 @@ class TenantFilteredQuery {
   /**
    * SELECT with automatic tenant_id filter.
    * Returns a Supabase query builder with .eq('tenant_id', tenantId) applied.
+   *
+   * The return is typed `any` by default so existing callers don't need a
+   * row shape. Pass a generic parameter for stricter typing.
    */
-  select(columns: string = '*', options?: { count?: 'exact' | 'planned' | 'estimated'; head?: boolean }) {
-    return this.supabase.from(this.table).select(columns, options).eq('tenant_id', this.tenantId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  select<_T = any>(
+    columns: string = '*',
+    options?: { count?: 'exact' | 'planned' | 'estimated'; head?: boolean }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): any {
+    return this.supabase
+      .from(this.table)
+      .select(columns, options)
+      .eq('tenant_id', this.tenantId);
   }
 
   /**
    * INSERT with automatic tenant_id injection into each row.
    */
-  insert(values: Record<string, any> | Record<string, any>[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  insert(values: Record<string, unknown> | Record<string, unknown>[]): any {
     const rows = Array.isArray(values) ? values : [values];
-    const withTenant = rows.map(row => ({ ...row, tenant_id: this.tenantId }));
-    return this.supabase.from(this.table).insert(withTenant.length === 1 ? withTenant[0] : withTenant);
+    const withTenant = rows.map((row) => ({ ...row, tenant_id: this.tenantId }));
+    return this.supabase
+      .from(this.table)
+      .insert(withTenant.length === 1 ? withTenant[0] : withTenant);
   }
 
   /**
    * UPDATE with automatic tenant_id filter.
    * Returns a query builder — you still chain .eq(), .match(), etc.
    */
-  update(values: Record<string, any>) {
-    return this.supabase.from(this.table).update(values).eq('tenant_id', this.tenantId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  update(values: Record<string, unknown>): any {
+    return this.supabase
+      .from(this.table)
+      .update(values)
+      .eq('tenant_id', this.tenantId);
   }
 
   /**
    * DELETE with automatic tenant_id filter.
    * Returns a query builder — chain .eq() to specify which rows.
    */
-  delete() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete(): any {
     return this.supabase.from(this.table).delete().eq('tenant_id', this.tenantId);
   }
 
   /**
    * UPSERT with automatic tenant_id injection into each row.
    */
-  upsert(values: Record<string, any> | Record<string, any>[], options?: { onConflict?: string; ignoreDuplicates?: boolean }) {
+  upsert(
+    values: Record<string, unknown> | Record<string, unknown>[],
+    options?: { onConflict?: string; ignoreDuplicates?: boolean }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): any {
     const rows = Array.isArray(values) ? values : [values];
-    const withTenant = rows.map(row => ({ ...row, tenant_id: this.tenantId }));
-    return this.supabase.from(this.table).upsert(
-      withTenant.length === 1 ? withTenant[0] : withTenant,
-      options
-    );
+    const withTenant = rows.map((row) => ({ ...row, tenant_id: this.tenantId }));
+    return this.supabase
+      .from(this.table)
+      .upsert(withTenant.length === 1 ? withTenant[0] : withTenant, options);
   }
 }
 

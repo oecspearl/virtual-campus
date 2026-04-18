@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Button from '@/app/components/ui/Button';
 import { useSupabase } from '@/lib/supabase-provider';
@@ -9,30 +9,10 @@ import { Icon } from '@iconify/react';
 import DiscussionGrader from './DiscussionGrader';
 import { sanitizeHtml } from '@/lib/sanitize';
 import ReplyForm from './ReplyForm';
-import ReplyItem, { type Reply, type ReplyAuthor } from './ReplyItem';
+import ReplyItem from './ReplyItem';
 import InlineRubricBuilder, { type RubricCriterion } from './InlineRubricBuilder';
-
-type Author = ReplyAuthor;
-
-interface Discussion {
-  id: string;
-  title: string;
-  content: string;
-  is_pinned: boolean;
-  is_locked: boolean;
-  created_at: string;
-  updated_at: string;
-  author: Author;
-  votes: { count: number }[];
-  // Grading fields
-  is_graded?: boolean;
-  points?: number;
-  rubric?: any;
-  due_date?: string;
-  grading_criteria?: string;
-  min_replies?: number;
-  min_words?: number;
-}
+import { useDiscussionData } from './hooks/useDiscussionData';
+import { useUserRole } from './hooks/useUserRole';
 
 interface RubricTemplate {
   id: string;
@@ -48,11 +28,19 @@ interface DiscussionDetailProps {
 }
 
 export default function DiscussionDetail({ courseId, discussionId }: DiscussionDetailProps) {
-  const { user, supabase } = useSupabase();
-  const [discussion, setDiscussion] = useState<Discussion | null>(null);
-  const [replies, setReplies] = useState<Reply[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useSupabase();
+  const {
+    discussion,
+    replies,
+    loading,
+    error,
+    refetch: fetchDiscussion,
+    voteDiscussion: handleVote,
+    voteReply: handleReplyVote,
+    deleteReply: handleDeleteReply,
+  } = useDiscussionData(discussionId);
+  const { isInstructor } = useUserRole();
+
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -60,7 +48,6 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
   const [editContent, setEditContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showGrader, setShowGrader] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Edit mode grading fields
   const [editIsGraded, setEditIsGraded] = useState(false);
@@ -76,56 +63,6 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
   const [generatingAIRubric, setGeneratingAIRubric] = useState(false);
   const [showGradingInfo, setShowGradingInfo] = useState(false);
 
-  const isInstructor = userRole && ['admin', 'super_admin', 'instructor', 'curriculum_designer'].includes(userRole);
-
-  // Fetch user profile for role detection
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (user) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            const res = await fetch('/api/auth/profile', {
-              headers: { 'Authorization': `Bearer ${session.access_token}` }
-            });
-            if (res.ok) {
-              const profile = await res.json();
-              setUserRole(profile?.role || 'student');
-              return;
-            }
-          }
-          setUserRole(user.user_metadata?.role || 'student');
-        } catch (error) {
-          console.error('Error fetching profile:', error);
-          setUserRole(user.user_metadata?.role || 'student');
-        }
-      }
-    };
-    fetchUserProfile();
-  }, [user, supabase]);
-
-  useEffect(() => {
-    fetchDiscussion();
-  }, [discussionId]);
-
-  const fetchDiscussion = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/discussions/${discussionId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch discussion');
-      }
-      const data = await response.json();
-      setDiscussion(data.discussion);
-      setReplies(data.replies || []);
-    } catch (err: any) {
-      console.error('Error fetching discussion:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -139,44 +76,6 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
 
   const getVoteCount = (votes: { count: number }[]) => {
     return votes?.[0]?.count || 0;
-  };
-
-  const handleVote = async (discussionId: string, voteType: 'up' | 'down') => {
-    try {
-      const response = await fetch('/api/discussions/vote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          discussion_id: discussionId,
-          vote_type: voteType
-        })
-      });
-
-      if (response.ok) {
-        fetchDiscussion(); // Refresh to get updated vote counts
-      }
-    } catch (err) {
-      console.error('Error voting:', err);
-    }
-  };
-
-  const handleReplyVote = async (replyId: string, voteType: 'up' | 'down') => {
-    try {
-      const response = await fetch('/api/discussions/vote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reply_id: replyId,
-          vote_type: voteType
-        })
-      });
-
-      if (response.ok) {
-        fetchDiscussion(); // Refresh to get updated vote counts
-      }
-    } catch (err) {
-      console.error('Error voting:', err);
-    }
   };
 
   const handleEdit = () => {
@@ -302,21 +201,6 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
       alert(`Failed to update discussion: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleDeleteReply = async (replyId: string) => {
-    try {
-      const res = await fetch(`/api/discussions/${discussionId}/replies/${replyId}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchDiscussion();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to delete reply');
-      }
-    } catch (err) {
-      console.error('Error deleting reply:', err);
-      alert('Failed to delete reply');
     }
   };
 

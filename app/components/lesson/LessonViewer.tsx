@@ -1,20 +1,7 @@
 'use client';
 
 import React from 'react';
-import dynamic from 'next/dynamic';
 import TextEditor from '@/app/components/editor/TextEditor';
-import type { CheckpointQuestion } from '@/app/components/media/InteractiveVideoPlayer';
-
-const InteractiveVideoPlayer = dynamic(() => import('@/app/components/media/InteractiveVideoPlayer'), {
-  ssr: false,
-  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
-});
-
-const CodeSandbox = dynamic(() => import('@/app/components/media/CodeSandbox'), {
-  ssr: false,
-  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
-});
-
 import QuizStatusButton from '@/app/components/quiz/QuizStatusButton';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { BookmarkButton, NotesPanel } from '@/app/components/student';
@@ -36,6 +23,8 @@ import WhiteboardBlock from './viewer/blocks/WhiteboardBlock';
 import SlideshowBlock from './viewer/blocks/SlideshowBlock';
 import TextBlock from './viewer/blocks/TextBlock';
 import VideoBlock from './viewer/blocks/VideoBlock';
+import InteractiveVideoBlock from './viewer/blocks/InteractiveVideoBlock';
+import CodeSandboxBlock from './viewer/blocks/CodeSandboxBlock';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
 import { useContentProgress } from './viewer/hooks/useContentProgress';
 import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
@@ -336,132 +325,40 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'interactive_video':
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Interactive</span>
-                    <span className="truncate">{item.title}</span>
-                    {item.data?.checkpoints?.length > 0 && (
-                      <span className="ml-3 px-1.5 py-0.5 bg-white/10 rounded text-[10px] text-slate-400 font-normal">
-                        {item.data.checkpoints.length} checkpoint{item.data.checkpoints.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <BookmarkButton
-                      type="lesson_content"
-                      id={lessonId}
-                      size="sm"
-                      className="text-white/50 hover:text-white/80"
-                      metadata={{ content_type: 'interactive_video', content_title: item.title, content_index: index }}
-                    />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-              {item.data?.fileId || item.data?.url || item.data?.videoUrl ? (
-                <>
-                  <InteractiveVideoPlayer
-                    src={item.data?.url || item.data?.videoUrl || `/api/files/${item.data?.fileId}`}
-                    title={item.data?.title || item.title || 'Interactive Video'}
-                    checkpoints={(item.data?.checkpoints || []).map((cp: any) => ({
-                      id: cp.id || cp.timestamp?.toString(),
-                      timestamp: Number(cp.timestamp || 0),
-                      questionText: cp.questionText || cp.question_text || '',
-                      questionType: cp.questionType || cp.question_type || 'multiple_choice',
-                      options: cp.options || [],
-                      correctAnswer: cp.correctAnswer || cp.correct_answer,
-                      feedback: cp.feedback || '',
-                      points: cp.points || 1
-                    }))}
-                    showProgress={true}
-                  />
-                  {/* Video Description/Notes for Students */}
-                  {item.data?.description && (
-                    <div className="mt-4 pl-4 border-l-2 border-slate-200">
-                      <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Notes</h4>
-                      <div
-                        className="prose prose-sm max-w-none text-slate-600 prose-headings:text-slate-800 prose-headings:font-medium"
-                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.data.description) }}
-                      />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="p-12 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">
-                  <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-lg font-medium">Interactive video not configured yet</p>
-                  <p className="text-sm">Upload a video and add checkpoints to see it here</p>
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
+          <InteractiveVideoBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            url={item.data?.url}
+            videoUrl={item.data?.videoUrl}
+            fileId={item.data?.fileId}
+            videoTitle={item.data?.title}
+            checkpoints={item.data?.checkpoints}
+            description={item.data?.description}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
 
       case 'code_sandbox':
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Code</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <BookmarkButton
-                      type="lesson_content"
-                      id={lessonId}
-                      size="sm"
-                      className="text-white/50 hover:text-white/80"
-                      metadata={{ content_type: 'code_sandbox', content_title: item.title, content_index: index }}
-                    />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-0">
-                <CodeSandbox
-                  title={item.data?.title || item.title || 'Code Sandbox'}
-                  language={item.data?.language || 'javascript'}
-                  initialCode={item.data?.code || item.data?.initialCode}
-                  template={item.data?.template}
-                  instructions={item.data?.instructions}
-                  readOnly={item.data?.readOnly || false}
-                />
-              </div>
-            </div>
-          </div>
+          <CodeSandboxBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            sandboxTitle={item.data?.title}
+            language={item.data?.language}
+            initialCode={item.data?.code || item.data?.initialCode}
+            template={item.data?.template}
+            instructions={item.data?.instructions}
+            readOnly={item.data?.readOnly}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
 
       case 'whiteboard':

@@ -4,23 +4,14 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Button from '@/app/components/ui/Button';
 import { useSupabase } from '@/lib/supabase-provider';
-import TextEditor from '@/app/components/editor/TextEditor';
 import { Icon } from '@iconify/react';
 import DiscussionGrader from './DiscussionGrader';
 import { sanitizeHtml } from '@/lib/sanitize';
 import ReplyForm from './ReplyForm';
 import ReplyItem from './ReplyItem';
-import InlineRubricBuilder, { type RubricCriterion } from './InlineRubricBuilder';
+import DiscussionEditForm from './DiscussionEditForm';
 import { useDiscussionData } from './hooks/useDiscussionData';
 import { useUserRole } from './hooks/useUserRole';
-
-interface RubricTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  rubric: RubricCriterion[];
-  is_system: boolean;
-}
 
 interface DiscussionDetailProps {
   courseId: string;
@@ -44,23 +35,7 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [showGrader, setShowGrader] = useState(false);
-
-  // Edit mode grading fields
-  const [editIsGraded, setEditIsGraded] = useState(false);
-  const [editPoints, setEditPoints] = useState<number>(100);
-  const [editDueDate, setEditDueDate] = useState('');
-  const [editGradingCriteria, setEditGradingCriteria] = useState('');
-  const [editMinReplies, setEditMinReplies] = useState<number>(2);
-  const [editMinWords, setEditMinWords] = useState<number>(100);
-  const [editRubric, setEditRubric] = useState<RubricCriterion[]>([]);
-  const [showRubricBuilder, setShowRubricBuilder] = useState(false);
-  const [rubricTemplates, setRubricTemplates] = useState<RubricTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const [generatingAIRubric, setGeneratingAIRubric] = useState(false);
   const [showGradingInfo, setShowGradingInfo] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -76,146 +51,6 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
 
   const getVoteCount = (votes: { count: number }[]) => {
     return votes?.[0]?.count || 0;
-  };
-
-  const handleEdit = () => {
-    if (discussion) {
-      setEditTitle(discussion.title);
-      setEditContent(discussion.content);
-      // Initialize grading fields
-      setEditIsGraded(discussion.is_graded || false);
-      setEditPoints(discussion.points || 100);
-      setEditDueDate(discussion.due_date ? discussion.due_date.split('T')[0] : '');
-      setEditGradingCriteria(discussion.grading_criteria || '');
-      setEditMinReplies(discussion.min_replies || 2);
-      setEditMinWords(discussion.min_words || 100);
-      setEditRubric(discussion.rubric || []);
-      setShowRubricBuilder(false);
-      setIsEditing(true);
-      // Fetch rubric templates if instructor
-      if (isInstructor && rubricTemplates.length === 0) {
-        fetchRubricTemplates();
-      }
-    }
-  };
-
-  const fetchRubricTemplates = async () => {
-    setLoadingTemplates(true);
-    try {
-      const response = await fetch('/api/discussions/rubric-templates', {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRubricTemplates(data.templates || []);
-      }
-    } catch (err) {
-      console.error('Error fetching rubric templates:', err);
-    } finally {
-      setLoadingTemplates(false);
-    }
-  };
-
-  const applyTemplate = (template: RubricTemplate) => {
-    setEditRubric(template.rubric);
-    setShowRubricBuilder(true);
-  };
-
-  const generateAIRubric = async () => {
-    setGeneratingAIRubric(true);
-    try {
-      const response = await fetch('/api/ai/rubric-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          source: 'discussion',
-          discussionId: discussionId,
-          criteriaCount: 4,
-          rubricType: 'discussion',
-          maxPoints: editPoints || 100
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.rubric && data.rubric.length > 0) {
-          setEditRubric(data.rubric);
-          setShowRubricBuilder(true);
-        }
-      }
-    } catch (err) {
-      console.error('Error generating AI rubric:', err);
-    } finally {
-      setGeneratingAIRubric(false);
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editTitle.trim() || !editContent.trim()) {
-      alert('Title and content are required');
-      return;
-    }
-
-    if (editIsGraded && (!editPoints || editPoints <= 0)) {
-      alert('Points must be a positive number for graded discussions');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const payload: any = {
-        title: editTitle.trim(),
-        content: editContent.trim()
-      };
-
-      // Include grading fields if instructor
-      if (isInstructor) {
-        payload.is_graded = editIsGraded;
-        if (editIsGraded) {
-          payload.points = editPoints;
-          payload.due_date = editDueDate || null;
-          payload.grading_criteria = editGradingCriteria;
-          payload.min_replies = editMinReplies;
-          payload.min_words = editMinWords;
-          payload.rubric = editRubric.length > 0 ? editRubric : null;
-        }
-      }
-
-      const response = await fetch(`/api/discussions/${discussionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        setIsEditing(false);
-        fetchDiscussion();
-        alert('Discussion updated successfully!');
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to update discussion: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      console.error('Error updating discussion:', err);
-      alert(`Failed to update discussion: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditTitle('');
-    setEditContent('');
-    setEditIsGraded(false);
-    setEditPoints(100);
-    setEditDueDate('');
-    setEditGradingCriteria('');
-    setEditMinReplies(2);
-    setEditMinWords(100);
-    setEditRubric([]);
-    setShowRubricBuilder(false);
   };
 
   if (loading) {
@@ -438,7 +273,7 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
                 {user && (user.id === discussion.author.id || isInstructor) && !isEditing && (
                   <>
                     <button
-                      onClick={handleEdit}
+                      onClick={() => setIsEditing(true)}
                       className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -485,242 +320,17 @@ export default function DiscussionDetail({ courseId, discussionId }: DiscussionD
       </div>
 
       {/* Edit Form */}
-      {isEditing && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Discussion</h3>
-          <form onSubmit={(e) => { e.preventDefault(); handleSaveEdit(); }} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Title
-              </label>
-              <input
-                type="text"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-oecs-lime-green focus:ring-1 focus:ring-oecs-lime-green"
-                placeholder="Discussion title"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Content
-              </label>
-              <TextEditor
-                value={editContent}
-                onChange={setEditContent}
-              />
-            </div>
-
-            {/* Grading Settings - Only for instructors */}
-            {isInstructor && (
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <input
-                    type="checkbox"
-                    id="editIsGraded"
-                    checked={editIsGraded}
-                    onChange={(e) => setEditIsGraded(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="editIsGraded" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <Icon icon="material-symbols:grade" className="w-5 h-5 text-amber-600" />
-                    Graded Discussion
-                  </label>
-                </div>
-
-                {editIsGraded && (
-                  <div className="bg-amber-50 rounded-lg border border-amber-200 p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Total Points
-                        </label>
-                        <input
-                          type="number"
-                          value={editPoints}
-                          onChange={(e) => setEditPoints(parseInt(e.target.value) || 0)}
-                          min={1}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Due Date
-                        </label>
-                        <input
-                          type="date"
-                          value={editDueDate}
-                          onChange={(e) => setEditDueDate(e.target.value)}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Minimum Replies Required
-                        </label>
-                        <input
-                          type="number"
-                          value={editMinReplies}
-                          onChange={(e) => setEditMinReplies(parseInt(e.target.value) || 0)}
-                          min={0}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Minimum Words Per Post
-                        </label>
-                        <input
-                          type="number"
-                          value={editMinWords}
-                          onChange={(e) => setEditMinWords(parseInt(e.target.value) || 0)}
-                          min={0}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Grading Criteria (Text Description)
-                      </label>
-                      <textarea
-                        value={editGradingCriteria}
-                        onChange={(e) => setEditGradingCriteria(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        rows={3}
-                        placeholder="Describe how students will be graded..."
-                      />
-                    </div>
-
-                    {/* Rubric Section */}
-                    <div className="border-t border-amber-300 pt-4 mt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                          <Icon icon="material-symbols:table-chart" className="w-5 h-5 text-green-600" />
-                          Grading Rubric
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => setShowRubricBuilder(!showRubricBuilder)}
-                          className="text-sm text-green-700 hover:text-green-800 font-medium flex items-center gap-1"
-                        >
-                          {showRubricBuilder ? (
-                            <>
-                              <Icon icon="material-symbols:expand-less" className="w-4 h-4" />
-                              Hide Rubric Builder
-                            </>
-                          ) : (
-                            <>
-                              <Icon icon="material-symbols:expand-more" className="w-4 h-4" />
-                              {editRubric.length > 0 ? 'Edit Rubric' : 'Add Rubric'}
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Rubric Templates */}
-                      {!showRubricBuilder && editRubric.length === 0 && (
-                        <div className="mb-4">
-                          <p className="text-sm text-gray-600 mb-3">Start with a template or generate with AI:</p>
-                          {loadingTemplates ? (
-                            <div className="flex items-center gap-2 text-gray-500">
-                              <Icon icon="material-symbols:hourglass-empty" className="w-4 h-4 animate-spin" />
-                              Loading templates...
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {rubricTemplates.map(template => (
-                                <button
-                                  key={template.id}
-                                  type="button"
-                                  onClick={() => applyTemplate(template)}
-                                  className="px-3 py-2 text-sm bg-white border border-green-300 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-2"
-                                >
-                                  {template.is_system && <Icon icon="material-symbols:verified" className="w-4 h-4 text-green-600" />}
-                                  {template.name}
-                                </button>
-                              ))}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditRubric([{
-                                    id: crypto.randomUUID(),
-                                    criteria: 'New Criteria',
-                                    levels: [
-                                      { name: 'Excellent', description: '', points: 25 },
-                                      { name: 'Good', description: '', points: 20 },
-                                      { name: 'Satisfactory', description: '', points: 15 },
-                                      { name: 'Needs Improvement', description: '', points: 10 }
-                                    ]
-                                  }]);
-                                  setShowRubricBuilder(true);
-                                }}
-                                className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                              >
-                                <Icon icon="material-symbols:add" className="w-4 h-4" />
-                                Create Custom
-                              </button>
-                              <button
-                                type="button"
-                                onClick={generateAIRubric}
-                                disabled={generatingAIRubric}
-                                className="px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {generatingAIRubric ? (
-                                  <>
-                                    <Icon icon="material-symbols:hourglass-empty" className="w-4 h-4 animate-spin" />
-                                    Generating...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Icon icon="material-symbols:auto-awesome" className="w-4 h-4" />
-                                    AI Generate
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Inline Rubric Builder */}
-                      {showRubricBuilder && (
-                        <div className="bg-white rounded-lg border border-gray-200 p-4">
-                          <InlineRubricBuilder value={editRubric} onChange={setEditRubric} />
-                        </div>
-                      )}
-
-                      {/* Rubric Summary */}
-                      {editRubric.length > 0 && !showRubricBuilder && (
-                        <div className="bg-white rounded-lg border border-gray-200 p-3">
-                          <div className="text-sm text-gray-600">
-                            <strong>{editRubric.length}</strong> criteria configured
-                            (Total: {editRubric.reduce((sum, c) => sum + Math.max(...c.levels.map(l => l.points)), 0)} max points)
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </Button>
-              <Button type="button" variant="outline" onClick={handleCancelEdit} disabled={isSaving}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </div>
+      {isEditing && discussion && (
+        <DiscussionEditForm
+          discussion={discussion}
+          discussionId={discussionId}
+          isInstructor={isInstructor}
+          onSaved={() => {
+            setIsEditing(false);
+            fetchDiscussion();
+          }}
+          onCancel={() => setIsEditing(false)}
+        />
       )}
 
       {/* Replies Section */}

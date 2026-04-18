@@ -20,14 +20,9 @@ const CodeSandbox = dynamic(() => import('@/app/components/media/CodeSandbox'), 
   loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
 });
 
-const WhiteboardViewer = dynamic(() => import('@/app/components/whiteboard/WhiteboardViewer'), {
-  ssr: false,
-  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
-});
 import AutoResizeTextContent from '@/app/components/AutoResizeTextContent';
 import QuizStatusButton from '@/app/components/quiz/QuizStatusButton';
 import { sanitizeHtml } from '@/lib/sanitize';
-import SlideshowViewer from '@/app/components/media/SlideshowViewer';
 import { BookmarkButton, NotesPanel } from '@/app/components/student';
 import Link from 'next/link';
 import { Bookmark, ChevronDown, ChevronUp, Maximize2 } from 'lucide-react';
@@ -43,6 +38,8 @@ import EmbedBlock from './viewer/blocks/EmbedBlock';
 import AudioBlock from './viewer/blocks/AudioBlock';
 import PdfBlock from './viewer/blocks/PdfBlock';
 import FileBlock from './viewer/blocks/FileBlock';
+import WhiteboardBlock from './viewer/blocks/WhiteboardBlock';
+import SlideshowBlock from './viewer/blocks/SlideshowBlock';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
 import { useContentProgress } from './viewer/hooks/useContentProgress';
 import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
@@ -582,42 +579,16 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'whiteboard':
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Board</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4">
-                <WhiteboardViewer
-                  whiteboardId={item.data?.whiteboard_id}
-                  elements={item.data?.elements}
-                  appState={item.data?.app_state}
-                  title={item.title}
-                  height="450px"
-                />
-              </div>
-            </div>
-          </div>
+          <WhiteboardBlock
+            title={item.title}
+            whiteboardId={item.data?.whiteboard_id}
+            elements={item.data?.elements}
+            appState={item.data?.app_state}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
 
       case 'image':
@@ -689,72 +660,24 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         );
 
       case 'slideshow': {
-        // Extract slideshow URL - handle both string and object formats
-        let slideshowUrl = '';
-        if (typeof item.data === 'string') {
-          slideshowUrl = item.data;
-        } else if (item.data?.url) {
-          slideshowUrl = item.data.url;
-        } else if (item.data) {
-          // Fallback: try to stringify if it's not a string
-          slideshowUrl = String(item.data);
-        }
-
-        const slideshowTitle = item.data?.title || item.title || 'Slideshow';
-        const slideshowEmbedType = item.data?.embedType || 'auto';
-
-        // Only render if we have a valid URL
-        if (!slideshowUrl || slideshowUrl.trim() === '') {
-          return (
-            <div key={index} className="group bg-white rounded-lg overflow-hidden border border-gray-200 shadow-md p-4">
-              <div className="text-sm text-gray-600">
-                <p className="font-medium text-gray-900 mb-2">{slideshowTitle}</p>
-                <p className="text-red-600">No slideshow URL provided. Please edit this lesson to add a slideshow URL.</p>
-              </div>
-            </div>
-          );
-        }
+        // Accept both string data and { url, title, embedType } object data.
+        const slideshowUrl =
+          typeof item.data === 'string'
+            ? item.data
+            : item.data?.url || (item.data ? String(item.data) : '');
 
         return (
-          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            <div
-              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-              onClick={() => toggleCollapse(index)}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Slides</span>
-                  <span className="truncate">{slideshowTitle}</span>
-                </h3>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <ContentProgressCheckbox index={index} item={item} />
-                  <BookmarkButton
-                    type="lesson_content"
-                    id={lessonId}
-                    size="sm"
-                    className="text-white/50 hover:text-white/80"
-                    metadata={{ content_type: 'slideshow', content_title: slideshowTitle, content_index: index }}
-                  />
-                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                    {isCollapsed(index) ? (
-                      <ChevronDown className="w-4 h-4 text-white/50" />
-                    ) : (
-                      <ChevronUp className="w-4 h-4 text-white/50" />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-                <SlideshowViewer
-                  url={slideshowUrl.trim()}
-                  title={slideshowTitle}
-                  embedType={slideshowEmbedType}
-                />
-              </div>
-            </div>
-          </div>
+          <SlideshowBlock
+            index={index}
+            lessonId={lessonId}
+            url={slideshowUrl}
+            title={item.data?.title || item.title}
+            embedType={item.data?.embedType}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
       }
 

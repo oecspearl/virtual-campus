@@ -29,15 +29,18 @@ import AutoResizeTextContent from '@/app/components/AutoResizeTextContent';
 import QuizStatusButton from '@/app/components/quiz/QuizStatusButton';
 import { sanitizeHtml } from '@/lib/sanitize';
 import SlideshowViewer from '@/app/components/media/SlideshowViewer';
-import GoogleFileEmbed, { isGoogleWorkspaceUrl } from '@/app/components/media/GoogleFileEmbed';
 import { BookmarkButton, NotesPanel } from '@/app/components/student';
 import Link from 'next/link';
-import { Bookmark, ChevronDown, ChevronUp, Check, Square, Maximize2 } from 'lucide-react';
+import { Bookmark, ChevronDown, ChevronUp, Maximize2 } from 'lucide-react';
 import { useActivityLogger, ACTIVITY_TYPES, ITEM_TYPES, ACTIONS } from '@/lib/hooks/useActivityLogger';
 import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 import StudyToolbar from './viewer/StudyToolbar';
 import FullscreenContentOverlay from './viewer/FullscreenContentOverlay';
 import OrphanContentCard from './viewer/OrphanContentCard';
+import ContentProgressCheckboxExtracted from './viewer/ContentProgressCheckbox';
+import LabelBlock from './viewer/blocks/LabelBlock';
+import ImageBlock from './viewer/blocks/ImageBlock';
+import EmbedBlock from './viewer/blocks/EmbedBlock';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
 import { useContentProgress } from './viewer/hooks/useContentProgress';
 import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
@@ -145,31 +148,16 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
     });
   };
 
-  // Progress checkbox component
+  // Thin wrapper around the extracted ContentProgressCheckbox that binds
+  // the block index + item to the hook's toggle function and hides the
+  // checkbox entirely for label blocks.
   const ContentProgressCheckbox = ({ index, item }: { index: number; item: ContentItem }) => {
     if (item.type === 'label') return null;
-
-    const isComplete = contentProgress[index] || false;
-
     return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleContentComplete(index, item);
-        }}
-        className={`p-1 rounded transition-colors ${
-          isComplete
-            ? 'text-teal-400 hover:text-teal-300'
-            : 'text-white/30 hover:text-white/60'
-        }`}
-        title={isComplete ? 'Mark as incomplete' : 'Mark as complete'}
-      >
-        {isComplete ? (
-          <Check className="w-4 h-4" />
-        ) : (
-          <Square className="w-4 h-4" />
-        )}
-      </button>
+      <ContentProgressCheckboxExtracted
+        isComplete={contentProgress[index] || false}
+        onToggle={() => toggleContentComplete(index, item)}
+      />
     );
   };
 
@@ -670,60 +658,18 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'image':
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Image</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <BookmarkButton
-                      type="lesson_content"
-                      id={lessonId}
-                      size="sm"
-                      className="text-white/50 hover:text-white/80"
-                      metadata={{ content_type: 'image', content_title: item.title, content_index: index }}
-                    />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-                {item.data?.fileId ? (
-                  <div className="text-center">
-                    <img
-                      src={item.data?.url || `/api/files/${item.data.fileId}`}
-                      alt={item.data?.title || 'Image'}
-                      className="max-w-full h-auto rounded-lg mx-auto"
-                      loading="lazy"
-                    />
-                  </div>
-                ) : (
-                  <div className="p-12 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-lg font-medium">Image not uploaded yet</p>
-                    <p className="text-sm">Upload an image to see it here</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <ImageBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            fileId={item.data?.fileId}
+            url={item.data?.url}
+            alt={item.data?.title}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
 
       case 'pdf':
@@ -854,58 +800,16 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'embed':
         return (
-          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            <div
-              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-              onClick={() => toggleCollapse(index)}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Embed</span>
-                  <span className="truncate">{item.data?.title || 'Embedded Content'}</span>
-                </h3>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <ContentProgressCheckbox index={index} item={item} />
-                  <BookmarkButton
-                    type="lesson_content"
-                    id={lessonId}
-                    size="sm"
-                    className="text-white/50 hover:text-white/80"
-                    metadata={{ content_type: 'embed', content_title: item.data?.title || 'Embedded Content', content_index: index }}
-                  />
-                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                    {isCollapsed(index) ? (
-                      <ChevronDown className="w-4 h-4 text-white/50" />
-                    ) : (
-                      <ChevronUp className="w-4 h-4 text-white/50" />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-                {isGoogleWorkspaceUrl(item.data?.url || item.data) ? (
-                  <GoogleFileEmbed
-                    url={item.data?.url || item.data}
-                    title={item.data?.title || 'Google Document'}
-                    height="700px"
-                  />
-                ) : (
-                  <div className="border border-gray-100 rounded-md overflow-hidden">
-                    <iframe
-                      src={item.data?.url || item.data}
-                      className="w-full h-[600px] sm:h-[800px] rounded"
-                      title={item.data?.title || 'Embedded Content'}
-                      loading="lazy"
-                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <EmbedBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.data?.title}
+            url={item.data?.url || item.data}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
 
       case 'slideshow': {
@@ -1223,83 +1127,14 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
           </div>
         );
 
-      case 'label': {
-        const text = item.data?.text || item.title || "";
-        const style = item.data?.style || "heading";
-        const size = item.data?.size || "medium";
-
-        // Size classes for padding
-        const paddingClasses: Record<string, string> = {
-          small: "py-2 px-4",
-          medium: "py-3 px-5",
-          large: "py-4 px-6"
-        };
-
-        // Style-specific rendering
-        if (style === "divider") {
-          const dividerTextSizes: Record<string, string> = {
-            small: "text-xs",
-            medium: "text-sm",
-            large: "text-base"
-          };
-          return (
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-gray-300" />
-              {text && (
-                <span className={`${dividerTextSizes[size]} font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-white px-3`}>
-                  {text}
-                </span>
-              )}
-              <div className="flex-1 h-px bg-gradient-to-l from-transparent via-gray-300 to-gray-300" />
-            </div>
-          );
-        }
-
-        if (style === "section") {
-          const sectionTextSizes: Record<string, string> = {
-            small: "text-sm",
-            medium: "text-base",
-            large: "text-lg"
-          };
-          return (
-            <div className={`${paddingClasses[size]} my-5 pl-4 border-l-2 border-slate-300`}>
-              <span className={`${sectionTextSizes[size]} font-medium text-slate-700`}>
-                {text}
-              </span>
-            </div>
-          );
-        }
-
-        if (style === "banner") {
-          const bannerTextSizes: Record<string, string> = {
-            small: "text-sm",
-            medium: "text-base",
-            large: "text-lg"
-          };
-          return (
-            <div className={`${paddingClasses[size]} my-5 rounded-md bg-slate-800 text-center`}>
-              <span className={`${bannerTextSizes[size]} font-medium text-white`}>
-                {text}
-              </span>
-            </div>
-          );
-        }
-
-        // Default: heading style
-        const headingSizes: Record<string, string> = {
-          small: "text-base",
-          medium: "text-lg",
-          large: "text-xl"
-        };
-
+      case 'label':
         return (
-          <div className={`${paddingClasses[size]} my-5 pl-4 border-l-2 border-slate-700`}>
-            <h3 className={`${headingSizes[size]} font-medium text-slate-800`}>
-              {text}
-            </h3>
-          </div>
+          <LabelBlock
+            text={item.data?.text || item.title || ''}
+            style={item.data?.style || 'heading'}
+            size={item.data?.size || 'medium'}
+          />
         );
-      }
 
       case 'survey':
         const surveyId = item.data?.surveyId;

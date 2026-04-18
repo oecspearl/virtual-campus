@@ -37,17 +37,17 @@ export const PROSEFORGE_STYLES = `
     display: flex;
     align-items: center;
     height: 36px;
-    background: #2c2c2e;
+    background: #f5f5f7;
     padding: 0 8px;
     gap: 2px;
-    border-bottom: 1px solid #48484a;
+    border-bottom: 1px solid #d2d2d7;
     position: relative;
     z-index: 100;
   }
   .pf-menu-item {
     font-size: 12.5px;
     font-weight: 400;
-    color: #98989d;
+    color: #6e6e73;
     padding: 4px 10px;
     border-radius: 4px;
     cursor: pointer;
@@ -58,20 +58,20 @@ export const PROSEFORGE_STYLES = `
     white-space: nowrap;
     font-family: inherit;
   }
-  .pf-menu-item:hover { color: #e5e5ea; background: #3a3a3c; }
-  .pf-menu-item.pf-active { color: #e5e5ea; background: #3a3a3c; }
+  .pf-menu-item:hover { color: #1d1d1f; background: #e8e8ed; }
+  .pf-menu-item.pf-active { color: #1d1d1f; background: #e8e8ed; }
   .pf-menu-dropdown {
     display: none;
     position: absolute;
     top: 100%;
     left: 0;
     min-width: 200px;
-    background: #333336;
+    background: #ffffff;
     border-radius: 6px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.16);
     padding: 4px;
     z-index: 200;
-    border: 1px solid #48484a;
+    border: 1px solid #d2d2d7;
   }
   .pf-menu-dropdown.pf-show { display: block; }
   .pf-menu-dropdown-item {
@@ -80,7 +80,7 @@ export const PROSEFORGE_STYLES = `
     justify-content: space-between;
     padding: 7px 12px;
     font-size: 12.5px;
-    color: #e5e5ea;
+    color: #1d1d1f;
     border-radius: 4px;
     cursor: pointer;
     border: none;
@@ -89,16 +89,16 @@ export const PROSEFORGE_STYLES = `
     font-family: inherit;
     transition: background 0.12s;
   }
-  .pf-menu-dropdown-item:hover { background: #3a3a3c; }
+  .pf-menu-dropdown-item:hover { background: #e8e8ed; }
   .pf-menu-dropdown-item .pf-shortcut {
-    color: #98989d;
+    color: #6e6e73;
     font-size: 11px;
     margin-left: 24px;
     font-family: 'JetBrains Mono', monospace;
   }
   .pf-menu-divider {
     height: 1px;
-    background: #48484a;
+    background: #d2d2d7;
     margin: 4px 8px;
   }
 
@@ -109,8 +109,8 @@ export const PROSEFORGE_STYLES = `
     flex-wrap: wrap;
     gap: 2px;
     padding: 6px 10px;
-    background: #2c2c2e;
-    border-bottom: 1px solid #48484a;
+    background: #f5f5f7;
+    border-bottom: 1px solid #d2d2d7;
     min-height: 44px;
   }
   .pf-toolbar-group {
@@ -123,7 +123,7 @@ export const PROSEFORGE_STYLES = `
     content: '';
     width: 1px;
     height: 20px;
-    background: #48484a;
+    background: #d2d2d7;
     margin-left: 6px;
     flex-shrink: 0;
   }
@@ -135,14 +135,14 @@ export const PROSEFORGE_STYLES = `
     justify-content: center;
     border: none;
     background: none;
-    color: #e5e5ea;
+    color: #1d1d1f;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s;
     position: relative;
     flex-shrink: 0;
   }
-  .pf-tb-btn:hover { background: #3a3a3c; }
+  .pf-tb-btn:hover { background: #e8e8ed; }
   .pf-tb-btn.pf-active { background: #0a84ff; color: #fff; }
   .pf-tb-btn:disabled { opacity: 0.3; cursor: default; }
   .pf-tb-btn svg { width: 16px; height: 16px; stroke-width: 2; fill: none; stroke: currentColor; }
@@ -151,20 +151,20 @@ export const PROSEFORGE_STYLES = `
     padding: 0 24px 0 8px;
     font-size: 12px;
     font-family: inherit;
-    color: #e5e5ea;
-    background: #3a3a3c;
-    border: 1px solid #48484a;
+    color: #1d1d1f;
+    background: #ffffff;
+    border: 1px solid #d2d2d7;
     border-radius: 4px;
     cursor: pointer;
     outline: none;
     min-width: 110px;
     -webkit-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2398989d' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236e6e73' stroke-width='1.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 8px center;
   }
-  .pf-tb-select option { background: #333336; color: #e5e5ea; }
+  .pf-tb-select option { background: #ffffff; color: #1d1d1f; }
   .pf-tb-color {
     width: 32px;
     height: 30px;
@@ -178,12 +178,12 @@ export const PROSEFORGE_STYLES = `
     position: relative;
     transition: background 0.15s;
   }
-  .pf-tb-color:hover { background: #3a3a3c; }
+  .pf-tb-color:hover { background: #e8e8ed; }
   .pf-color-indicator {
     width: 14px;
     height: 14px;
     border-radius: 3px;
-    border: 2px solid #e5e5ea;
+    border: 2px solid #d2d2d7;
   }
   .pf-tb-color input[type="color"] {
     position: absolute;
@@ -203,13 +203,14 @@ export const PROSEFORGE_STYLES = `
     transform: translateX(-50%);
     padding: 4px 8px;
     font-size: 11px;
-    color: #fff;
-    background: #1c1c1e;
+    color: #1d1d1f;
+    background: #ffffff;
+    border: 1px solid #d2d2d7;
     border-radius: 4px;
     white-space: nowrap;
     z-index: 300;
     pointer-events: none;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
   }
 
   /* Editor content */
@@ -305,12 +306,12 @@ export const PROSEFORGE_STYLES = `
     justify-content: space-between;
     height: 28px;
     padding: 0 14px;
-    background: #1c1c1e;
+    background: #f5f5f7;
     font-size: 11px;
-    color: #98989d;
+    color: #6e6e73;
     font-family: 'JetBrains Mono', monospace;
     letter-spacing: 0.02em;
-    border-top: 1px solid #48484a;
+    border-top: 1px solid #d2d2d7;
   }
   .pf-statusbar-left, .pf-statusbar-right {
     display: flex; align-items: center; gap: 16px;
@@ -326,30 +327,30 @@ export const PROSEFORGE_STYLES = `
     align-items: center;
     gap: 8px;
     padding: 8px 14px;
-    background: #2c2c2e;
-    border-bottom: 1px solid #48484a;
+    background: #f5f5f7;
+    border-bottom: 1px solid #d2d2d7;
     flex-wrap: wrap;
   }
   .pf-find-bar.pf-show { display: flex; }
   .pf-find-bar input {
     height: 28px; padding: 0 10px; font-size: 13px;
-    font-family: inherit; background: #3a3a3c;
-    border: 1px solid #48484a; border-radius: 4px;
-    color: #e5e5ea; outline: none; min-width: 160px;
+    font-family: inherit; background: #ffffff;
+    border: 1px solid #d2d2d7; border-radius: 4px;
+    color: #1d1d1f; outline: none; min-width: 160px;
   }
   .pf-find-bar input:focus { border-color: #0a84ff; }
   .pf-find-count {
-    font-size: 11px; color: #98989d;
+    font-size: 11px; color: #6e6e73;
     font-family: 'JetBrains Mono', monospace; min-width: 50px;
   }
   .pf-find-bar .pf-tb-btn { width: 28px; height: 28px; }
   .pf-find-bar .pf-btn-ghost {
     padding: 4px 10px; font-size: 11px;
-    background: none; color: #98989d;
-    border: 1px solid #48484a; border-radius: 4px;
+    background: none; color: #6e6e73;
+    border: 1px solid #d2d2d7; border-radius: 4px;
     cursor: pointer; font-family: inherit;
   }
-  .pf-find-bar .pf-btn-ghost:hover { background: #3a3a3c; }
+  .pf-find-bar .pf-btn-ghost:hover { background: #e8e8ed; }
 
   /* Dialog overlay */
   .pf-dialog-overlay {
@@ -413,8 +414,8 @@ export const PROSEFORGE_STYLES = `
     font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     line-height: 1.6;
-    color: #e5e5ea;
-    background: #1c1c1e;
+    color: #1d1d1f;
+    background: #ffffff;
     border: none;
     outline: none;
     resize: none;
@@ -597,7 +598,7 @@ export const PROSEFORGE_STYLES = `
     align-items: center;
     justify-content: center;
     min-height: 120px;
-    color: #98989d;
+    color: #6e6e73;
     font-size: 13px;
     gap: 8px;
   }

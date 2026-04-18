@@ -1181,11 +1181,11 @@ export default function ProseForgeEditor({
             {/* Mode selector */}
             <div className="pf-ai-mode-grid">
               {[
-                { key: 'beautify', icon: '✨', label: 'Beautify', desc: 'Styled headings, highlights & callouts' },
+                { key: 'beautify', icon: '✨', label: 'Beautify', desc: 'Styled headings, blockquotes & callouts' },
                 { key: 'lesson_format', icon: '📖', label: 'Lesson Format', desc: 'Rich textbook-style layout' },
                 { key: 'add_visuals', icon: '🎨', label: 'Add Visuals', desc: 'Add boxes, grids & styled lists' },
                 { key: 'expand', icon: '📚', label: 'Expand', desc: 'Add detail, examples & tables' },
-                { key: 'summarize', icon: '📋', label: 'Summarize', desc: 'Key takeaways box & highlights' },
+                { key: 'summarize', icon: '📋', label: 'Summarize', desc: 'Key takeaways box & bullets' },
                 { key: 'simplify', icon: '📝', label: 'Simplify', desc: 'Simpler text, keep styling' },
                 { key: 'fix_grammar', icon: '✓', label: 'Fix Grammar', desc: 'Correct grammar & spelling' },
               ].map(m => (

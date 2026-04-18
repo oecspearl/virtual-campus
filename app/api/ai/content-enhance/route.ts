@@ -34,9 +34,7 @@ Variants — change colors per type:
 - Important/Alert: background:#fef2f2, border:#ef4444, title:#991b1b, text:#7f1d1d, icon: 🔴
 - Note: background:#f5f3ff, border:#8b5cf6, title:#5b21b6, text:#4c1d95, icon: 📝
 
-### Highlighted Key Terms
-<mark style="background:#fef08a; padding:2px 6px; border-radius:3px;">key term</mark>
-or for different colors:
+### Badge Labels (for short category/status tags only — NOT for highlighting running text)
 <span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; font-weight:600; font-size:13px;">Badge Label</span>
 
 ### Styled Definition / Term-Value Lists
@@ -122,32 +120,34 @@ const MODE_PROMPTS: Record<string, string> = {
   beautify: `Clean up and visually enhance the HTML content. You MUST:
 - Add proper heading hierarchy (<h2>, <h3>) with clear section titles
 - Convert run-on text into short, focused paragraphs
-- Use <mark> to highlight key terms on first use
 - Convert any listed items into styled <ul> or <ol> lists
 - Add a styled info callout box for any important concept or definition
+- Use a styled blockquote (from the HTML components) for any quoted material, notable statement, or pull quote
 - Use a styled table if the content has any comparative or structured data
 - Add section dividers between major topics
-- Preserve all original information while making it visually scannable`,
+- Preserve all original information while making it visually scannable
+- Do NOT add <mark> or any highlight styling on text`,
 
   lesson_format: `Transform this into rich, professional educational content. You MUST use:
 - Section headings (<h2>, <h3>) with a section divider between major topics
 - Numbered step cards (with circle number badges) for any sequential process
 - Info/tip callout boxes for key concepts, definitions, and important notes
-- <mark> highlights on critical terms when first introduced
+- Styled blockquotes for any quoted material, key statements, or pull quotes worth emphasizing
 - Styled list groups with checkmark icons for feature lists or requirements
 - A styled comparison table if the content has contrasting ideas
 - A "Key Takeaways" summary box at the end with the main points
 - Short paragraphs (2-3 sentences max) for readability
+- Do NOT add <mark> or any highlight styling on text — use <strong>, headings, and callouts for emphasis
 Make it look like a polished textbook page.`,
 
   simplify: `Simplify the content for easier reading while keeping it visually engaging:
 - Use shorter sentences and simpler vocabulary
 - Break complex ideas into numbered step cards
 - Add info callout boxes to define any remaining technical terms
-- Use <mark> to highlight the most essential terms
 - Remove jargon or replace with plain language
 - Keep all key information but restructure for clarity
-- Preserve any existing visual formatting (tables, lists, callouts)`,
+- Preserve any existing visual formatting (tables, lists, callouts, blockquotes)
+- Do NOT add <mark> or any highlight styling on text`,
 
   expand: `Expand the content with more detail and rich visual formatting:
 - Add illustrative examples in success callout boxes
@@ -155,8 +155,9 @@ Make it look like a polished textbook page.`,
 - Add comparison grids or tables where concepts can be contrasted
 - Include tip callout boxes for practical advice
 - Add numbered step cards for any processes
-- Use <mark> to highlight key terms
+- Use styled blockquotes for any supporting quote, notable source, or memorable statement
 - Add a "Key Takeaways" box at the end
+- Do NOT add <mark> or any highlight styling on text
 Keep the educational tone and make it visually rich.`,
 
   summarize: `Condense the content to its key points with visual hierarchy:
@@ -165,7 +166,7 @@ Keep the educational tone and make it visually rich.`,
 - Use a styled list group with checkmark icons for the most important facts
 - If there was structured data, condense it into a compact styled table
 - Keep only essential information — remove examples and redundancy
-- Use <mark> on the 3-5 most critical terms`,
+- Do NOT add <mark> or any highlight styling on text — use <strong> for the 3-5 most critical terms`,
 
   fix_grammar: `Correct all grammar, spelling, and punctuation errors. Improve sentence flow and clarity. Do NOT change the meaning, overall structure, or visual formatting. Only fix language issues. Preserve all existing HTML tags, inline styles, and structure exactly as they are.`,
 
@@ -175,10 +176,10 @@ Keep the educational tone and make it visually rich.`,
 - Convert plain lists to styled list groups with icons
 - Convert any sequential instructions to numbered step cards
 - Wrap any comparative content in a styled table or comparison grid
-- Add <mark> highlighting to important terms
+- Convert any plain blockquotes to styled blockquotes (using the styled-blockquote HTML component) and preserve every existing <blockquote>
 - Add a "Key Takeaways" summary box at the end
 - Add section dividers between major topics
-- Convert any plain blockquotes to styled blockquotes
+- Do NOT add <mark> or any highlight styling on text
 DO NOT rewrite or change the actual text content — only add visual formatting around it.`,
 };
 
@@ -187,7 +188,8 @@ const SYSTEM_PROMPT = `You are an expert educational content designer for a lear
 CRITICAL RULES:
 1. Return ONLY valid HTML — no markdown, no code fences, no explanations outside HTML
 2. Use inline styles directly on elements (style="...") for all visual formatting
-3. Use these allowed tags: h2, h3, h4, h5, h6, p, br, hr, ul, ol, li, strong, em, b, i, u, s, mark, sub, sup, a, blockquote, pre, code, table, thead, tbody, tr, th, td, div, span, figure, figcaption
+3. Use these allowed tags: h2, h3, h4, h5, h6, p, br, hr, ul, ol, li, strong, em, b, i, u, s, sub, sup, a, blockquote, pre, code, table, thead, tbody, tr, th, td, div, span, figure, figcaption
+3a. Do NOT use <mark> or any highlight styling on running text. Emphasis should come from <strong>, <em>, headings, callout boxes, and styled blockquotes — never a highlight marker.
 4. Do NOT use <h1> (reserved for page titles)
 5. Do NOT add <html>, <head>, <body> tags
 6. Do NOT wrap output in code fences or backticks

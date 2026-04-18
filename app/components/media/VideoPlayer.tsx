@@ -7,7 +7,9 @@ import SpeedMenu, { SPEED_OPTIONS } from '@/app/components/media/video/SpeedMenu
 import CaptionMenu from '@/app/components/media/video/CaptionMenu';
 import VideoSidebar from '@/app/components/media/video/VideoSidebar';
 import PlayOverlay from '@/app/components/media/video/PlayOverlay';
-import { formatTime, getStorageKey, calcPercentWatched, isYouTubeUrl, isVimeoUrl } from '@/lib/video/utils';
+import ProgressBar from '@/app/components/media/video/ProgressBar';
+import { getStorageKey, calcPercentWatched, isYouTubeUrl, isVimeoUrl } from '@/lib/video/utils';
+import { handleVideoKeyDown } from '@/lib/video/keyboard-shortcuts';
 
 export type { VideoChapter };
 
@@ -355,13 +357,10 @@ function SelfHostedPlayer({
     else video.pause();
   };
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleScrub = (fraction: number) => {
     const video = videoRef.current;
     if (!video || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const pct = x / rect.width;
-    const newTime = pct * duration;
+    const newTime = fraction * duration;
     if (preventSkipping && newTime > lastAllowedTimeRef.current + 1) {
       video.currentTime = lastAllowedTimeRef.current;
     } else {
@@ -431,68 +430,26 @@ function SelfHostedPlayer({
     return () => { if (onSeekRef) onSeekRef.current = null; };
   }, [seekTo, onSeekRef]);
 
-  // Keyboard controls
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    switch (e.key) {
-      case ' ':
-      case 'k':
-        e.preventDefault();
-        togglePlay();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        video.currentTime = Math.max(0, video.currentTime - 5);
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        if (preventSkipping && video.currentTime + 5 > lastAllowedTimeRef.current + 1) break;
-        video.currentTime = Math.min(duration, video.currentTime + 5);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        video.volume = Math.min(1, video.volume + 0.1);
-        setVolume(video.volume);
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        video.volume = Math.max(0, video.volume - 0.1);
-        setVolume(video.volume);
-        break;
-      case 'f':
-        e.preventDefault();
-        toggleFullscreen();
-        break;
-      case 'm':
-        e.preventDefault();
-        toggleMute();
-        break;
-      case 'c':
-        e.preventDefault();
-        if (mergedCaptions && mergedCaptions.length > 0) {
-          toggleCaption(activeCaptionIdx === null ? 0 : null);
-        }
-        break;
-      case ',':
-        e.preventDefault();
-        { const idx = SPEED_OPTIONS.indexOf(playbackRate);
-          if (idx > 0) changeSpeed(SPEED_OPTIONS[idx - 1]);
-        }
-        break;
-      case '.':
-        e.preventDefault();
-        { const idx = SPEED_OPTIONS.indexOf(playbackRate);
-          if (idx < SPEED_OPTIONS.length - 1) changeSpeed(SPEED_OPTIONS[idx + 1]);
-        }
-        break;
-      case 'b':
-        e.preventDefault();
-        onTimestampBookmark?.(video.currentTime);
-        break;
-    }
-  };
+  // Keyboard controls — delegated to lib/video/keyboard-shortcuts so the
+  // shortcut map is independently testable.
+  const handleKeyDown = (e: React.KeyboardEvent) =>
+    handleVideoKeyDown(e, {
+      videoRef,
+      duration,
+      preventSkipping,
+      lastAllowedTimeRef,
+      playbackRate,
+      speedOptions: SPEED_OPTIONS,
+      hasCaptions: mergedCaptions.length > 0,
+      activeCaptionIdx,
+      togglePlay,
+      toggleFullscreen,
+      toggleMute,
+      toggleCaption,
+      changeSpeed,
+      setVolume,
+      onTimestampBookmark,
+    });
 
   // Auto-hide controls (don't hide while a menu is open)
   const resetHideTimer = () => {
@@ -579,52 +536,15 @@ function SelfHostedPlayer({
         }`}
       >
         {/* Progress Bar */}
-        <div className="px-3 pt-8">
-          <div
-            className="relative h-1.5 bg-white/20 rounded-full cursor-pointer group/progress hover:h-2.5 transition-all"
-            onClick={handleSeek}
-            role="slider"
-            aria-label="Video progress"
-            aria-valuenow={Math.round(currentTime)}
-            aria-valuemin={0}
-            aria-valuemax={Math.round(duration)}
-            tabIndex={0}
-          >
-            {/* Buffered */}
-            <div className="absolute inset-y-0 left-0 bg-white/30 rounded-full" style={{ width: `${bufferedPct}%` }} />
-            {/* Progress */}
-            <div className="absolute inset-y-0 left-0 bg-blue-500 rounded-full" style={{ width: `${progressPct}%` }} />
-            {/* Thumb */}
-            <div
-              className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-blue-500 rounded-full shadow opacity-0 group-hover/progress:opacity-100 transition-opacity"
-              style={{ left: `${progressPct}%`, transform: `translate(-50%, -50%)` }}
-            />
-            {/* Chapter markers */}
-            {sortedChapters.map((ch, i) => (
-              <div
-                key={i}
-                className="absolute top-1/2 -translate-y-1/2 w-1 h-3 bg-white/60 rounded-full"
-                style={{ left: `${(ch.time / (duration || 1)) * 100}%` }}
-                title={ch.title}
-              />
-            ))}
-          </div>
-
-          {/* Time + current chapter */}
-          <div className="flex items-center justify-between mt-1 px-0.5">
-            <span className="text-[11px] text-white/70 font-mono tabular-nums">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-            {sortedChapters.length > 0 && (
-              <span className="text-[11px] text-white/50 truncate ml-2">
-                {sortedChapters.reduce<string>((acc, ch) => (currentTime >= ch.time ? ch.title : acc), sortedChapters[0]?.title || '')}
-              </span>
-            )}
-            {watchedPct > 0 && watchedPct < 100 && (
-              <span className="text-[11px] text-blue-300/70 ml-2">{watchedPct}% watched</span>
-            )}
-          </div>
-        </div>
+        <ProgressBar
+          currentTime={currentTime}
+          duration={duration}
+          bufferedPct={bufferedPct}
+          progressPct={progressPct}
+          watchedPct={watchedPct}
+          chapters={sortedChapters}
+          onScrub={handleScrub}
+        />
 
         {/* Control Buttons */}
         <div className="flex items-center gap-1 sm:gap-2 px-3 py-2 min-w-0">

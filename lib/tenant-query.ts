@@ -3,6 +3,12 @@ import { createServiceSupabaseClient } from './supabase-server';
 type ServiceClient = ReturnType<typeof createServiceSupabaseClient>;
 
 /**
+ * Shape of the object returned by `createTenantQuery()`.
+ * Use this to type `tq` parameters in service-layer functions.
+ */
+export type TenantQuery = ReturnType<typeof createTenantQuery>;
+
+/**
  * Creates a tenant-scoped query builder that automatically applies
  * tenant_id filtering on all operations. This is the primary mechanism
  * for tenant isolation since most API routes use the service client

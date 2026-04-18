@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import RoleGuard from '@/app/components/RoleGuard';
 import { stripHtml } from '@/lib/utils';
-import { tenantFetch } from '@/lib/hooks/useTenantSwitcher';
 import { DEFAULT_COLOR_THEMES, CUSTOM_THEME_KEY, type ColorTheme as SharedColorTheme } from '@/lib/color-themes';
 import LoadingIndicator, { InlineLoader } from '@/app/components/ui/LoadingIndicator';
 import ToggleSwitch from './_components/ToggleSwitch';
 import ImageUploadSection from './_components/ImageUploadSection';
 import ThemeSelector, { type ColorTheme } from './_components/ThemeSelector';
-import FeaturedCourseSelector, { type FeaturedCourse as Course } from './_components/FeaturedCourseSelector';
+import FeaturedCourseSelector from './_components/FeaturedCourseSelector';
+import { useBrandingSettings, type BrandingSettings } from './_components/useBrandingSettings';
 
 interface Feature {
   icon: string;
@@ -29,251 +29,22 @@ interface Testimonial {
   rating: number;
 }
 
-interface BrandingSettings {
-  site_name?: { value: string };
-  site_short_name?: { value: string };
-  logo_url?: { value: string };
-  logo_header_url?: { value: string };
-  homepage_header_background?: { value: string };
-  homepage_hero_title?: { value: string };
-  homepage_hero_subtitle?: { value: string };
-  homepage_hero_description?: { value: string };
-  homepage_hero_cta_primary_text?: { value: string };
-  homepage_hero_cta_secondary_text?: { value: string };
-  homepage_hero_stat_students?: { value: string };
-  homepage_hero_stat_educators?: { value: string };
-  homepage_hero_stat_countries?: { value: string };
-  homepage_features_badge?: { value: string };
-  homepage_features_title?: { value: string };
-  homepage_features_title_highlight?: { value: string };
-  homepage_features_description?: { value: string };
-  homepage_features?: { value: string };
-  homepage_courses_badge?: { value: string };
-  homepage_courses_title?: { value: string };
-  homepage_courses_title_highlight?: { value: string };
-  homepage_courses_description?: { value: string };
-  homepage_courses_cta_text?: { value: string };
-  homepage_testimonials_badge?: { value: string };
-  homepage_testimonials_title?: { value: string };
-  homepage_testimonials_title_highlight?: { value: string };
-  homepage_testimonials_description?: { value: string };
-  homepage_testimonials?: { value: string };
-  homepage_cta_title?: { value: string };
-  homepage_cta_title_highlight?: { value: string };
-  homepage_cta_description?: { value: string };
-  homepage_cta_primary_text?: { value: string };
-  homepage_cta_secondary_text?: { value: string };
-  homepage_hero_enabled?: { value: string };
-  homepage_features_enabled?: { value: string };
-  homepage_courses_enabled?: { value: string };
-  homepage_testimonials_enabled?: { value: string };
-  homepage_cta_enabled?: { value: string };
-  logo_header_enabled?: { value: string };
-  logo_size?: { value: string };
-  color_theme?: { value: string };
-  color_themes?: { value: string };
-  theme_primary_color?: { value: string };
-  theme_secondary_color?: { value: string };
-  footer_brand_title?: { value: string };
-  footer_brand_subtitle?: { value: string };
-  footer_brand_description?: { value: string };
-  footer_copyright?: { value: string };
-  footer_newsletter_title?: { value: string };
-  footer_newsletter_description?: { value: string };
-  footer_newsletter_button_text?: { value: string };
-  footer_member_states_title?: { value: string };
-  footer_member_states_subtitle?: { value: string };
-  footer_social_links?: { value: string };
-  footer_platforms?: { value: string };
-  footer_resources?: { value: string };
-  footer_bottom_links?: { value: string };
-  footer_member_states?: { value: string };
-  footer_brand_enabled?: { value: string };
-  footer_platforms_enabled?: { value: string };
-  footer_resources_enabled?: { value: string };
-  footer_newsletter_enabled?: { value: string };
-  footer_member_states_enabled?: { value: string };
-  homepage_featured_course_ids?: { value: string };
-}
-
-
 export default function BrandingSettingsPage() {
   const router = useRouter();
-  const [settings, setSettings] = useState<BrandingSettings>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
-  const [loadingCourses, setLoadingCourses] = useState(false);
-
-  useEffect(() => {
-    fetchSettings();
-    fetchAvailableCourses();
-
-    // Re-fetch when tenant context changes (TenantSwitcher)
-    const handleTenantChange = () => {
-      fetchSettings();
-      fetchAvailableCourses();
-    };
-    window.addEventListener('tenant-override-changed', handleTenantChange);
-    return () => window.removeEventListener('tenant-override-changed', handleTenantChange);
-  }, []);
-
-  const fetchAvailableCourses = async () => {
-    try {
-      setLoadingCourses(true);
-      const response = await tenantFetch('/api/courses?limit=100');
-      if (response.ok) {
-        const data = await response.json();
-        // Filter to only published courses
-        const publishedCourses = (data.courses || []).filter((c: Course) => c.published);
-        setAvailableCourses(publishedCourses);
-      }
-    } catch (err) {
-      console.error('Error fetching courses:', err);
-    } finally {
-      setLoadingCourses(false);
-    }
-  };
-
-  const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      const response = await tenantFetch('/api/admin/settings/branding');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch settings');
-      }
-
-      const data = await response.json();
-      setSettings(data.settings || {});
-    } catch (err) {
-      console.error('Error fetching settings:', err);
-      setError('Failed to load settings');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (key: string, value: string) => {
-    // Validate JSON for JSON-type settings
-    if ((key === 'homepage_features' || key === 'homepage_testimonials') && value) {
-      try {
-        JSON.parse(value);
-      } catch (e) {
-        setError(`Invalid JSON in ${key}. Please check your JSON syntax.`);
-        setTimeout(() => setError(null), 5000);
-        return;
-      }
-    }
-    
-    // Validate logo size
-    if (key === 'logo_size' && value) {
-      const size = parseInt(value);
-      if (isNaN(size) || size < 24 || size > 128) {
-        setError('Logo size must be between 24 and 128 pixels');
-        setTimeout(() => setError(null), 5000);
-        return;
-      }
-    }
-    
-    setSettings(prev => ({
-      ...prev,
-      [key]: { ...prev[key as keyof BrandingSettings], value }
-    }));
-    setSuccess(false);
-    setError(null);
-  };
-
-  const handleToggleChange = (key: string, enabled: boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: { ...prev[key as keyof BrandingSettings], value: enabled ? 'true' : 'false' }
-    }));
-    setSuccess(false);
-    setError(null);
-  };
-
-  const handleImageUpload = async (imageType: string, file: File) => {
-    try {
-      setSaving(true);
-      setError(null);
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('imageType', imageType);
-
-      const response = await tenantFetch('/api/admin/upload/branding', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const data = await response.json();
-      
-      // Update the corresponding setting
-      const settingKeyMap: Record<string, string> = {
-        'logo': 'logo_url',
-        'logo_header': 'logo_header_url',
-        'homepage_background': 'homepage_header_background',
-        'favicon': 'favicon_url'
-      };
-
-      const settingKey = settingKeyMap[imageType];
-      if (settingKey) {
-        handleInputChange(settingKey, data.url);
-      }
-
-      return data.url;
-    } catch (err) {
-      console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : 'Upload failed');
-      throw err;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      setError(null);
-      setSuccess(false);
-
-      const response = await tenantFetch('/api/admin/settings/branding', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ settings })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save settings');
-      }
-
-      setSuccess(true);
-      
-      // Invalidate branding cache to force refresh
-      if (typeof window !== 'undefined') {
-        // Trigger a custom event to invalidate cache in all components
-        window.dispatchEvent(new CustomEvent('branding-settings-updated'));
-      }
-      
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      console.error('Save error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save settings');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const {
+    settings,
+    loading,
+    saving,
+    error,
+    success,
+    availableCourses,
+    loadingCourses,
+    updateField: handleInputChange,
+    toggleField: handleToggleChange,
+    clearError,
+    uploadImage: handleImageUpload,
+    save: handleSave,
+  } = useBrandingSettings();
 
   if (loading) {
     return (
@@ -306,7 +77,7 @@ export default function BrandingSettingsPage() {
               <Icon icon="mdi:alert-circle" className="w-5 h-5 text-red-500 mr-2" />
               <span className="text-red-700">{error}</span>
               <button
-                onClick={() => setError(null)}
+                onClick={clearError}
                 className="ml-auto text-red-500 hover:text-red-700"
               >
                 <Icon icon="mdi:close" className="w-5 h-5" />
@@ -969,10 +740,7 @@ export default function BrandingSettingsPage() {
                       description: 'Your custom color theme'
                     };
                   }
-                  setSettings(prev => ({
-                    ...prev,
-                    color_themes: { value: JSON.stringify(mergedThemes) }
-                  }));
+                  handleInputChange('color_themes', JSON.stringify(mergedThemes));
                 }}
               />
             </div>

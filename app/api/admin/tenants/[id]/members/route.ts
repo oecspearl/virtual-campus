@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
-import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse, verifyTenantOwnership } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 
@@ -25,10 +24,16 @@ export async function GET(
       if (!isOwner) return createAuthResponse('Forbidden: Cannot access other tenants', 403);
     }
 
-    const reqTenantId = getTenantIdFromRequest(request);
-    const tq = createTenantQuery(reqTenantId);
+    // Use the service client here — the POST and DELETE handlers already do.
+    // Role checks + verifyTenantOwnership above enforce who can read which
+    // tenant's memberships, so RLS-bypass is safe. The TenantFilteredQuery
+    // would auto-apply .eq('tenant_id', <caller's tenant>), which combined
+    // with the target tenant's id on the URL returns zero rows whenever the
+    // caller (e.g. a super_admin on the main tenant) is viewing a DIFFERENT
+    // tenant's members — that's why the page was stuck on "0 members".
+    const serviceSupabase = createServiceSupabaseClient();
 
-    const { data: members, error } = await tq
+    const { data: members, error } = await serviceSupabase
       .from('tenant_memberships')
       .select(`
         id,

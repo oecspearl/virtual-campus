@@ -4,6 +4,8 @@ import React from 'react';
 import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
 import ChapterSidebar, { type VideoChapter } from '@/app/components/media/video/ChapterSidebar';
 import EmbedPlayer from '@/app/components/media/video/EmbedPlayer';
+import SpeedMenu, { SPEED_OPTIONS } from '@/app/components/media/video/SpeedMenu';
+import CaptionMenu from '@/app/components/media/video/CaptionMenu';
 import { formatTime, getStorageKey, calcPercentWatched, isYouTubeUrl, isVimeoUrl } from '@/lib/video/utils';
 
 export type { VideoChapter };
@@ -38,8 +40,6 @@ interface VideoPlayerProps {
   courseId?: string;
   onSeekRef?: React.MutableRefObject<((time: number) => void) | null>;
 }
-
-const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export default function VideoPlayer({
   src,
@@ -704,89 +704,29 @@ function SelfHostedPlayer({
           )}
 
           {/* Speed */}
-          <div ref={speedMenuRef} className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => { setShowSpeedMenu(!showSpeedMenu); setShowCaptionMenu(false); }}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                playbackRate !== 1 ? 'text-blue-300 bg-white/10' : 'text-white/70 hover:text-white'
-              }`}
-              aria-label={`Playback speed: ${playbackRate}x`}
-            >
-              {playbackRate}x
-            </button>
-            {showSpeedMenu && (
-              <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur rounded-lg shadow-lg py-1 min-w-[80px] z-10">
-                {SPEED_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => changeSpeed(s)}
-                    className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
-                      s === playbackRate ? 'text-blue-300 bg-white/10' : 'text-white/80 hover:bg-white/10'
-                    }`}
-                  >
-                    {s}x
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <SpeedMenu
+            ref={speedMenuRef}
+            playbackRate={playbackRate}
+            onChangeSpeed={changeSpeed}
+            open={showSpeedMenu}
+            onToggle={() => {
+              setShowSpeedMenu(!showSpeedMenu);
+              setShowCaptionMenu(false);
+            }}
+          />
 
           {/* Captions — always visible */}
-          <div ref={captionMenuRef} className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => {
-                if (mergedCaptions && mergedCaptions.length > 0) {
-                  setShowCaptionMenu(!showCaptionMenu);
-                  setShowSpeedMenu(false);
-                } else {
-                  // Toggle between showing "no captions" tooltip or do nothing
-                  setShowCaptionMenu(!showCaptionMenu);
-                  setShowSpeedMenu(false);
-                }
-              }}
-              className={`p-1.5 transition-colors ${
-                activeCaptionIdx !== null
-                  ? 'text-blue-300'
-                  : mergedCaptions && mergedCaptions.length > 0
-                  ? 'text-white/70 hover:text-white'
-                  : 'text-white/30 hover:text-white/50'
-              }`}
-              aria-label="Captions (c)"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 10h2v2H6v-2zm0 4h8v2H6v-2zm10 0h2v2h-2v-2zm-6-4h8v2h-8v-2z" /></svg>
-            </button>
-            {showCaptionMenu && (
-              <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur rounded-lg shadow-lg py-1 min-w-[140px] z-10">
-                {mergedCaptions && mergedCaptions.length > 0 ? (
-                  <>
-                    <button
-                      onClick={() => toggleCaption(null)}
-                      className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
-                        activeCaptionIdx === null ? 'text-blue-300 bg-white/10' : 'text-white/80 hover:bg-white/10'
-                      }`}
-                    >
-                      Off
-                    </button>
-                    {mergedCaptions.map((cap, i) => (
-                      <button
-                        key={i}
-                        onClick={() => toggleCaption(i)}
-                        className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
-                          i === activeCaptionIdx ? 'text-blue-300 bg-white/10' : 'text-white/80 hover:bg-white/10'
-                        }`}
-                      >
-                        {cap.label}
-                      </button>
-                    ))}
-                  </>
-                ) : (
-                  <div className="px-3 py-2 text-xs text-white/50">
-                    No captions available
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <CaptionMenu
+            ref={captionMenuRef}
+            captions={mergedCaptions}
+            activeCaptionIdx={activeCaptionIdx}
+            onToggleCaption={toggleCaption}
+            open={showCaptionMenu}
+            onToggle={() => {
+              setShowCaptionMenu(!showCaptionMenu);
+              setShowSpeedMenu(false);
+            }}
+          />
 
           {/* Audio Description */}
           {audioDescriptionSrc && (

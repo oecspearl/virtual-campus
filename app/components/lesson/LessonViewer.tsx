@@ -5,11 +5,6 @@ import dynamic from 'next/dynamic';
 import TextEditor from '@/app/components/editor/TextEditor';
 import type { CheckpointQuestion } from '@/app/components/media/InteractiveVideoPlayer';
 
-const VideoPlayer = dynamic(() => import('@/app/components/media/VideoPlayer'), {
-  ssr: false,
-  loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
-});
-
 const InteractiveVideoPlayer = dynamic(() => import('@/app/components/media/InteractiveVideoPlayer'), {
   ssr: false,
   loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
@@ -20,12 +15,11 @@ const CodeSandbox = dynamic(() => import('@/app/components/media/CodeSandbox'), 
   loading: () => <div className="w-full aspect-video bg-gray-100 animate-pulse rounded-lg" />,
 });
 
-import AutoResizeTextContent from '@/app/components/AutoResizeTextContent';
 import QuizStatusButton from '@/app/components/quiz/QuizStatusButton';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { BookmarkButton, NotesPanel } from '@/app/components/student';
 import Link from 'next/link';
-import { Bookmark, ChevronDown, ChevronUp, Maximize2 } from 'lucide-react';
+import { Bookmark, ChevronDown, ChevronUp } from 'lucide-react';
 import { useActivityLogger, ACTIVITY_TYPES, ITEM_TYPES, ACTIONS } from '@/lib/hooks/useActivityLogger';
 import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 import StudyToolbar from './viewer/StudyToolbar';
@@ -40,6 +34,8 @@ import PdfBlock from './viewer/blocks/PdfBlock';
 import FileBlock from './viewer/blocks/FileBlock';
 import WhiteboardBlock from './viewer/blocks/WhiteboardBlock';
 import SlideshowBlock from './viewer/blocks/SlideshowBlock';
+import TextBlock from './viewer/blocks/TextBlock';
+import VideoBlock from './viewer/blocks/VideoBlock';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
 import { useContentProgress } from './viewer/hooks/useContentProgress';
 import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
@@ -51,20 +47,6 @@ type ContentItem = {
   data: any;
   id?: string;
 };
-
-// Component to log content view when it becomes visible
-function VideoContentLogger({ isVisible, onView }: { isVisible: boolean; onView: () => void }) {
-  const hasLogged = React.useRef(false);
-
-  React.useEffect(() => {
-    if (isVisible && !hasLogged.current) {
-      hasLogged.current = true;
-      onView();
-    }
-  }, [isVisible, onView]);
-
-  return null;
-}
 
 interface LessonViewerProps {
   content: ContentItem[];
@@ -266,167 +248,72 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
   const renderContentItem = (item: ContentItem, index: number) => {
     switch (item.type) {
-      case 'text':
+      case 'text': {
+        const html = typeof item.data === 'string' ? item.data : (item.data?.html || '');
         return (
-          <div className="bg-white rounded-lg border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Reading</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <BookmarkButton
-                      type="lesson_content"
-                      id={lessonId}
-                      size="sm"
-                      className="text-white/50 hover:text-white/80"
-                      metadata={{ content_type: 'text', content_title: item.title, content_index: index }}
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const html = typeof item.data === 'string' ? item.data : (item.data?.html || '');
-                        setFullscreenContent({ title: item.title, html });
-                      }}
-                      className="p-1 rounded hover:bg-white/10 transition-colors"
-                      title="View fullscreen"
-                    >
-                      <Maximize2 className="w-4 h-4 text-white/50" />
-                    </button>
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="relative p-4 sm:p-6">
-                {!item.title && (
-                  <div className="flex justify-end mb-2">
-                    <button
-                      onClick={() => {
-                        const html = typeof item.data === 'string' ? item.data : (item.data?.html || '');
-                        setFullscreenContent({ title: item.title || 'Content', html });
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-400 hover:text-slate-600 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors text-xs"
-                      title="View fullscreen"
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Fullscreen</span>
-                    </button>
-                  </div>
-                )}
-                <AutoResizeTextContent
-                  content={typeof item.data === 'string' ? item.data : (item.data?.html || '')}
-                  minHeight={150}
-                  maxHeight={1000}
-                  className="text-content prose prose-sm sm:prose-base max-w-none prose-headings:font-medium prose-headings:text-slate-800"
-                />
-              </div>
-            </div>
-          </div>
+          <TextBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            html={html}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+            onRequestFullscreen={(title, html) => setFullscreenContent({ title, html })}
+          />
         );
+      }
 
       case 'video':
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Video</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <BookmarkButton
-                      type="lesson_content"
-                      id={lessonId}
-                      size="sm"
-                      className="text-white/50 hover:text-white/80"
-                      metadata={{ content_type: 'video', content_title: item.title, content_index: index }}
-                    />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-                <VideoContentLogger
-                  isVisible={!isCollapsed(index)}
-                  onView={() => logContentAccess('video', item.title || item.data?.title || 'Video', 'viewed', { videoUrl: item.data?.url })}
-                />
-                <VideoPlayer
-                  src={item.data?.url || item.data}
-                  title={item.data?.title || 'Video Content'}
-                  lessonId={lessonId}
-                  contentIndex={index}
-                  chapters={item.data?.chapters}
-                  captions={item.data?.captions}
-                  audioDescriptionSrc={item.data?.audioDescriptionSrc}
-                  preventSkipping={item.data?.preventSkipping}
-                  courseId={courseId}
-                  onDurationDetected={(dur) => {
-                    // Store duration in item data for analytics
-                    if (item.data && !item.data.duration) {
-                      item.data.duration = dur;
-                    }
-                  }}
-                  onWatchProgress={(data) => {
-                    // Report watch progress to analytics API
-                    if (profileId) {
-                      fetch(`/api/progress/${profileId}/${lessonId}/content`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          content_index: index,
-                          content_type: 'video',
-                          content_title: item.title || item.data?.title,
-                          completed: data.percentWatched >= 90,
-                          metadata: {
-                            percentWatched: data.percentWatched,
-                            totalWatchTime: Math.round(data.totalWatchTime),
-                            videoDuration: Math.round(data.duration),
-                            lastPosition: Math.round(data.currentTime),
-                          }
-                        })
-                      }).catch(() => {});
-                    }
-                  }}
-                />
-                {item.data?.description && (
-                  <div className="mt-4 pl-4 border-l-2 border-slate-200">
-                    <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Notes</h4>
-                    <div
-                      className="prose prose-sm max-w-none text-slate-600 prose-headings:text-slate-800 prose-headings:font-medium"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.data.description) }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <VideoBlock
+            index={index}
+            lessonId={lessonId}
+            courseId={courseId}
+            title={item.title}
+            src={item.data?.url || item.data}
+            videoTitle={item.data?.title}
+            chapters={item.data?.chapters}
+            captions={item.data?.captions}
+            audioDescriptionSrc={item.data?.audioDescriptionSrc}
+            preventSkipping={item.data?.preventSkipping}
+            description={item.data?.description}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+            onFirstVisible={() =>
+              logContentAccess('video', item.title || item.data?.title || 'Video', 'viewed', {
+                videoUrl: item.data?.url,
+              })
+            }
+            onDurationDetected={(dur) => {
+              if (item.data && !item.data.duration) {
+                item.data.duration = dur;
+              }
+            }}
+            onWatchProgress={(data) => {
+              if (profileId) {
+                fetch(`/api/progress/${profileId}/${lessonId}/content`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    content_index: index,
+                    content_type: 'video',
+                    content_title: item.title || item.data?.title,
+                    completed: data.percentWatched >= 90,
+                    metadata: {
+                      percentWatched: data.percentWatched,
+                      totalWatchTime: Math.round(data.totalWatchTime),
+                      videoDuration: Math.round(data.duration),
+                      lastPosition: Math.round(data.currentTime),
+                    },
+                  }),
+                }).catch(() => {});
+              }
+            }}
+          />
         );
 
       case 'audio':

@@ -32,9 +32,12 @@ import SlideshowViewer from '@/app/components/media/SlideshowViewer';
 import GoogleFileEmbed, { isGoogleWorkspaceUrl } from '@/app/components/media/GoogleFileEmbed';
 import { BookmarkButton, NotesPanel } from '@/app/components/student';
 import Link from 'next/link';
-import { StickyNote, Bookmark, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Check, Square, Maximize2, X } from 'lucide-react';
+import { Bookmark, ChevronDown, ChevronUp, Check, Square, Maximize2 } from 'lucide-react';
 import { useActivityLogger, ACTIVITY_TYPES, ITEM_TYPES, ACTIONS } from '@/lib/hooks/useActivityLogger';
 import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
+import StudyToolbar from './viewer/StudyToolbar';
+import FullscreenContentOverlay from './viewer/FullscreenContentOverlay';
+import OrphanContentCard from './viewer/OrphanContentCard';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
@@ -1143,32 +1146,11 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         // Check if this quiz was deleted (not found)
         if (item.data?.quizId && notFoundQuizzes.has(item.data.quizId)) {
           return (
-            <div className="group bg-white rounded-lg overflow-hidden border-2 border-dashed border-gray-300 shadow-sm">
-              <div className="bg-gradient-to-br from-gray-400 to-gray-500 px-4 sm:px-6 py-4 sm:py-5">
-                <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
-                  <span>Quiz Not Found</span>
-                </h3>
-              </div>
-              <div className="p-4 sm:p-6 text-center">
-                <p className="text-gray-600 mb-4">This quiz has been deleted and is no longer available.</p>
-                {isInstructor && (
-                  <button
-                    onClick={() => removeOrphanContent('quiz', item.data.quizId)}
-                    className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all duration-200 text-sm"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Remove from Lesson
-                  </button>
-                )}
-              </div>
-            </div>
+            <OrphanContentCard
+              kind="quiz"
+              canRemove={isInstructor}
+              onRemove={() => removeOrphanContent('quiz', item.data.quizId)}
+            />
           );
         }
 
@@ -1288,32 +1270,11 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
         // Check if this assignment was deleted (not found)
         if (item.data?.assignmentId && notFoundAssignments.has(item.data.assignmentId)) {
           return (
-            <div key={index} className="group bg-white rounded-lg overflow-hidden border-2 border-dashed border-gray-300 shadow-sm">
-              <div className="bg-gradient-to-br from-gray-400 to-gray-500 px-4 sm:px-6 py-4 sm:py-5">
-                <h3 className="text-sm sm:text-base md:text-xl font-bold text-white flex items-center flex-1 min-w-0">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 rounded-lg sm:rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
-                  <span>Assignment Not Found</span>
-                </h3>
-              </div>
-              <div className="p-4 sm:p-6 text-center">
-                <p className="text-gray-600 mb-4">This assignment has been deleted and is no longer available.</p>
-                {isInstructor && (
-                  <button
-                    onClick={() => removeOrphanContent('assignment', item.data.assignmentId)}
-                    className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all duration-200 text-sm"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Remove from Lesson
-                  </button>
-                )}
-              </div>
-            </div>
+            <OrphanContentCard
+              kind="assignment"
+              canRemove={isInstructor}
+              onRemove={() => removeOrphanContent('assignment', item.data.assignmentId)}
+            />
           );
         }
 
@@ -1620,54 +1581,14 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
   return (
     <div className="relative">
       {/* Tools Toolbar */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-100 mb-4 sm:mb-5 -mx-5 sm:-mx-8 px-5 sm:px-8 py-2">
-        <div className="flex items-center justify-between gap-2">
-          {/* Collapse Controls */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={allCollapsed ? expandAll : collapseAll}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-400 hover:text-slate-600 rounded-md transition-colors text-xs"
-              title={allCollapsed ? "Expand all sections" : "Collapse all sections"}
-            >
-              {allCollapsed ? (
-                <>
-                  <ChevronsUpDown className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Expand All</span>
-                </>
-              ) : (
-                <>
-                  <ChevronsDownUp className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Collapse All</span>
-                </>
-              )}
-            </button>
-            {collapsedCount > 0 && (
-              <span className="text-[10px] text-slate-300 hidden sm:inline">
-                {collapsedCount} collapsed
-              </span>
-            )}
-          </div>
-
-          {/* Study tools */}
-          <div className="flex items-center gap-1.5">
-            <BookmarkButton
-              type="lesson"
-              id={lessonId}
-              size="md"
-              showLabel
-              className="hover:bg-gray-50"
-            />
-            <button
-              onClick={() => setIsNotesPanelOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-400 hover:text-slate-600 rounded-md transition-colors text-xs"
-              title="Open notes"
-            >
-              <StickyNote className="w-4 h-4" />
-              <span>Notes</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <StudyToolbar
+        allCollapsed={allCollapsed}
+        collapsedCount={collapsedCount}
+        lessonId={lessonId}
+        onCollapseAll={collapseAll}
+        onExpandAll={expandAll}
+        onOpenNotes={() => setIsNotesPanelOpen(true)}
+      />
 
       {/* Lesson Content */}
       <div className="space-y-4 sm:space-y-5">
@@ -1687,30 +1608,11 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       {/* Fullscreen Text Content Overlay */}
       {fullscreenContent && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          {/* Header */}
-          <div className="sticky top-0 z-10 bg-slate-800 px-4 sm:px-6 py-3 border-b border-slate-700">
-            <div className="max-w-4xl mx-auto flex items-center justify-between">
-              <h2 className="text-base sm:text-lg font-medium text-white truncate mr-4">
-                {fullscreenContent.title}
-              </h2>
-              <button
-                onClick={() => setFullscreenContent(null)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-white/60 hover:text-white/90 rounded-md transition-colors flex-shrink-0 text-sm"
-              >
-                <X className="w-4 h-4" />
-                <span className="hidden sm:inline">Close</span>
-              </button>
-            </div>
-          </div>
-          {/* Content */}
-          <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
-            <div
-              className="prose prose-lg max-w-none rich-text-content prose-headings:font-medium prose-headings:text-slate-800"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(fullscreenContent.html) }}
-            />
-          </div>
-        </div>
+        <FullscreenContentOverlay
+          title={fullscreenContent.title}
+          html={fullscreenContent.html}
+          onClose={() => setFullscreenContent(null)}
+        />
       )}
     </div>
   );

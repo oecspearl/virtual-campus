@@ -4,6 +4,7 @@ import { parseString } from "xml2js";
 import { promisify } from "util";
 import { createHash } from "crypto";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
+import { randomString } from "@/lib/crypto-random";
 import type { MoodleActivity, MoodleFile, MoodleCourse, MoodleSection, AIImportResult } from "./types";
 import { AI_MOODLE_PARSER_PROMPT } from "./types";
 import { decodeHtmlEntities } from "./utils";
@@ -418,9 +419,9 @@ export async function handlePlatformBackupRestore(
         const hash = createHash('sha256').update(fileBuffer).digest('hex');
 
         const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 15);
+        const suffix = randomString(13, 'abcdefghijklmnopqrstuvwxyz0123456789');
         const fileExtension = fileInfo.name.split('.').pop() || 'bin';
-        const fileName = `${timestamp}-${randomString}.${fileExtension}`;
+        const fileName = `${timestamp}-${suffix}.${fileExtension}`;
 
         const { error: uploadError } = await serviceSupabase.storage
           .from('course-materials')

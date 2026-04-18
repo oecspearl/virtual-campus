@@ -1,5 +1,6 @@
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { sendEmail, wrapEmailTemplate } from '@/lib/email-service';
+import { generateSecurePassword } from '@/lib/crypto-random';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -56,26 +57,7 @@ export interface AdmissionApplication {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-const generateTempPassword = (): string => {
-  const length = 12;
-  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const numbers = '0123456789';
-  const special = '!@#$%^&*';
-  const allChars = lowercase + uppercase + numbers + special;
-
-  let password = '';
-  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-  password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-  password += special.charAt(Math.floor(Math.random() * special.length));
-
-  for (let i = password.length; i < length; i++) {
-    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
-  }
-
-  return password.split('').sort(() => Math.random() - 0.5).join('');
-};
+const generateTempPassword = (): string => generateSecurePassword(12);
 
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';

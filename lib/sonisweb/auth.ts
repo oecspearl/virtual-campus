@@ -1,4 +1,5 @@
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
+import { generateSecurePassword } from '@/lib/crypto-random';
 import { createSonisWebClient } from './client';
 import type { SonisWebConnection } from './types';
 
@@ -144,13 +145,9 @@ export async function findOrCreateSSOUser(
   // Create new user (JIT provisioning)
   const name = [studentData.nm_first, studentData.nm_last].filter(Boolean).join(' ') || email.split('@')[0];
 
-  // Generate random password (user authenticates via SonisWeb, not this password)
-  const randomPassword = Array.from(
-    { length: 16 },
-    () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%'[
-      Math.floor(Math.random() * 67)
-    ]
-  ).join('');
+  // Generate random password (user authenticates via SonisWeb, not this password,
+  // but the account still needs a strong password in case SSO is ever bypassed)
+  const randomPassword = generateSecurePassword(16);
 
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email,

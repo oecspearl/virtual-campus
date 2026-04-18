@@ -1,38 +1,27 @@
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
+import { randomString } from '@/lib/crypto-random';
 
 /**
- * Generate a unique verification code for certificates
+ * Generate a unique verification code for certificates.
+ * Uses an uppercase alphabet with ambiguous characters (0/O, 1/I) excluded
+ * so codes remain readable when printed or typed.
  */
 export async function generate_verification_code(): Promise<string> {
   const supabase = createServiceSupabaseClient();
-  
-  let attempts = 0;
-  const maxAttempts = 10;
-  
-  while (attempts < maxAttempts) {
-    // Generate random 8-character alphanumeric code (uppercase)
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude ambiguous chars
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    
-    // Check if code exists
-    const { data, error } = await supabase
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  for (let attempts = 0; attempts < 10; attempts++) {
+    const code = randomString(8, alphabet);
+
+    const { error } = await supabase
       .from('certificates')
       .select('id')
       .eq('verification_code', code)
       .single();
-    
-    if (error && error.code === 'PGRST116') {
-      // Code doesn't exist - good to use
-      return code;
-    }
-    
-    attempts++;
+
+    if (error && error.code === 'PGRST116') return code;
   }
-  
-  // Fallback: use UUID-based code
+
   return `CERT-${Date.now().toString(36).toUpperCase()}`;
 }
 

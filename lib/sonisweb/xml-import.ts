@@ -1,6 +1,7 @@
 import { parseStringPromise } from 'xml2js';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery } from '@/lib/tenant-query';
+import { generateReadableCode } from '@/lib/crypto-random';
 
 // IMS Enterprise XML types
 interface IMSPerson {
@@ -64,12 +65,7 @@ function parseCourseDescription(desc: string): { code: string; section: string; 
 }
 
 function generateTempPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
-  let password = '';
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
+  return generateReadableCode(12, { includeSpecial: true });
 }
 
 export async function importIMSEnterpriseXML(

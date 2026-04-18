@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { buildCspHeader } from "./security/csp";
 
 export function addSecurityHeaders(response: NextResponse): NextResponse {
   // Security headers
@@ -14,24 +15,10 @@ export function addSecurityHeaders(response: NextResponse): NextResponse {
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
 
-  // Content Security Policy
-  // Note: 'unsafe-inline' for styles is required by Tailwind CSS and dynamic style props.
-  // 'unsafe-eval' is required by TinyMCE editor — restrict to its CDN domain.
-  response.headers.set(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdn.tiny.cloud",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' blob: https:",
-      "connect-src 'self' https://*.supabase.co https://api.openai.com wss://*.supabase.co",
-      "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://*.google.com",
-      "worker-src 'self' blob:",
-    ].join('; ')
-  );
-  
+  // Content Security Policy — see lib/security/csp.ts for the composition
+  // and the CSP_EXTRA_* env vars that let deployments add their own origins.
+  response.headers.set('Content-Security-Policy', buildCspHeader());
+
   return response;
 }
 

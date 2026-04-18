@@ -3,7 +3,6 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import TextEditor from '@/app/components/editor/TextEditor';
-import AudioPlayer from '@/app/components/media/AudioPlayer';
 import type { CheckpointQuestion } from '@/app/components/media/InteractiveVideoPlayer';
 
 const VideoPlayer = dynamic(() => import('@/app/components/media/VideoPlayer'), {
@@ -41,6 +40,9 @@ import ContentProgressCheckboxExtracted from './viewer/ContentProgressCheckbox';
 import LabelBlock from './viewer/blocks/LabelBlock';
 import ImageBlock from './viewer/blocks/ImageBlock';
 import EmbedBlock from './viewer/blocks/EmbedBlock';
+import AudioBlock from './viewer/blocks/AudioBlock';
+import PdfBlock from './viewer/blocks/PdfBlock';
+import FileBlock from './viewer/blocks/FileBlock';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
 import { useContentProgress } from './viewer/hooks/useContentProgress';
 import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
@@ -432,58 +434,20 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'audio':
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">Audio</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <BookmarkButton
-                      type="lesson_content"
-                      id={lessonId}
-                      size="sm"
-                      className="text-white/50 hover:text-white/80"
-                      metadata={{ content_type: 'audio', content_title: item.title, content_index: index }}
-                    />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-                {item.data?.fileId || item.data?.url || item.data ? (
-                  <AudioPlayer
-                    src={item.data?.url || `/api/files/${item.data?.fileId}` || item.data}
-                    title={item.data?.title || item.data?.fileName || 'Audio Content'}
-                    transcript={item.data?.transcript}
-                    showTranscript={item.data?.showTranscript}
-                  />
-                ) : (
-                  <div className="p-12 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">
-                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                    </svg>
-                    <p className="text-lg font-medium">Audio not uploaded yet</p>
-                    <p className="text-sm">Upload an audio file to see it here</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <AudioBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            fileId={item.data?.fileId}
+            url={item.data?.url}
+            fileName={item.data?.fileName}
+            transcript={item.data?.transcript}
+            showTranscript={item.data?.showTranscript}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
         );
 
       case 'interactive_video':
@@ -674,128 +638,40 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
 
       case 'pdf':
         return (
-          <div className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            {item.title && (
-              <div
-                className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-                onClick={() => toggleCollapse(index)}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">PDF</span>
-                    <span className="truncate">{item.title}</span>
-                  </h3>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <ContentProgressCheckbox index={index} item={item} />
-                    <BookmarkButton
-                      type="lesson_content"
-                      id={lessonId}
-                      size="sm"
-                      className="text-white/50 hover:text-white/80"
-                      metadata={{ content_type: 'pdf', content_title: item.title, content_index: index }}
-                    />
-                    <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                      {isCollapsed(index) ? (
-                        <ChevronDown className="w-4 h-4 text-white/50" />
-                      ) : (
-                        <ChevronUp className="w-4 h-4 text-white/50" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-              {item.data?.fileId ? (
-                <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 p-4 border border-gray-100 rounded-md bg-gray-50/50">
-                  <div className="flex-1 min-w-0 w-full">
-                    <p className="font-medium text-slate-800 text-sm">{item.data?.fileName || 'PDF Document'}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Click to view or download</p>
-                  </div>
-                  <a
-                    href={item.data?.url || `/api/files/${item.data.fileId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => logContentAccess('pdf', item.data?.fileName || 'PDF Document', 'viewed', { fileName: item.data?.fileName })}
-                    className="border border-slate-300 text-slate-600 hover:text-slate-800 hover:border-slate-400 px-4 py-2 rounded-md text-sm transition-colors flex items-center w-full sm:w-auto justify-center"
-                  >
-                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    View PDF
-                  </a>
-                </div>
-              ) : (
-                <div className="p-12 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">
-                  <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-lg font-medium">PDF not uploaded yet</p>
-                  <p className="text-sm">Upload a PDF to see it here</p>
-                </div>
-              )}
-              </div>
-            </div>
-          </div>
+          <PdfBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            fileId={item.data?.fileId}
+            url={item.data?.url}
+            fileName={item.data?.fileName}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+            onOpen={(fileName) =>
+              logContentAccess('pdf', fileName, 'viewed', { fileName })
+            }
+          />
         );
 
       case 'file':
         return (
-          <div key={index} className="bg-white rounded-lg overflow-hidden border border-gray-200/80 transition-colors">
-            <div
-              className="bg-slate-800 px-4 sm:px-5 py-3 cursor-pointer select-none"
-              onClick={() => toggleCollapse(index)}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-medium text-white flex items-center flex-1 min-w-0">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mr-3 flex-shrink-0">File</span>
-                  <span className="truncate">{item.data?.title || 'File'}</span>
-                </h3>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <ContentProgressCheckbox index={index} item={item} />
-                  <BookmarkButton
-                    type="lesson_content"
-                    id={lessonId}
-                    size="sm"
-                    className="text-white/50 hover:text-white/80"
-                    metadata={{ content_type: 'file', content_title: item.data?.title || 'File', content_index: index }}
-                  />
-                  <div className="p-1 rounded hover:bg-white/10 transition-colors">
-                    {isCollapsed(index) ? (
-                      <ChevronDown className="w-4 h-4 text-white/50" />
-                    ) : (
-                      <ChevronUp className="w-4 h-4 text-white/50" />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed(index) ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-              <div className="p-4 sm:p-6">
-                {item.data?.fileId ? (
-                  <div className="flex flex-col sm:flex-row items-start gap-3 p-4 border border-gray-100 rounded-md bg-gray-50/50">
-                    <div className="flex-1 min-w-0 w-full">
-                      <p className="font-medium text-slate-800 text-sm">{item.data?.fileName || 'File'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Click to download</p>
-                    </div>
-                    <a
-                      href={item.data?.url || `/api/files/${item.data.fileId}`}
-                      download
-                      onClick={() => logContentAccess('file', item.data?.fileName || 'File', 'downloaded', { fileName: item.data?.fileName })}
-                      className="border border-slate-300 text-slate-600 hover:text-slate-800 hover:border-slate-400 px-4 py-2 rounded-md text-sm transition-colors text-center w-full sm:w-auto"
-                    >
-                      Download
-                    </a>
-                  </div>
-                ) : (
-                  <div className="p-8 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500">
-                    File not uploaded yet
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <FileBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.data?.title}
+            fileId={item.data?.fileId}
+            url={item.data?.url}
+            fileName={item.data?.fileName}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+            onDownload={(fileName) =>
+              logContentAccess('file', fileName, 'downloaded', { fileName })
+            }
+          />
         );
 
       case 'embed':

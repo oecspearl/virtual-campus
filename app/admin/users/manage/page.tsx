@@ -33,7 +33,7 @@ interface Enrollment {
 }
 
 export default function UserManagementPage() {
-  const { supabase } = useSupabase();
+  const { supabase, user } = useSupabase();
   const [users, setUsers] = useState<User[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -190,13 +190,18 @@ export default function UserManagementPage() {
       setCourses(coursesData.courses || []);
       setEnrollments(enrollmentsData.enrollments || []);
 
-      try {
-        const tenantsRes = await tenantFetch('/api/admin/tenants', { headers });
-        if (tenantsRes.ok) {
-          const td = await tenantsRes.json();
-          setSchools((td.tenants || []).map((t: any) => ({ id: t.id, name: t.name })));
-        }
-      } catch {}
+      // Only super_admins can list tenants; skip the call entirely for
+      // regular admins/tenant_admins so the browser doesn't log a 403.
+      const role = user?.user_metadata?.role;
+      if (role === 'super_admin') {
+        try {
+          const tenantsRes = await tenantFetch('/api/admin/tenants', { headers });
+          if (tenantsRes.ok) {
+            const td = await tenantsRes.json();
+            setSchools((td.tenants || []).map((t: any) => ({ id: t.id, name: t.name })));
+          }
+        } catch {}
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load data.');
     } finally {

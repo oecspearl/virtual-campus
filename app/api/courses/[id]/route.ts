@@ -15,8 +15,10 @@ import {
 // ─── GET — public (respects optional auth) ─────────────────────────────────
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let courseId: string | undefined;
   try {
     const { id } = await params;
+    courseId = id;
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
@@ -26,7 +28,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (error instanceof CourseNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    console.error('Course GET error:', error);
+    // Pre-existing "Course GET error:" line was opaque — log the course id,
+    // tenant header, and the error's structured fields so intermittent 500s
+    // surface actionable detail in Vercel logs instead of [object Object].
+    const tenantHeader = request.headers.get('x-tenant-id');
+    const tenantOverride = request.headers.get('x-tenant-override');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = error as any;
+    console.error('Course GET error', {
+      courseId,
+      tenantId: tenantHeader,
+      tenantOverride: tenantOverride || null,
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      status: err?.status,
+      stack: err?.stack,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

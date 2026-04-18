@@ -2,12 +2,11 @@
 
 import React from 'react';
 import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
+import ChapterSidebar, { type VideoChapter } from '@/app/components/media/video/ChapterSidebar';
+import EmbedPlayer from '@/app/components/media/video/EmbedPlayer';
+import { formatTime, getStorageKey, calcPercentWatched, isYouTubeUrl, isVimeoUrl } from '@/lib/video/utils';
 
-export interface VideoChapter {
-  time: number;       // seconds
-  title: string;
-  description?: string;
-}
+export type { VideoChapter };
 
 export interface VideoCaption {
   src: string;        // URL to VTT/SRT file
@@ -42,38 +41,6 @@ interface VideoPlayerProps {
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) return '0:00';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function getStorageKey(src: string, lessonId?: string): string {
-  const id = lessonId || src;
-  return `vc-video-resume-${btoa(id).slice(0, 32)}`;
-}
-
-// Calculate percentage of video actually watched using tracked segments
-function calcPercentWatched(segments: [number, number][], duration: number): number {
-  if (duration <= 0 || segments.length === 0) return 0;
-  // Merge overlapping segments
-  const sorted = [...segments].sort((a, b) => a[0] - b[0]);
-  const merged: [number, number][] = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = merged[merged.length - 1];
-    if (sorted[i][0] <= last[1]) {
-      last[1] = Math.max(last[1], sorted[i][1]);
-    } else {
-      merged.push(sorted[i]);
-    }
-  }
-  const watched = merged.reduce((sum, [a, b]) => sum + (b - a), 0);
-  return Math.min(100, Math.round((watched / duration) * 100));
-}
-
 export default function VideoPlayer({
   src,
   title,
@@ -91,33 +58,12 @@ export default function VideoPlayer({
   courseId,
   onSeekRef,
 }: VideoPlayerProps) {
-  const isYouTube = /youtube\.com|youtu\.be/.test(src);
-  const isVimeo = /vimeo\.com/.test(src);
-
-  // Convert YouTube URLs to embed format
-  const getEmbedUrl = (url: string) => {
-    if (isYouTube) {
-      const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-      const match = url.match(youtubeRegex);
-      if (match) return `https://www.youtube.com/embed/${match[1]}`;
-    }
-    if (isVimeo) {
-      const vimeoRegex = /vimeo\.com\/(\d+)/;
-      const match = url.match(vimeoRegex);
-      if (match) return `https://player.vimeo.com/video/${match[1]}`;
-    }
-    return url;
-  };
-
   // YouTube/Vimeo: embed with iframe (seekable via URL update)
-  if (isYouTube || isVimeo) {
+  if (isYouTubeUrl(src) || isVimeoUrl(src)) {
     return (
       <EmbedPlayer
         src={src}
         title={title}
-        isYouTube={isYouTube}
-        isVimeo={isVimeo}
-        getEmbedUrl={getEmbedUrl}
         chapters={chapters || []}
         showNotes={showNotes}
         lessonId={lessonId}
@@ -149,183 +95,6 @@ export default function VideoPlayer({
   );
 }
 
-// ─── Embed Player (YouTube/Vimeo) ────────────────────────────────────────────
-
-function EmbedPlayer({
-  src,
-  title,
-  isYouTube,
-  isVimeo,
-  getEmbedUrl,
-  chapters,
-  showNotes = false,
-  lessonId,
-  courseId,
-  onSeekRef,
-}: {
-  src: string;
-  title?: string;
-  isYouTube: boolean;
-  isVimeo: boolean;
-  getEmbedUrl: (url: string) => string;
-  chapters: VideoChapter[];
-  showNotes?: boolean;
-  lessonId?: string;
-  courseId?: string;
-  onSeekRef?: React.MutableRefObject<((time: number) => void) | null>;
-}) {
-  const [embedUrl, setEmbedUrl] = React.useState(() => getEmbedUrl(src));
-  const [seekTime, setSeekTime] = React.useState(0);
-  const [sidebarTab, setSidebarTab] = React.useState<'chapters' | 'notes'>('chapters');
-
-  const handleSeek = React.useCallback((time: number) => {
-    setSeekTime(time);
-    const base = getEmbedUrl(src);
-    if (isYouTube) {
-      const separator = base.includes('?') ? '&' : '?';
-      setEmbedUrl(`${base}${separator}start=${Math.round(time)}&autoplay=1&enablejsapi=1`);
-    } else if (isVimeo) {
-      setEmbedUrl(`${base}#t=${Math.round(time)}s`);
-    }
-  }, [src, isYouTube, isVimeo, getEmbedUrl]);
-
-  // Expose seek function to parent via ref
-  React.useEffect(() => {
-    if (onSeekRef) onSeekRef.current = handleSeek;
-    return () => { if (onSeekRef) onSeekRef.current = null; };
-  }, [handleSeek, onSeekRef]);
-
-  const videoEl = (
-    <div className="relative w-full">
-      <div className="relative rounded-lg overflow-hidden" style={{ paddingTop: "56.25%" }}>
-        <iframe
-          key={embedUrl}
-          src={embedUrl}
-          title={title || "Video"}
-          className="absolute left-0 top-0 h-full w-full border-0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          loading="lazy"
-          style={{ minHeight: '200px' }}
-        />
-      </div>
-    </div>
-  );
-
-  const hasChapters = chapters.length > 0;
-  const hasSidebar = hasChapters || showNotes;
-
-  if (!hasSidebar) {
-    return <div className="w-full mx-auto max-w-full">{videoEl}</div>;
-  }
-
-  return (
-    <div className="w-full mx-auto max-w-full flex flex-col lg:flex-row gap-0 rounded-lg overflow-hidden border border-gray-200">
-      <div className="lg:w-56 xl:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white max-h-48 lg:max-h-[400px] overflow-hidden flex flex-col">
-        {hasChapters && showNotes ? (
-          <>
-            <div className="flex border-b border-gray-200 flex-shrink-0">
-              <button
-                onClick={() => setSidebarTab('chapters')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  sidebarTab === 'chapters'
-                    ? 'text-blue-700 border-b-2 border-blue-600 bg-blue-50/50'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Chapters
-              </button>
-              <button
-                onClick={() => setSidebarTab('notes')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  sidebarTab === 'notes'
-                    ? 'text-blue-700 border-b-2 border-blue-600 bg-blue-50/50'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Notes
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {sidebarTab === 'chapters' ? (
-                <ChapterSidebar chapters={chapters} onSeek={handleSeek} currentTime={seekTime} />
-              ) : lessonId ? (
-                <VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={seekTime} onSeek={handleSeek} />
-              ) : (
-                <div className="p-3 text-xs text-gray-400 text-center">Notes require a saved lesson</div>
-              )}
-            </div>
-          </>
-        ) : hasChapters ? (
-          <ChapterSidebar chapters={chapters} onSeek={handleSeek} currentTime={seekTime} />
-        ) : showNotes && lessonId ? (
-          <VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={seekTime} onSeek={handleSeek} />
-        ) : null}
-      </div>
-      <div className="flex-1 min-w-0">
-        {videoEl}
-      </div>
-    </div>
-  );
-}
-
-// ─── Chapter List ────────────────────────────────────────────────────────────
-
-function ChapterSidebar({
-  chapters,
-  onSeek,
-  currentTime,
-}: {
-  chapters: VideoChapter[];
-  onSeek: (time: number) => void;
-  currentTime: number;
-}) {
-  if (chapters.length === 0) return null;
-  const activeRef = React.useRef<HTMLButtonElement>(null);
-
-  const currentChapterIdx = chapters.reduce((acc, ch, i) => (currentTime >= ch.time ? i : acc), 0);
-
-  // Auto-scroll active chapter into view
-  React.useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [currentChapterIdx]);
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-        <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-          </svg>
-          Chapters
-          <span className="text-gray-400 font-normal">({chapters.length})</span>
-        </h3>
-      </div>
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
-        {chapters.map((ch, i) => (
-          <button
-            key={i}
-            ref={i === currentChapterIdx ? activeRef : undefined}
-            onClick={() => onSeek(ch.time)}
-            className={`w-full text-left px-2.5 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
-              i === currentChapterIdx
-                ? 'bg-blue-100 text-blue-800 font-medium ring-1 ring-blue-200'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <span className={`text-[11px] font-mono flex-shrink-0 w-10 ${i === currentChapterIdx ? 'text-blue-500' : 'text-gray-400'}`}>
-              {formatTime(ch.time)}
-            </span>
-            <span className="flex-1 leading-snug text-[13px]">{ch.title}</span>
-            {i === currentChapterIdx && (
-              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ─── Self-Hosted Player ──────────────────────────────────────────────────────
 

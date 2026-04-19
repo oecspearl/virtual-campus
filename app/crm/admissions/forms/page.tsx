@@ -331,8 +331,7 @@ export default function FormsListPage() {
   const fieldTypeInfo = (type: string) => FIELD_TYPES.find(t => t.value === type);
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -346,7 +345,7 @@ export default function FormsListPage() {
           </div>
           <button
             onClick={openCreateForm}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-900 transition-all duration-300 shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-sm hover:shadow-md"
           >
             <Icon icon="mdi:plus" className="w-4 h-4" />
             Create New Form
@@ -453,7 +452,6 @@ export default function FormsListPage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* Form Builder Modal */}
       {showFormBuilder && (
@@ -714,7 +712,7 @@ export default function FormsListPage() {
                     <button
                       onClick={() => handleSave(false)}
                       disabled={saving}
-                      className="px-6 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-900 disabled:opacity-50 transition-all duration-300 shadow-sm hover:shadow-md"
+                      className="px-6 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all duration-300 shadow-sm hover:shadow-md"
                     >
                       {saving ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -730,7 +728,7 @@ export default function FormsListPage() {
                       <button
                         onClick={() => handleSave(true)}
                         disabled={saving}
-                        className="px-6 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-900 disabled:opacity-50 transition-all duration-300 shadow-sm hover:shadow-md"
+                        className="px-6 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all duration-300 shadow-sm hover:shadow-md"
                       >
                         {saving ? 'Saving...' : 'Save & Publish'}
                       </button>

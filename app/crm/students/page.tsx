@@ -158,10 +158,9 @@ export default function CRMStudentsPage() {
 
   if (loading && students.length === 0) {
     return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+      <div>
           {/* Skeleton Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="h-8 w-40 bg-gray-200 rounded-lg animate-pulse" />
               <div className="h-6 w-12 bg-gray-100 rounded-full animate-pulse" />
@@ -195,16 +194,14 @@ export default function CRMStudentsPage() {
               </tbody>
             </table>
           </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">All Students</h1>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-600">
@@ -364,7 +361,6 @@ export default function CRMStudentsPage() {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }

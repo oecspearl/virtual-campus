@@ -243,8 +243,7 @@ export default function AdmissionsPage() {
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -253,7 +252,7 @@ export default function AdmissionsPage() {
           </div>
           <Link
             href="/crm/admissions/forms"
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-900 transition-all duration-300 shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-sm hover:shadow-md"
           >
             <Icon icon="mdi:file-document-edit" className="w-4 h-4" />
             Manage Forms
@@ -450,7 +449,6 @@ export default function AdmissionsPage() {
             </div>
           </div>
         )}
-      </div>
 
       {/* Application Detail Modal */}
       {(detailApp || detailLoading) && (

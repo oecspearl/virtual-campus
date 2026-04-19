@@ -124,8 +124,7 @@ export default function Student360Page() {
     return (
       <div>
         {/* Skeleton Header */}
-        <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 px-4 sm:px-6 lg:px-8 py-6">
-          <div className="max-w-7xl mx-auto">
+        <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 rounded-lg shadow-sm p-6 mb-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-5 w-5 rounded bg-white/20 animate-pulse" />
               <div className="h-4 w-28 rounded bg-white/20 animate-pulse" />
@@ -138,18 +137,17 @@ export default function Student360Page() {
                 <div className="h-5 w-24 rounded-full bg-white/10 animate-pulse" />
               </div>
             </div>
-          </div>
         </div>
         {/* Skeleton Tabs */}
-        <div className="bg-white border-b border-gray-100 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto flex gap-6 py-3">
+        <div className="bg-white border-b border-gray-100 rounded-t-lg">
+          <div className="flex gap-6 py-3 px-4">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="h-5 w-24 rounded bg-gray-200 animate-pulse" />
             ))}
           </div>
         </div>
         {/* Skeleton Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="pt-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-lg border border-gray-100 p-6 shadow-sm">
@@ -197,10 +195,10 @@ export default function Student360Page() {
   return (
     <div>
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 text-white px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 text-white rounded-lg shadow-sm p-6 mb-4">
           <div className="flex items-center gap-2 mb-5">
-            <Link href="/crm/students" className="text-blue-200/80 hover:text-white transition-colors text-sm font-medium">
+            <Link href="/crm/students" className="inline-flex items-center gap-1 text-blue-200/80 hover:text-white transition-colors text-sm font-medium">
+              <Icon icon="mdi:arrow-left" className="w-4 h-4" />
               Back to Students
             </Link>
           </div>
@@ -229,12 +227,11 @@ export default function Student360Page() {
               </div>
             </div>
           </div>
-        </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-6 lg:px-8 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex gap-1 overflow-x-auto">
+      <div className="bg-white border border-gray-100 rounded-lg shadow-sm mb-4 overflow-hidden">
+        <div className="flex gap-1 overflow-x-auto px-2">
           {tabs.map(tab => (
             <button
               key={tab.key}
@@ -242,7 +239,7 @@ export default function Student360Page() {
               className={`px-5 py-3.5 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -255,7 +252,7 @@ export default function Student360Page() {
       </div>
 
       {/* Tab Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

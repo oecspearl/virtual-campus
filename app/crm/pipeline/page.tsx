@@ -165,60 +165,59 @@ export default function PipelinePage() {
 
   if (loading) {
     return (
-      <>
-        <div className="bg-white border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-5">
-          <div className="max-w-full mx-auto">
-            <div className="h-7 w-48 bg-gray-200 rounded-lg animate-pulse mb-4" />
-            <div className="h-10 w-80 bg-gray-100 rounded-lg animate-pulse" />
-          </div>
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-48 bg-gray-200 rounded-lg animate-pulse" />
+          <div className="h-6 w-24 bg-gray-100 rounded-lg animate-pulse" />
         </div>
-        <div className="px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {[...Array(7)].map((_, i) => (
-              <div key={i} className="flex-shrink-0 w-64 bg-white rounded-lg border border-gray-100">
-                <div className="h-14 bg-gray-50 animate-pulse" />
-                <div className="p-3 space-y-3">
-                  {[...Array(3)].map((_, j) => (
-                    <div key={j} className="h-20 bg-gray-50 rounded-lg animate-pulse" />
-                  ))}
-                </div>
+        <div className="bg-white rounded-lg border border-gray-100 p-4 mb-6 shadow-sm">
+          <div className="h-10 w-full max-w-md bg-gray-100 rounded-lg animate-pulse" />
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {[...Array(7)].map((_, i) => (
+            <div key={i} className="flex-shrink-0 w-64 bg-white rounded-lg border border-gray-100 shadow-sm">
+              <div className="h-14 bg-gray-50 animate-pulse" />
+              <div className="p-3 space-y-3">
+                {[...Array(3)].map((_, j) => (
+                  <div key={j} className="h-20 bg-gray-50 rounded-lg animate-pulse" />
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div>
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-5 shadow-sm">
-        <div className="max-w-full mx-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Student Pipeline</h1>
-            <div className="text-sm text-gray-500 font-medium bg-gray-100 px-3 py-1.5 rounded-lg">
-              {students.length} students
-            </div>
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Student Pipeline</h1>
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-600">
+            {students.length}
+          </span>
+        </div>
+      </div>
 
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Icon icon="mdi:magnify" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search students..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
-            />
-          </div>
+      {/* Search */}
+      <div className="bg-white rounded-lg border border-gray-100 p-4 mb-6 shadow-sm">
+        <div className="relative max-w-md">
+          <Icon icon="mdi:magnify" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search students..."
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all outline-none"
+          />
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="px-4 sm:px-6 lg:px-8 py-6 overflow-x-auto">
-        <div className="flex gap-4 min-w-max pb-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
+      <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex gap-4 min-w-max pb-4" style={{ minHeight: 'calc(100vh - 300px)' }}>
           {STAGES.map(stage => {
             const stageStudents = getStudentsForStage(stage.key);
             const isDropTarget = dragOverStage === stage.key && draggedStudent?.stage !== stage.key;
@@ -314,6 +313,6 @@ export default function PipelinePage() {
           })}
         </div>
       </div>
-    </>
+    </div>
   );
 }

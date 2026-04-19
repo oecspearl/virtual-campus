@@ -228,8 +228,7 @@ export default function CRMTasksPage() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+      <div>
           {/* Skeleton header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -272,14 +271,12 @@ export default function CRMTasksPage() {
               </div>
             ))}
           </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -287,7 +284,7 @@ export default function CRMTasksPage() {
           </div>
           <button
             onClick={() => { setEditingTask(null); setShowCreateModal(true); }}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-900 text-white rounded-lg transition-all duration-300 text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-300 text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md"
           >
             <Icon icon="mdi:plus" className="w-4 h-4" />
             New Task
@@ -530,7 +527,7 @@ export default function CRMTasksPage() {
                 <button
                   onClick={editingTask ? handleEdit : handleCreate}
                   disabled={creating || !newTitle.trim()}
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-all duration-300 disabled:opacity-50 shadow-sm hover:shadow-md"
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 shadow-sm hover:shadow-md"
                 >
                   {creating
                     ? (editingTask ? 'Saving...' : 'Creating...')
@@ -541,7 +538,6 @@ export default function CRMTasksPage() {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

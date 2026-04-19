@@ -358,8 +358,7 @@ export default function CRMApplicationsPage() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+      <div>
           <div className="flex items-center justify-between mb-6">
             <div className="h-7 w-48 bg-gray-200 rounded-lg animate-pulse" />
           </div>
@@ -388,14 +387,12 @@ export default function CRMApplicationsPage() {
               </tbody>
             </table>
           </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -595,7 +592,6 @@ export default function CRMApplicationsPage() {
             </div>
           </div>
         )}
-      </div>
 
       {/* Application Detail Modal */}
       <AccessibleModal
@@ -735,7 +731,7 @@ export default function CRMApplicationsPage() {
                             <button
                               onClick={handleSubmitReview}
                               disabled={reviewing || !reviewStatus}
-                              className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-all duration-300 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:opacity-50"
+                              className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 text-sm font-semibold flex items-center justify-center gap-2 shadow-sm hover:shadow-md disabled:opacity-50"
                             >
                               {reviewing ? (
                                 <><Icon icon="mdi:loading" className="w-4 h-4 animate-spin" /> Submitting...</>

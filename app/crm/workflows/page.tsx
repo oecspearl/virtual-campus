@@ -204,8 +204,7 @@ export default function CRMWorkflowsPage() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+      <div>
           <div className="flex items-center justify-between mb-6">
             <div className="h-7 w-56 bg-gray-200 rounded-lg animate-pulse" />
             <div className="h-10 w-36 bg-gray-200 rounded-lg animate-pulse" />
@@ -218,19 +217,17 @@ export default function CRMWorkflowsPage() {
               </div>
             ))}
           </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Automation Workflows</h1>
           <button onClick={openCreateModal}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-900 text-white rounded-lg transition-all text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md">
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all text-sm font-medium flex items-center gap-2 shadow-sm hover:shadow-md">
             <Icon icon="mdi:plus" className="w-4 h-4" /> New Workflow
           </button>
         </div>
@@ -243,7 +240,7 @@ export default function CRMWorkflowsPage() {
             <h3 className="text-lg font-bold text-gray-900 mb-2">No Workflows Yet</h3>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">Create automated workflows to respond to student events.</p>
             <button onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-900 text-white rounded-lg text-sm font-medium shadow-sm">
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm">
               <Icon icon="mdi:plus" className="w-4 h-4" /> Create Workflow
             </button>
           </div>
@@ -294,7 +291,6 @@ export default function CRMWorkflowsPage() {
             })}
           </div>
         )}
-      </div>
 
       {/* ===== CREATE WORKFLOW MODAL ===== */}
       {showCreate && (

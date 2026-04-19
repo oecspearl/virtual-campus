@@ -333,8 +333,7 @@ export default function CRMSegmentsPage() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+      <div>
           <div className="flex items-center justify-between mb-6">
             <div className="h-7 w-48 rounded-lg bg-gray-200 animate-pulse" />
             <div className="h-10 w-36 rounded-lg bg-gray-200 animate-pulse" />
@@ -353,14 +352,12 @@ export default function CRMSegmentsPage() {
               </div>
             ))}
           </div>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -369,7 +366,7 @@ export default function CRMSegmentsPage() {
           </div>
           <button
             onClick={openCreateModal}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-900 text-white rounded-lg transition-all duration-300 text-sm font-semibold flex items-center gap-2 shadow-sm hover:shadow-md"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-300 text-sm font-semibold flex items-center gap-2 shadow-sm hover:shadow-md"
           >
             <Icon icon="mdi:plus" className="w-4 h-4" />
             New Segment
@@ -402,7 +399,7 @@ export default function CRMSegmentsPage() {
             </p>
             <button
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-900 text-white rounded-lg transition-all duration-300 text-sm font-semibold shadow-sm hover:shadow-md"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-300 text-sm font-semibold shadow-sm hover:shadow-md"
             >
               <Icon icon="mdi:plus" className="w-4 h-4" />
               Create Your First Segment
@@ -496,7 +493,6 @@ export default function CRMSegmentsPage() {
             ))}
           </div>
         )}
-      </div>
 
       {/* ===== CREATE SEGMENT MODAL ===== */}
       <AccessibleModal
@@ -643,7 +639,7 @@ export default function CRMSegmentsPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-900 text-white rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50 shadow-sm hover:shadow-md"
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50 shadow-sm hover:shadow-md"
                 >
                   {saving ? <Icon icon="mdi:loading" className="w-4 h-4 animate-spin" /> : <Icon icon="mdi:content-save" className="w-4 h-4" />}
                   Create Segment

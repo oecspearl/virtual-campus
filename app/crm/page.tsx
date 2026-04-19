@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Icon } from '@iconify/react';
 import { useToast } from '@/app/components/ui/Toast';
 import Button from '@/app/components/ui/Button';
 
@@ -19,27 +20,27 @@ interface DashboardData {
 }
 
 const PIPELINE_STAGES = [
-  { key: 'prospect', label: 'Prospect', color: 'var(--theme-primary)' },
-  { key: 'onboarding', label: 'Onboarding', color: 'var(--theme-secondary)' },
-  { key: 'active', label: 'Active', color: '#10B981' },
-  { key: 'at_risk', label: 'At Risk', color: '#EF4444' },
-  { key: 're_engagement', label: 'Re-Engage', color: '#F59E0B' },
-  { key: 'completing', label: 'Completing', color: '#10B981' },
-  { key: 'alumni', label: 'Alumni', color: 'var(--theme-primary)' },
+  { key: 'prospect', label: 'Prospect', barClass: 'bg-slate-400' },
+  { key: 'onboarding', label: 'Onboarding', barClass: 'bg-blue-500' },
+  { key: 'active', label: 'Active', barClass: 'bg-emerald-500' },
+  { key: 'at_risk', label: 'At Risk', barClass: 'bg-red-500' },
+  { key: 're_engagement', label: 'Re-Engage', barClass: 'bg-amber-500' },
+  { key: 'completing', label: 'Completing', barClass: 'bg-violet-500' },
+  { key: 'alumni', label: 'Alumni', barClass: 'bg-indigo-500' },
 ];
 
 const ENGAGEMENT_LEVELS = [
-  { key: 'excellent', label: 'Excellent', range: '85–100', color: '#10B981' },
-  { key: 'high', label: 'High', range: '65–84', color: 'var(--theme-secondary)' },
-  { key: 'medium', label: 'Medium', range: '40–64', color: '#F59E0B' },
-  { key: 'low', label: 'Low', range: '0–39', color: '#EF4444' },
+  { key: 'excellent', label: 'Excellent', range: '85–100', barClass: 'bg-emerald-500' },
+  { key: 'high', label: 'High', range: '65–84', barClass: 'bg-blue-500' },
+  { key: 'medium', label: 'Medium', range: '40–64', barClass: 'bg-amber-500' },
+  { key: 'low', label: 'Low', range: '0–39', barClass: 'bg-red-500' },
 ];
 
 const RISK_LEVELS = [
-  { key: 'low', label: 'Low', color: '#10B981' },
-  { key: 'medium', label: 'Medium', color: '#F59E0B' },
-  { key: 'high', label: 'High', color: '#EF4444' },
-  { key: 'critical', label: 'Critical', color: '#991B1B' },
+  { key: 'low', label: 'Low', barClass: 'bg-emerald-500', textClass: 'text-emerald-600' },
+  { key: 'medium', label: 'Medium', barClass: 'bg-amber-500', textClass: 'text-amber-600' },
+  { key: 'high', label: 'High', barClass: 'bg-red-500', textClass: 'text-red-600' },
+  { key: 'critical', label: 'Critical', barClass: 'bg-red-800', textClass: 'text-red-800' },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
@@ -52,12 +53,12 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  note: 'NOTE',
-  email: 'EMAIL',
-  intervention: 'INTV',
-  call: 'CALL',
-  system: 'SYS',
-  meeting: 'MTG',
+  note: 'Note',
+  email: 'Email',
+  intervention: 'Intervention',
+  call: 'Call',
+  system: 'System',
+  meeting: 'Meeting',
 };
 
 function timeAgo(dateStr: string): string {
@@ -107,53 +108,57 @@ export default function CRMDashboardPage() {
     }
   };
 
-  // Loading skeleton
   if (loading) {
     return (
-      <div className="space-y-5">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-7 w-48 bg-gray-200 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+            <div key={i} className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm animate-pulse">
               <div className="h-3 w-16 bg-gray-200 rounded mb-2" />
-              <div className="h-6 w-12 bg-gray-200 rounded mb-1.5" />
+              <div className="h-7 w-12 bg-gray-200 rounded mb-1.5" />
               <div className="h-3 w-20 bg-gray-200 rounded" />
             </div>
           ))}
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4 h-24 animate-pulse" />
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 h-24 animate-pulse mb-6" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 h-64 animate-pulse" />
+            <div key={i} className="bg-white rounded-lg border border-gray-100 shadow-sm h-64 animate-pulse" />
           ))}
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error || !data) {
     return (
-      <div className="text-center py-20">
-        <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-4 text-red-600 text-2xl font-bold">!</div>
-        <h2 className="text-lg font-display text-gray-900 mb-2">Failed to load dashboard</h2>
-        <p className="text-sm text-gray-500 mb-6">Something went wrong while loading the CRM dashboard data.</p>
-        <Button onClick={() => fetchDashboard()} size="sm">Try Again</Button>
+      <div>
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-12 text-center">
+          <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Icon icon="mdi:alert-circle-outline" className="w-7 h-7 text-red-500" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Failed to load dashboard</h2>
+          <p className="text-sm text-gray-500 mb-6">Something went wrong while loading the CRM dashboard data.</p>
+          <Button onClick={() => fetchDashboard()} size="sm">Try Again</Button>
+        </div>
       </div>
     );
   }
 
-  // Compute values
   const engTotal = (data.engagement.distribution.low || 0) + (data.engagement.distribution.medium || 0) + (data.engagement.distribution.high || 0) + (data.engagement.distribution.excellent || 0);
   const totalPipelineStudents = Object.values(data.lifecycle.stage_counts).reduce((s, c) => s + c, 0);
   const riskTotal = Object.values(data.risk.level_counts).reduce((s, c) => s + c, 0);
 
   const kpiCards = [
-    { label: 'Total Students', value: data.total_students.toLocaleString(), sub: 'tracked in CRM' },
-    { label: 'Avg Engagement', value: `${data.engagement.average_score}%`, sub: `${data.engagement.scored_students} scored` },
-    { label: 'At-Risk Students', value: data.risk.at_risk_count.toString(), sub: 'require action' },
-    { label: 'Pending Tasks', value: data.tasks.pending.toString(), sub: data.tasks.overdue > 0 ? `${data.tasks.overdue} overdue` : 'assigned to team' },
-    { label: 'Active Segments', value: data.segments.total.toString(), sub: 'auto-evaluated' },
-    { label: 'Live Workflows', value: data.workflows.active.toString(), sub: `${data.workflows.total_executions} runs` },
+    { label: 'Total Students', value: data.total_students.toLocaleString(), sub: 'tracked in CRM', icon: 'mdi:account-group', iconClass: 'text-blue-500' },
+    { label: 'Avg Engagement', value: `${data.engagement.average_score}%`, sub: `${data.engagement.scored_students} scored`, icon: 'mdi:chart-line', iconClass: 'text-emerald-500' },
+    { label: 'At-Risk Students', value: data.risk.at_risk_count.toString(), sub: 'require action', icon: 'mdi:alert-octagon-outline', iconClass: 'text-red-500' },
+    { label: 'Pending Tasks', value: data.tasks.pending.toString(), sub: data.tasks.overdue > 0 ? `${data.tasks.overdue} overdue` : 'assigned to team', icon: 'mdi:clipboard-check-outline', iconClass: 'text-amber-500' },
+    { label: 'Active Segments', value: data.segments.total.toString(), sub: 'auto-evaluated', icon: 'mdi:chart-pie', iconClass: 'text-violet-500' },
+    { label: 'Live Workflows', value: data.workflows.active.toString(), sub: `${data.workflows.total_executions} runs`, icon: 'mdi:sitemap', iconClass: 'text-indigo-500' },
   ];
 
   const engLevels = ENGAGEMENT_LEVELS.map(e => ({
@@ -169,84 +174,79 @@ export default function CRMDashboardPage() {
   }));
 
   return (
-    <div className="space-y-5">
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">CRM Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">Student engagement overview and activity feed.</p>
+        </div>
+      </div>
+
       {/* KPI CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {kpiCards.map((k) => (
-          <div key={k.label} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow">
-            <div className="text-[10px] font-medium text-gray-400 uppercase tracking-widest mb-1.5">
-              {k.label}
+          <div
+            key={k.label}
+            className="bg-white rounded-lg border border-gray-100 p-4 shadow-sm hover:shadow-md transition-all duration-300"
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <Icon icon={k.icon} className={`w-4 h-4 ${k.iconClass}`} />
+              <span className="text-xs font-medium text-gray-500">{k.label}</span>
             </div>
-            <div className="text-2xl font-bold text-gray-900 font-mono leading-none mb-1">
-              {k.value}
-            </div>
-            <div className="text-[10px] text-gray-400">{k.sub}</div>
+            <div className="text-2xl font-bold text-gray-900 leading-none mb-1">{k.value}</div>
+            <div className="text-xs text-gray-400">{k.sub}</div>
           </div>
         ))}
       </div>
 
-      {/* LIFECYCLE PIPELINE SECTION */}
-      <div className="flex items-center gap-3 mt-1">
-        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest whitespace-nowrap">
-          Lifecycle Pipeline
-        </span>
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest whitespace-nowrap">
-          {totalPipelineStudents.toLocaleString()} total
-        </span>
-      </div>
-
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="flex">
-          {PIPELINE_STAGES.map((stage, i) => {
+      {/* LIFECYCLE PIPELINE */}
+      <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden mb-6">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900">Lifecycle Pipeline</h2>
+          <span className="text-xs text-gray-500">{totalPipelineStudents.toLocaleString()} total</span>
+        </div>
+        <div className="flex flex-wrap lg:flex-nowrap">
+          {PIPELINE_STAGES.map((stage) => {
             const count = data.lifecycle.stage_counts[stage.key] || 0;
             const pct = totalPipelineStudents > 0 ? ((count / totalPipelineStudents) * 100).toFixed(1) : '0.0';
             return (
               <Link
                 key={stage.key}
                 href={`/crm/pipeline?stage=${stage.key}`}
-                className="flex-1 p-3 relative overflow-hidden no-underline hover:bg-gray-50 transition-colors border-r border-gray-100 last:border-r-0"
+                className="flex-1 min-w-[140px] p-4 relative overflow-hidden no-underline hover:bg-gray-50 transition-colors border-r border-gray-100 last:border-r-0 cursor-pointer"
               >
-                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-medium mb-1.5">
-                  {stage.label}
-                </div>
-                <div className="text-xl font-bold text-gray-900 font-mono leading-none mb-1">
-                  {count.toLocaleString()}
-                </div>
-                <div className="text-[10px] text-gray-400 font-mono">{pct}%</div>
-                <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: stage.color }} />
+                <div className="text-xs font-medium text-gray-500 mb-1.5">{stage.label}</div>
+                <div className="text-xl font-bold text-gray-900 leading-none mb-1">{count.toLocaleString()}</div>
+                <div className="text-xs text-gray-400">{pct}%</div>
+                <div className={`absolute bottom-0 left-0 right-0 h-1 ${stage.barClass}`} />
               </Link>
             );
           })}
         </div>
       </div>
 
-      {/* ENGAGEMENT & ACTIVITY SECTION */}
-      <div className="flex items-center gap-3 mt-1">
-        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest whitespace-nowrap">
-          Engagement & Activity
-        </span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-
+      {/* ENGAGEMENT & ACTIVITY */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* ENGAGEMENT DISTRIBUTION */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-baseline justify-between">
-            <h3 className="text-sm font-display text-gray-900">Engagement Distribution</h3>
-            <span className="text-[10px] text-gray-400 font-mono">{engTotal.toLocaleString()} students</span>
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Engagement Distribution</h3>
+            <span className="text-xs text-gray-500">{engTotal.toLocaleString()} students</span>
           </div>
           <div className="p-4 space-y-3">
             {engLevels.map(e => (
               <div key={e.key}>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-xs font-medium text-gray-900 flex-1">{e.label}</span>
-                  <span className="text-[10px] text-gray-400 font-mono">{e.range}</span>
-                  <span className="text-xs font-medium text-gray-900 font-mono min-w-[36px] text-right">{e.count.toLocaleString()}</span>
-                  <span className="text-xs text-gray-400 font-mono min-w-[30px] text-right">{e.pct}%</span>
+                  <span className="text-sm font-medium text-gray-900 flex-1">{e.label}</span>
+                  <span className="text-xs text-gray-400">{e.range}</span>
+                  <span className="text-sm font-semibold text-gray-900 min-w-[36px] text-right">{e.count.toLocaleString()}</span>
+                  <span className="text-xs text-gray-400 min-w-[30px] text-right">{e.pct}%</span>
                 </div>
-                <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${e.pct}%`, background: e.color }} />
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${e.barClass}`}
+                    style={{ width: `${e.pct}%` }}
+                  />
                 </div>
               </div>
             ))}
@@ -254,63 +254,76 @@ export default function CRMDashboardPage() {
         </div>
 
         {/* RISK DISTRIBUTION */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-baseline justify-between">
-            <h3 className="text-sm font-display text-gray-900">Risk Distribution</h3>
-            <span className="text-[10px] text-gray-400 font-mono">current cohort</span>
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Risk Distribution</h3>
+            <span className="text-xs text-gray-500">current cohort</span>
           </div>
           <div className="p-4">
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {riskLevels.map(r => (
                 <div key={r.key} className="flex items-center gap-2.5">
-                  <span className="text-xs font-medium text-gray-900 w-14">{r.label}</span>
-                  <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(r.pct * 1.3, 100)}%`, background: r.color }} />
+                  <span className="text-sm font-medium text-gray-900 w-16">{r.label}</span>
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${r.barClass}`}
+                      style={{ width: `${Math.min(r.pct * 1.3, 100)}%` }}
+                    />
                   </div>
-                  <span className="text-xs font-medium font-mono min-w-[36px] text-right" style={{ color: r.color }}>{r.count.toLocaleString()}</span>
-                  <span className="text-xs text-gray-400 font-mono min-w-[32px] text-right">{r.pct}%</span>
+                  <span className={`text-sm font-semibold min-w-[36px] text-right ${r.textClass}`}>
+                    {r.count.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-gray-400 min-w-[32px] text-right">{r.pct}%</span>
                 </div>
               ))}
             </div>
 
-            {/* Stacked bar */}
-            <div className="mt-4 pt-3 border-t border-gray-100 flex gap-1 rounded-full overflow-hidden">
+            <div className="mt-4 pt-4 border-t border-gray-100 flex gap-1 rounded-full overflow-hidden">
               {riskLevels.map(r => (
-                <div key={r.key} className="h-1.5 rounded-full" style={{ flex: r.pct || 1, background: r.color }} title={`${r.label}: ${r.pct}%`} />
+                <div
+                  key={r.key}
+                  className={`h-2 rounded-full ${r.barClass}`}
+                  style={{ flex: r.pct || 1 }}
+                  title={`${r.label}: ${r.pct}%`}
+                />
               ))}
             </div>
           </div>
         </div>
 
         {/* RECENT ACTIVITY */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-baseline justify-between">
-            <h3 className="text-sm font-display text-gray-900">Recent Activity</h3>
-            <span className="text-[10px] text-gray-400 font-mono">last {Math.min(data.recent_interactions.length, 6)} events</span>
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">Recent Activity</h3>
+            <span className="text-xs text-gray-500">last {Math.min(data.recent_interactions.length, 6)} events</span>
           </div>
           <div className="px-4">
             {data.recent_interactions.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-xs text-gray-400">No recent interactions.</p>
+                <p className="text-sm text-gray-400">No recent interactions.</p>
               </div>
             ) : (
               data.recent_interactions.slice(0, 6).map((interaction, i) => (
                 <div
                   key={interaction.id}
-                  className={`flex items-start gap-3 py-2.5 ${i < Math.min(data.recent_interactions.length, 6) - 1 ? 'border-b border-gray-100' : ''}`}
+                  className={`flex items-start gap-3 py-3 ${
+                    i < Math.min(data.recent_interactions.length, 6) - 1 ? 'border-b border-gray-100' : ''
+                  }`}
                 >
-                  <span className={`text-[9px] font-mono font-medium tracking-wide px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${TYPE_COLORS[interaction.type] || TYPE_COLORS.note}`}>
-                    {TYPE_LABELS[interaction.type] || 'NOTE'}
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5 ${
+                      TYPE_COLORS[interaction.type] || TYPE_COLORS.note
+                    }`}
+                  >
+                    {TYPE_LABELS[interaction.type] || 'Note'}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-gray-900 mb-0.5">
+                    <div className="text-sm font-semibold text-gray-900 mb-0.5 truncate">
                       {interaction.created_by_name || 'System'}
                     </div>
-                    <div className="text-[11px] text-gray-500 truncate">
-                      {interaction.subject}
-                    </div>
+                    <div className="text-xs text-gray-500 truncate">{interaction.subject}</div>
                   </div>
-                  <span className="text-[10px] text-gray-400 font-mono flex-shrink-0 mt-0.5">
+                  <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">
                     {timeAgo(interaction.created_at)}
                   </span>
                 </div>
@@ -318,16 +331,6 @@ export default function CRMDashboardPage() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* FOOTER META */}
-      <div className="flex items-center gap-5 pt-3 border-t border-gray-200 mt-2">
-        <span className="text-[10px] text-gray-400 font-mono tracking-wide">
-          OECS Virtual Campus · Student Engagement CRM · Data current as of today {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })} AST
-        </span>
-        <span className="ml-auto text-[10px] text-gray-400 font-mono">
-          7 member states · AY 2025–26
-        </span>
       </div>
     </div>
   );

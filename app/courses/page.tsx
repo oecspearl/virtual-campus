@@ -183,7 +183,7 @@ export default function CoursesPage() {
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
               <div 
-                className="flex items-center gap-8"
+                className="flex items-center flex-wrap gap-4 sm:gap-8"
                 style={{ color: 'rgba(255, 255, 255, 0.8)' }}
               >
                 <div className="flex items-center gap-3">
@@ -281,7 +281,7 @@ export default function CoursesPage() {
                     {accessType !== 'all' && ` • ${getAccessDescription().toLowerCase()}`}
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center flex-wrap gap-2 sm:gap-4">
                   <span className="inline-flex items-center gap-3 px-4 py-2 bg-green-100 text-green-800 rounded-full font-medium">
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                     Live courses

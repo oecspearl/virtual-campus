@@ -297,7 +297,7 @@ export default function Navbar() {
         {/* Search and User Section */}
         <div className="hidden items-center gap-3 lg:flex">
           {/* Search */}
-          <div className="search-container relative w-64">
+          <div className="search-container relative w-48 xl:w-64">
             <SmartSearch compact />
           </div>
 

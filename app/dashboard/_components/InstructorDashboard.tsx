@@ -129,7 +129,7 @@ export default async function InstructorDashboard({ name }: { name: string }) {
           {/* Quick Actions */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Teaching Tools</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {QUICK_ACTIONS.map(action => (
                 <Link
                   key={action.href}
@@ -153,7 +153,7 @@ export default async function InstructorDashboard({ name }: { name: string }) {
           {/* Lecturer Collaboration */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Collaboration</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {COLLABORATION_LINKS.map(link => (
                 <Link
                   key={link.href}

@@ -112,7 +112,7 @@ export default function AdminToolsView({ groups }: { groups: ToolGroup[] }) {
         groups.map(group => (
           <div key={group.title}>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{group.title}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
               {group.tools.map(tool => (
                 <AdminToolCard
                   key={tool.href}

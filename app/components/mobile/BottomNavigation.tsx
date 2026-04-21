@@ -50,7 +50,7 @@ export default function BottomNavigation() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-      <div className="flex items-center justify-around h-16 px-1 max-w-screen-sm mx-auto overflow-hidden">
+      <div className="flex items-center justify-around h-16 px-1 max-w-screen-sm md:max-w-screen-md mx-auto overflow-hidden">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (

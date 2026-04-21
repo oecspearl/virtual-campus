@@ -28,6 +28,9 @@ interface RegistrarRecord {
   student: { id: string; name: string; email: string } | null;
   equivalent_course: { id: string; title: string } | null;
   reviewer: { id: string; name: string } | null;
+  comment_count: number;
+  last_comment_by_student: boolean;
+  last_comment_at: string | null;
 }
 
 interface Course {
@@ -277,6 +280,26 @@ export default function AdminCreditRecordsPage() {
                       <td className="px-4 py-3">
                         <p className="text-gray-900">{r.course_title}</p>
                         {r.course_code && <p className="text-xs text-gray-500">{r.course_code}</p>}
+                        {r.comment_count > 0 && (
+                          <span
+                            className={`inline-flex items-center gap-1 mt-1 text-xs px-1.5 py-0.5 rounded-full border ${
+                              r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status)
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 font-medium'
+                                : 'bg-gray-50 text-gray-600 border-gray-200'
+                            }`}
+                            title={
+                              r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status)
+                                ? 'Awaiting your response'
+                                : `${r.comment_count} note${r.comment_count === 1 ? '' : 's'}`
+                            }
+                          >
+                            <Icon icon="mdi:forum-outline" className="w-3 h-3" />
+                            {r.comment_count}
+                            {r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status) && (
+                              <span className="ml-0.5">•</span>
+                            )}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         {r.issuing_institution_name}

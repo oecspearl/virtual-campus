@@ -16,6 +16,16 @@ export async function GET(request: NextRequest) {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
+    // Governance: if this tenant has disabled consuming regional shares, return empty
+    const { data: currentTenant } = await tq.raw
+      .from('tenants')
+      .select('regional_catalogue_consume_enabled')
+      .eq('id', tenantId)
+      .single();
+    if (currentTenant && currentTenant.regional_catalogue_consume_enabled === false) {
+      return NextResponse.json({ courses: [], governance_disabled: true });
+    }
+
     // Single query: fetch shares with joined course data
     // !inner on courses filters out shares where the course is unpublished
     const { data: shares, error } = await tq.raw

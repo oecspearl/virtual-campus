@@ -73,7 +73,19 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, slug, custom_domain, status, plan, max_users, settings } = body;
+    const {
+      name,
+      slug,
+      custom_domain,
+      status,
+      plan,
+      max_users,
+      settings,
+      regional_catalogue_publish_enabled,
+      regional_catalogue_consume_enabled,
+      credit_transfer_accept_enabled,
+      credit_transfer_issue_enabled,
+    } = body;
 
     const serviceSupabase = createServiceSupabaseClient();
 
@@ -92,6 +104,14 @@ export async function PUT(
     if (plan !== undefined) updateData.plan = plan;
     if (max_users !== undefined) updateData.max_users = max_users;
     if (settings !== undefined) updateData.settings = settings;
+    if (regional_catalogue_publish_enabled !== undefined)
+      updateData.regional_catalogue_publish_enabled = !!regional_catalogue_publish_enabled;
+    if (regional_catalogue_consume_enabled !== undefined)
+      updateData.regional_catalogue_consume_enabled = !!regional_catalogue_consume_enabled;
+    if (credit_transfer_accept_enabled !== undefined)
+      updateData.credit_transfer_accept_enabled = !!credit_transfer_accept_enabled;
+    if (credit_transfer_issue_enabled !== undefined)
+      updateData.credit_transfer_issue_enabled = !!credit_transfer_issue_enabled;
 
     const { data: tenant, error } = await serviceSupabase
       .from('tenants')

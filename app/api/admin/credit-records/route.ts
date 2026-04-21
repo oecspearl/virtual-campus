@@ -54,6 +54,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch credit records' }, { status: 500 });
     }
 
+    // Comment counts + last-comment metadata per record
+    const recordIds = (data || []).map((r: any) => r.id);
+    const commentsByRecord: Record<
+      string,
+      { count: number; last_by_student: boolean; last_created_at: string | null }
+    > = {};
+    if (recordIds.length > 0) {
+      const { data: comments } = await tq
+        .from('credit_record_comments')
+        .select(`
+          credit_record_id, created_at, author_id,
+          author:users!credit_record_comments_author_id_fkey(id, role)
+        `)
+        .in('credit_record_id', recordIds)
+        .order('created_at', { ascending: true });
+
+      const registrarRoles = new Set(['super_admin', 'tenant_admin', 'admin']);
+      for (const c of (comments || []) as any[]) {
+        const entry = (commentsByRecord[c.credit_record_id] ||= {
+          count: 0,
+          last_by_student: false,
+          last_created_at: null,
+        });
+        entry.count += 1;
+        entry.last_by_student = !registrarRoles.has(c.author?.role || '');
+        entry.last_created_at = c.created_at;
+      }
+    }
+    const enriched = (data || []).map((r: any) => ({
+      ...r,
+      comment_count: commentsByRecord[r.id]?.count || 0,
+      last_comment_by_student: commentsByRecord[r.id]?.last_by_student || false,
+      last_comment_at: commentsByRecord[r.id]?.last_created_at || null,
+    }));
+
     // Summary counts for the queue header
     const countsQuery = await tq
       .from('credit_records')
@@ -70,7 +105,7 @@ export async function GET(request: NextRequest) {
       counts[row.status] = (counts[row.status] || 0) + 1;
     }
 
-    return NextResponse.json({ records: data || [], counts });
+    return NextResponse.json({ records: enriched, counts });
   } catch (error) {
     console.error('Admin credit records GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -134,6 +134,20 @@ export async function POST(request: NextRequest) {
       if (target_tenant_id === tenantId) {
         return NextResponse.json({ error: 'Cannot share a course with your own tenant' }, { status: 400 });
       }
+    } else {
+      // Network-wide share — require the source tenant to have publishing enabled
+      const { data: sourceTenant } = await tq.raw
+        .from('tenants')
+        .select('regional_catalogue_publish_enabled')
+        .eq('id', tenantId)
+        .single();
+
+      if (sourceTenant && sourceTenant.regional_catalogue_publish_enabled === false) {
+        return NextResponse.json(
+          { error: 'Network-wide publishing is disabled for your institution. Enable it in tenant settings or share with a specific institution instead.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Check for existing active share

@@ -95,6 +95,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Enforce governance flags:
+    //   receiving tenant must accept credit submissions
+    //   issuing tenant (if in_network) must allow its courses to be cited
+    const governanceTargets = [tenantId];
+    if (sourceType === 'in_network' && body.issuing_tenant_id) {
+      governanceTargets.push(body.issuing_tenant_id);
+    }
+    const { data: governanceRows } = await tq.raw
+      .from('tenants')
+      .select('id, credit_transfer_accept_enabled, credit_transfer_issue_enabled')
+      .in('id', governanceTargets);
+
+    const byId = new Map((governanceRows || []).map((r: any) => [r.id, r]));
+    const receiver = byId.get(tenantId);
+    if (receiver && receiver.credit_transfer_accept_enabled === false) {
+      return NextResponse.json(
+        { error: 'This institution is not currently accepting credit-transfer submissions.' },
+        { status: 403 }
+      );
+    }
+    if (sourceType === 'in_network' && body.issuing_tenant_id) {
+      const issuer = byId.get(body.issuing_tenant_id);
+      if (issuer && issuer.credit_transfer_issue_enabled === false) {
+        return NextResponse.json(
+          { error: 'The selected issuing institution is not currently participating in credit transfer.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // If source_enrollment_id is supplied, verify it belongs to the student and is completed
     if (body.source_enrollment_id) {
       const { data: enrollment } = await tq

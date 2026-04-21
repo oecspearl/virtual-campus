@@ -40,6 +40,20 @@ export default function TenantSettingsPage({ params }: { params: Promise<{ id: s
   );
 }
 
+type RegionalFlags = {
+  regional_catalogue_publish_enabled: boolean;
+  regional_catalogue_consume_enabled: boolean;
+  credit_transfer_accept_enabled: boolean;
+  credit_transfer_issue_enabled: boolean;
+};
+
+const REGIONAL_FLAG_KEYS: (keyof RegionalFlags)[] = [
+  'regional_catalogue_publish_enabled',
+  'regional_catalogue_consume_enabled',
+  'credit_transfer_accept_enabled',
+  'credit_transfer_issue_enabled',
+];
+
 function SettingsInner({ tenantId }: { tenantId: string }) {
   const [settings, setSettings] = useState<Record<string, SettingEntry>>({});
   const [loading, setLoading] = useState(true);
@@ -49,6 +63,13 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
   const [tenantName, setTenantName] = useState("");
   const [form, setForm] = useState<Record<string, string>>({});
   const [forbidden, setForbidden] = useState(false);
+  const [regionalFlags, setRegionalFlags] = useState<RegionalFlags>({
+    regional_catalogue_publish_enabled: true,
+    regional_catalogue_consume_enabled: true,
+    credit_transfer_accept_enabled: true,
+    credit_transfer_issue_enabled: true,
+  });
+  const [savingRegional, setSavingRegional] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -66,6 +87,15 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
       const s = settingsData?.settings || {};
       setSettings(s);
       setTenantName(tenantData?.tenant?.name || "");
+
+      // Initialize regional flags from tenant row — default true if missing
+      const t = tenantData?.tenant || {};
+      setRegionalFlags({
+        regional_catalogue_publish_enabled: t.regional_catalogue_publish_enabled !== false,
+        regional_catalogue_consume_enabled: t.regional_catalogue_consume_enabled !== false,
+        credit_transfer_accept_enabled: t.credit_transfer_accept_enabled !== false,
+        credit_transfer_issue_enabled: t.credit_transfer_issue_enabled !== false,
+      });
 
       // Initialize form from settings
       const formInit: Record<string, string> = {};
@@ -116,6 +146,34 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
       setError("Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveRegional(partial: Partial<RegionalFlags>) {
+    setSavingRegional(true);
+    setError("");
+    setSuccess("");
+    const next = { ...regionalFlags, ...partial };
+    setRegionalFlags(next);
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(partial),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to save regional settings");
+        // Revert on failure
+        setRegionalFlags((prev) => ({ ...prev, ...regionalFlags }));
+      } else {
+        setSuccess("Regional settings saved");
+      }
+    } catch {
+      setError("Failed to save regional settings");
+      setRegionalFlags((prev) => ({ ...prev, ...regionalFlags }));
+    } finally {
+      setSavingRegional(false);
     }
   }
 
@@ -210,6 +268,44 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
         </form>
       </div>
 
+      <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-medium mb-1">Regional Collaboration</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Control how this institution participates in the regional network.
+          All flags default on.
+        </p>
+        <div className="space-y-3">
+          <RegionalToggle
+            label="Publish courses network-wide"
+            description="Allow this institution's admins to share a course with every tenant (shares that target no specific tenant)."
+            enabled={regionalFlags.regional_catalogue_publish_enabled}
+            disabled={savingRegional}
+            onChange={(v) => handleSaveRegional({ regional_catalogue_publish_enabled: v })}
+          />
+          <RegionalToggle
+            label="Browse shared courses from other institutions"
+            description="Let this institution's students see and enrol in courses shared by other tenants."
+            enabled={regionalFlags.regional_catalogue_consume_enabled}
+            disabled={savingRegional}
+            onChange={(v) => handleSaveRegional({ regional_catalogue_consume_enabled: v })}
+          />
+          <RegionalToggle
+            label="Accept incoming credit transfers"
+            description="Let this institution's students submit credits for review by this institution's registrar."
+            enabled={regionalFlags.credit_transfer_accept_enabled}
+            disabled={savingRegional}
+            onChange={(v) => handleSaveRegional({ credit_transfer_accept_enabled: v })}
+          />
+          <RegionalToggle
+            label="Allow this institution to be cited as an issuer"
+            description="Let students at other tenants cite this institution as the issuing institution on their credit submissions."
+            enabled={regionalFlags.credit_transfer_issue_enabled}
+            disabled={savingRegional}
+            onChange={(v) => handleSaveRegional({ credit_transfer_issue_enabled: v })}
+          />
+        </div>
+      </div>
+
       {extraSettings.length > 0 && (
         <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
           <h2 className="text-lg font-medium mb-4">Other Settings</h2>
@@ -228,6 +324,46 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function RegionalToggle({
+  label,
+  description,
+  enabled,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  enabled: boolean;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2 border-b border-gray-100 last:border-0">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900">{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => onChange(!enabled)}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+          enabled ? "bg-blue-600" : "bg-gray-200"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+      >
+        <span
+          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+            enabled ? "translate-x-5" : "translate-x-0.5"
+          }`}
+        />
+      </button>
     </div>
   );
 }

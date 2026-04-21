@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { hasRole } from '@/lib/rbac';
+import { sendNotification } from '@/lib/notifications';
 
 /**
  * GET /api/credit-records/[id]/comments
@@ -124,20 +125,41 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to post comment' }, { status: 500 });
     }
 
-    // Notify the other party (in-app only — no new email template required)
-    const notifyUserId = isRegistrar ? record.student_id : null;
-    if (notifyUserId) {
-      // Registrar posted → notify student
+    // Registrar posted → notify student (in-app + email). Student posts bubble
+    // up through the queue comment-count badge, so we don't fan out to registrars.
+    if (isRegistrar) {
+      const excerpt = text.slice(0, 200) + (text.length > 200 ? '…' : '');
       await tq.from('in_app_notifications').insert({
-        user_id: notifyUserId,
+        user_id: record.student_id,
         type: 'credit_record_comment',
         title: 'New comment on your credit transfer',
         message: `Registrar left a note on "${record.course_title}": ${text.slice(0, 140)}${text.length > 140 ? '…' : ''}`,
-        link_url: '/credit-records',
+        link_url: `/credit-records/${recordId}`,
         metadata: { credit_record_id: recordId, comment_id: inserted.id },
       });
+
+      try {
+        const [studentRow, tenantRow] = await Promise.all([
+          tq.raw.from('users').select('name').eq('id', record.student_id).single(),
+          tq.raw.from('tenants').select('name').eq('id', tenantId).single(),
+        ]);
+        const recordUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/credit-records/${recordId}`;
+        await sendNotification({
+          userId: record.student_id,
+          type: 'credit_record_comment',
+          templateVariables: {
+            student_name: studentRow.data?.name || 'Student',
+            course_title: record.course_title,
+            reviewing_institution_name: tenantRow.data?.name || 'Your institution',
+            comment_excerpt: excerpt,
+            record_url: recordUrl,
+          },
+          metadata: { credit_record_id: recordId, comment_id: inserted.id },
+        });
+      } catch (emailErr) {
+        console.error('Credit comment email failed:', emailErr);
+      }
     }
-    // If student posted, we don't ping a single registrar — the queue surfaces it.
 
     return NextResponse.json({ comment: inserted }, { status: 201 });
   } catch (error) {

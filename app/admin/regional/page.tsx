@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '@iconify/react';
 import RoleGuard from '@/app/components/RoleGuard';
 
@@ -27,6 +27,7 @@ interface Flow {
 }
 
 interface Regional {
+  range: { since: string | null; until: string | null };
   totals: {
     tenants: number;
     active_shares: number;
@@ -60,17 +61,31 @@ function Inner() {
   const [data, setData] = useState<Regional | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [since, setSince] = useState<string>('');
+  const [until, setUntil] = useState<string>('');
+
+  const load = useCallback(async (rangeSince: string, rangeUntil: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (rangeSince) params.set('since', rangeSince);
+      if (rangeUntil) params.set('until', rangeUntil);
+      const qs = params.toString();
+      const res = await fetch(`/api/admin/system/regional-stats${qs ? `?${qs}` : ''}`);
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to load');
+      setData(await res.json());
+      setError(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch('/api/admin/system/regional-stats')
-      .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).error || 'Failed to load');
-        return r.json();
-      })
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+    load(since, until);
+    // Re-run when the user applies a range; initial call has empty strings
+  }, [load, since, until]);
 
   if (loading) {
     return (
@@ -102,14 +117,48 @@ function Inner() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
           <div>
             <h1 className="text-xl font-normal text-slate-900 tracking-tight">Regional Collaboration</h1>
             <p className="text-sm text-gray-600">
               Cross-tenant catalogue, enrolments, and credit transfer across the network
+              {(data.range.since || data.range.until) && (
+                <span className="ml-2 text-gray-500">
+                  ({data.range.since || '…'} → {data.range.until || 'today'})
+                </span>
+              )}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1 text-xs text-gray-600">
+              From
+              <input
+                type="date"
+                value={since}
+                onChange={(e) => setSince(e.target.value)}
+                className="px-2 py-1.5 border border-gray-200 rounded-md text-xs"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-gray-600">
+              To
+              <input
+                type="date"
+                value={until}
+                onChange={(e) => setUntil(e.target.value)}
+                className="px-2 py-1.5 border border-gray-200 rounded-md text-xs"
+              />
+            </label>
+            {(since || until) && (
+              <button
+                onClick={() => {
+                  setSince('');
+                  setUntil('');
+                }}
+                className="text-xs text-gray-500 hover:text-gray-900 underline"
+              >
+                Clear
+              </button>
+            )}
             <button
               onClick={() => exportCsv('per-tenant', per_tenant)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border border-gray-200 bg-white hover:bg-gray-50"

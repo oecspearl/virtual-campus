@@ -23,17 +23,37 @@ export async function GET(request: NextRequest) {
 
     const db = createServiceSupabaseClient();
 
+    // Optional ?since=YYYY-MM-DD&until=YYYY-MM-DD filters (ISO dates).
+    // If only one side is given, the other is unbounded.
+    const url = new URL(request.url);
+    const sinceParam = url.searchParams.get('since');
+    const untilParam = url.searchParams.get('until');
+    const sinceIso = sinceParam ? `${sinceParam}T00:00:00Z` : null;
+    // Use end-of-day for until so the user's "until" date is inclusive.
+    const untilIso = untilParam ? `${untilParam}T23:59:59Z` : null;
+
+    const applyRange = (q: any, column: string) => {
+      if (sinceIso) q = q.gte(column, sinceIso);
+      if (untilIso) q = q.lte(column, untilIso);
+      return q;
+    };
+
+    // Tenants list isn't date-filtered — we always need the full set so the
+    // per-tenant table can show institutions even with zero activity in range.
     const [tenantsRes, sharesRes, ctEnrollsRes, creditsRes] = await Promise.all([
       db.from('tenants').select('id, name, slug, status').order('name'),
-      db
-        .from('course_shares')
-        .select('id, source_tenant_id, target_tenant_id, permission, revoked_at'),
-      db
-        .from('cross_tenant_enrollments')
-        .select('id, tenant_id, source_tenant_id, status'),
-      db
-        .from('credit_records')
-        .select('id, tenant_id, issuing_tenant_id, source_type, status, credits, awarded_credits'),
+      applyRange(
+        db.from('course_shares').select('id, source_tenant_id, target_tenant_id, permission, revoked_at, created_at'),
+        'created_at'
+      ),
+      applyRange(
+        db.from('cross_tenant_enrollments').select('id, tenant_id, source_tenant_id, status, enrolled_at'),
+        'enrolled_at'
+      ),
+      applyRange(
+        db.from('credit_records').select('id, tenant_id, issuing_tenant_id, source_type, status, credits, awarded_credits, created_at'),
+        'created_at'
+      ),
     ]);
 
     const tenants = (tenantsRes.data || []) as { id: string; name: string; slug: string; status: string }[];
@@ -141,6 +161,7 @@ export async function GET(request: NextRequest) {
     flows.sort((a, b) => b.record_count - a.record_count);
 
     return NextResponse.json({
+      range: { since: sinceParam, until: untilParam },
       totals: {
         tenants: tenants.length,
         active_shares: activeShares.length,

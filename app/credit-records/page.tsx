@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
 import AccessibleModal from '@/app/components/ui/AccessibleModal';
-import CommentThread from '@/app/components/credit-records/CommentThread';
 
 interface CreditRecord {
   id: string;
@@ -59,7 +59,6 @@ export default function CreditRecordsPage() {
   const [records, setRecords] = useState<CreditRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [detailRecord, setDetailRecord] = useState<CreditRecord | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [eligible, setEligible] = useState<EligibleEnrollment[]>([]);
   const [sourceEnrollmentId, setSourceEnrollmentId] = useState<string>('');
@@ -439,12 +438,12 @@ export default function CreditRecordsPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-3">
-                        <button
-                          onClick={() => setDetailRecord(r)}
+                        <Link
+                          href={`/credit-records/${r.id}`}
                           className="text-xs text-blue-600 hover:text-blue-700"
                         >
                           Details
-                        </button>
+                        </Link>
                         {['pending', 'under_review'].includes(r.status) && (
                           <button
                             onClick={() => handleWithdraw(r.id)}
@@ -462,53 +461,6 @@ export default function CreditRecordsPage() {
           </div>
         )}
 
-        <AccessibleModal
-          isOpen={detailRecord !== null}
-          onClose={() => setDetailRecord(null)}
-          title={detailRecord ? detailRecord.course_title : 'Credit record'}
-          size="lg"
-        >
-          {detailRecord && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
-                <p>
-                  <span className="text-gray-500">Institution: </span>
-                  {detailRecord.issuing_institution_name}
-                </p>
-                <p>
-                  <span className="text-gray-500">Credits submitted: </span>
-                  {Number(detailRecord.credits).toFixed(2)}
-                  {detailRecord.grade && <span className="ml-2">Grade: {detailRecord.grade}</span>}
-                </p>
-                {detailRecord.status === 'approved' && detailRecord.awarded_credits !== null && (
-                  <p>
-                    <span className="text-gray-500">Awarded: </span>
-                    <span className="text-green-700 font-medium">
-                      {Number(detailRecord.awarded_credits).toFixed(2)}
-                    </span>
-                    {detailRecord.equivalent_course && (
-                      <span className="ml-2 text-gray-600">
-                        → {detailRecord.equivalent_course.title}
-                      </span>
-                    )}
-                  </p>
-                )}
-                {detailRecord.status === 'rejected' && detailRecord.review_notes && (
-                  <p className="text-red-700">
-                    <span className="text-gray-500">Reason: </span>
-                    {detailRecord.review_notes}
-                  </p>
-                )}
-                <p>
-                  <span className="text-gray-500">Status: </span>
-                  <span className="capitalize">{detailRecord.status.replace('_', ' ')}</span>
-                </p>
-              </div>
-
-              <CommentThread recordId={detailRecord.id} />
-            </div>
-          )}
-        </AccessibleModal>
       </div>
     </div>
   );

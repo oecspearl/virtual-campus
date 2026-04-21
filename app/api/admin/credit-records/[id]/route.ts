@@ -136,7 +136,7 @@ export async function PATCH(
         type: notifType,
         title: notif.title,
         message: notif.message,
-        link_url: '/credit-records',
+        link_url: `/credit-records/${id}`,
         metadata: { credit_record_id: id },
       });
 
@@ -146,7 +146,7 @@ export async function PATCH(
         tq.raw.from('users').select('name, email').eq('id', record.student_id).single(),
         tq.raw.from('tenants').select('name').eq('id', tenantId).single(),
       ]);
-      const recordUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/credit-records`;
+      const recordUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/credit-records/${id}`;
       const equivalenceBlock = update.equivalence_notes
         ? `<p><strong>Equivalence:</strong> ${String(update.equivalence_notes)}</p>`
         : '';

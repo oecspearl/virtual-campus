@@ -19,7 +19,8 @@ export type NotificationType =
   | 'message_received'
   | 'credit_record_under_review'
   | 'credit_record_approved'
-  | 'credit_record_rejected';
+  | 'credit_record_rejected'
+  | 'credit_record_comment';
 
 export interface NotificationOptions {
   userId: string;

@@ -69,11 +69,18 @@ export default function SharedCoursesAdminPage() {
   const [showShareForm, setShowShareForm] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    course_id: string;
+    target_tenant_ids: string[];
+    share_globally: boolean;
+    permission: string;
+  }>({
     course_id: '',
-    target_tenant_id: '',
+    target_tenant_ids: [],
+    share_globally: false,
     permission: 'enroll',
   });
+  const [tenantSearch, setTenantSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchShares = useCallback(async () => {
@@ -122,6 +129,12 @@ export default function SharedCoursesAdminPage() {
 
   const handleShare = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.share_globally && formData.target_tenant_ids.length === 0) {
+      alert('Select at least one tenant, or check "Share with all tenants (Global)"');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -130,7 +143,8 @@ export default function SharedCoursesAdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           course_id: formData.course_id,
-          target_tenant_id: formData.target_tenant_id || null,
+          share_globally: formData.share_globally,
+          target_tenant_ids: formData.share_globally ? [] : formData.target_tenant_ids,
           permission: formData.permission,
         }),
       });
@@ -138,8 +152,17 @@ export default function SharedCoursesAdminPage() {
       const data = await res.json();
 
       if (res.ok) {
+        const summary = data.summary;
+        if (summary && (summary.skipped > 0 || summary.failed > 0)) {
+          const parts: string[] = [];
+          if (summary.created > 0) parts.push(`${summary.created} shared`);
+          if (summary.skipped > 0) parts.push(`${summary.skipped} already shared`);
+          if (summary.failed > 0) parts.push(`${summary.failed} failed`);
+          alert(parts.join(', '));
+        }
         setShowShareForm(false);
-        setFormData({ course_id: '', target_tenant_id: '', permission: 'enroll' });
+        setFormData({ course_id: '', target_tenant_ids: [], share_globally: false, permission: 'enroll' });
+        setTenantSearch('');
         fetchShares();
       } else {
         alert(data.error || 'Failed to share course');
@@ -151,6 +174,32 @@ export default function SharedCoursesAdminPage() {
       setSubmitting(false);
     }
   };
+
+  const toggleTenant = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      target_tenant_ids: prev.target_tenant_ids.includes(id)
+        ? prev.target_tenant_ids.filter((t) => t !== id)
+        : [...prev.target_tenant_ids, id],
+    }));
+  };
+
+  const toggleAllVisibleTenants = () => {
+    const visibleIds = filteredTenants.map((t) => t.id);
+    const allSelected = visibleIds.every((id) => formData.target_tenant_ids.includes(id));
+    setFormData((prev) => ({
+      ...prev,
+      target_tenant_ids: allSelected
+        ? prev.target_tenant_ids.filter((id) => !visibleIds.includes(id))
+        : Array.from(new Set([...prev.target_tenant_ids, ...visibleIds])),
+    }));
+  };
+
+  const filteredTenants = tenants.filter((t) =>
+    tenantSearch.trim() === ''
+      ? true
+      : `${t.name} ${t.slug}`.toLowerCase().includes(tenantSearch.toLowerCase())
+  );
 
   const handleRevoke = async (shareId: string) => {
     if (!confirm('Are you sure you want to revoke this share? Existing enrollments will remain but new enrollments will be blocked.')) return;
@@ -226,23 +275,98 @@ export default function SharedCoursesAdminPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="share-target" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Share With
                     </label>
-                    <select
-                      id="share-target"
-                      value={formData.target_tenant_id}
-                      onChange={(e) => setFormData({ ...formData, target_tenant_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">All Tenants (Global)</option>
-                      {tenants.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.slug})</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Leave empty to share with all tenants, or select a specific one
-                    </p>
+
+                    <label className="flex items-start gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={formData.share_globally}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            share_globally: e.target.checked,
+                            target_tenant_ids: e.target.checked ? [] : prev.target_tenant_ids,
+                          }))
+                        }
+                        className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="flex-1">
+                        <span className="block text-sm font-medium text-gray-900">
+                          Share with all tenants (Global)
+                        </span>
+                        <span className="block text-xs text-gray-500">
+                          Any tenant in the network will be able to discover and enroll in this course.
+                        </span>
+                      </span>
+                    </label>
+
+                    <div className={`mt-3 ${formData.share_globally ? 'opacity-40 pointer-events-none' : ''}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-700">
+                          Or pick specific tenants
+                          {formData.target_tenant_ids.length > 0 && (
+                            <span className="ml-1.5 text-xs text-blue-600">
+                              ({formData.target_tenant_ids.length} selected)
+                            </span>
+                          )}
+                        </span>
+                        {filteredTenants.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={toggleAllVisibleTenants}
+                            disabled={formData.share_globally}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            {filteredTenants.every((t) => formData.target_tenant_ids.includes(t.id))
+                              ? 'Clear visible'
+                              : 'Select visible'}
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Search tenants..."
+                        value={tenantSearch}
+                        onChange={(e) => setTenantSearch(e.target.value)}
+                        disabled={formData.share_globally}
+                        className="w-full px-3 py-2 mb-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+
+                      <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                        {filteredTenants.length === 0 ? (
+                          <p className="p-3 text-sm text-gray-500 text-center">
+                            {tenants.length === 0 ? 'No tenants available' : 'No tenants match your search'}
+                          </p>
+                        ) : (
+                          filteredTenants.map((t) => {
+                            const checked = formData.target_tenant_ids.includes(t.id);
+                            return (
+                              <label
+                                key={t.id}
+                                className={`flex items-center gap-2 p-2.5 cursor-pointer hover:bg-gray-50 ${
+                                  checked ? 'bg-blue-50' : ''
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleTenant(t.id)}
+                                  disabled={formData.share_globally}
+                                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-sm text-gray-900 truncate">{t.name}</span>
+                                  <span className="block text-xs text-gray-500 truncate">{t.slug}</span>
+                                </span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div>

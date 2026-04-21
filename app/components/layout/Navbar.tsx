@@ -179,6 +179,30 @@ export default function Navbar() {
                       Shared Courses
                     </div>
                   </Link>
+                  {isAuthenticated && (
+                    <Link href="/transcript" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
+                      <div className="flex items-center gap-3">
+                        <Icon icon="mdi:file-document-outline" className="w-5 h-5 text-emerald-500" />
+                        Transcript
+                      </div>
+                    </Link>
+                  )}
+                  {isAuthenticated && (
+                    <Link href="/credit-records" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
+                      <div className="flex items-center gap-3">
+                        <Icon icon="mdi:swap-horizontal" className="w-5 h-5 text-cyan-500" />
+                        Credit Transfer
+                      </div>
+                    </Link>
+                  )}
+                  {(role === 'admin' || role === 'super_admin' || role === 'tenant_admin') && (
+                    <Link href="/admin/credit-records" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
+                      <div className="flex items-center gap-3">
+                        <Icon icon="mdi:clipboard-check-outline" className="w-5 h-5 text-rose-500" />
+                        Credit Review
+                      </div>
+                    </Link>
+                  )}
                   {(role === 'instructor' || role === 'admin' || role === 'super_admin' || role === 'tenant_admin' || role === 'curriculum_designer') && (
                     <Link href="/boards" onClick={() => setAcademicsOpen(false)} className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors rounded-lg mx-2">
                       <div className="flex items-center gap-3">
@@ -304,6 +328,18 @@ export default function Navbar() {
           {/* Tenant Switcher (Super Admin Only) */}
           {isAuthenticated && role === 'super_admin' && (
             <TenantSwitcher />
+          )}
+
+          {/* Regional Collaboration (Super Admin Only) */}
+          {isAuthenticated && role === 'super_admin' && (
+            <Link
+              href="/admin/regional"
+              className={`relative p-3 rounded-lg transition-all duration-200 ${activeLinkClass(pathname.startsWith('/admin/regional'))}`}
+              style={pathname.startsWith('/admin/regional') ? activeStyle : undefined}
+              title="Regional Collaboration"
+            >
+              <Icon icon="mdi:earth" className="w-5 h-5" />
+            </Link>
           )}
 
           {/* System Settings (Admin Only) */}

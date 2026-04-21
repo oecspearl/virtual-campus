@@ -16,7 +16,10 @@ export type NotificationType =
   | 'enrollment_confirmation'
   | 'course_enrollment'
   | 'student_welcome'
-  | 'message_received';
+  | 'message_received'
+  | 'credit_record_under_review'
+  | 'credit_record_approved'
+  | 'credit_record_rejected';
 
 export interface NotificationOptions {
   userId: string;

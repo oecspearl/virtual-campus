@@ -292,24 +292,30 @@ export default function SharedCourseLessonPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {videoTab === 'outcomes' && Array.isArray(lesson.learning_outcomes) && (
-                  <ol className="space-y-3 p-4">{lesson.learning_outcomes.map((text: string, i: number) => (<li key={i} className="flex items-start gap-3"><span className="shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs flex items-center justify-center font-medium mt-0.5">{i + 1}</span><span className="text-sm text-gray-700 leading-relaxed">{text}</span></li>))}</ol>
-                )}
-                {videoTab === 'instructions' && lesson.lesson_instructions && (
-                  <div className="p-4"><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="prose prose-sm max-w-none text-amber-900" dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.lesson_instructions) }} /></div></div>
-                )}
-                {videoTab === 'overview' && (
-                  <div className="p-4 space-y-4">
-                    <h2 className="text-base font-bold text-gray-900">{lesson.title}</h2>
-                    {(videoBlock.data?.description || lesson.description) && (<div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(videoBlock.data?.description || lesson.description || '') }} />)}
-                  </div>
-                )}
-                {videoTab === 'notes' && (<VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
-                {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
-                {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
-                {videoTab === 'ai-tutor' && (<div className="h-full"><AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} /></div>)}
-              </div>
+              {videoTab !== 'ai-tutor' && (
+                <div className="flex-1 overflow-y-auto">
+                  {videoTab === 'outcomes' && Array.isArray(lesson.learning_outcomes) && (
+                    <ol className="space-y-3 p-4">{lesson.learning_outcomes.map((text: string, i: number) => (<li key={i} className="flex items-start gap-3"><span className="shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs flex items-center justify-center font-medium mt-0.5">{i + 1}</span><span className="text-sm text-gray-700 leading-relaxed">{text}</span></li>))}</ol>
+                  )}
+                  {videoTab === 'instructions' && lesson.lesson_instructions && (
+                    <div className="p-4"><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="prose prose-sm max-w-none text-amber-900" dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.lesson_instructions) }} /></div></div>
+                  )}
+                  {videoTab === 'overview' && (
+                    <div className="p-4 space-y-4">
+                      <h2 className="text-base font-bold text-gray-900">{lesson.title}</h2>
+                      {(videoBlock.data?.description || lesson.description) && (<div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(videoBlock.data?.description || lesson.description || '') }} />)}
+                    </div>
+                  )}
+                  {videoTab === 'notes' && (<VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                  {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                  {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
+                </div>
+              )}
+              {videoTab === 'ai-tutor' && (
+                <div className="flex-1 overflow-hidden">
+                  <AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -373,23 +379,25 @@ export default function SharedCourseLessonPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
-                <div className="flex-1 overflow-y-auto">
-                  {videoTab === 'outcomes' && Array.isArray(lesson.learning_outcomes) && (
-                    <ol className="space-y-3 p-4">{lesson.learning_outcomes.map((text: string, i: number) => (<li key={i} className="flex items-start gap-3"><span className="shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs flex items-center justify-center font-medium mt-0.5">{i + 1}</span><span className="text-sm text-gray-700 leading-relaxed">{text}</span></li>))}</ol>
-                  )}
-                  {videoTab === 'instructions' && lesson.lesson_instructions && (
-                    <div className="p-4"><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="prose prose-sm max-w-none text-amber-900" dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.lesson_instructions) }} /></div></div>
-                  )}
-                  {videoTab === 'overview' && (
-                    <div className="p-4 space-y-4">
-                      <h2 className="text-base font-bold text-gray-900">{lesson.title}</h2>
-                      {(videoBlock.data?.description || lesson.description) && (<div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(videoBlock.data?.description || lesson.description || '') }} />)}
-                    </div>
-                  )}
-                  {videoTab === 'notes' && (<VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
-                  {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
-                  {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
-                </div>
+                {videoTab !== 'ai-tutor' && (
+                  <div className="flex-1 overflow-y-auto">
+                    {videoTab === 'outcomes' && Array.isArray(lesson.learning_outcomes) && (
+                      <ol className="space-y-3 p-4">{lesson.learning_outcomes.map((text: string, i: number) => (<li key={i} className="flex items-start gap-3"><span className="shrink-0 w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs flex items-center justify-center font-medium mt-0.5">{i + 1}</span><span className="text-sm text-gray-700 leading-relaxed">{text}</span></li>))}</ol>
+                    )}
+                    {videoTab === 'instructions' && lesson.lesson_instructions && (
+                      <div className="p-4"><div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><div className="prose prose-sm max-w-none text-amber-900" dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.lesson_instructions) }} /></div></div>
+                    )}
+                    {videoTab === 'overview' && (
+                      <div className="p-4 space-y-4">
+                        <h2 className="text-base font-bold text-gray-900">{lesson.title}</h2>
+                        {(videoBlock.data?.description || lesson.description) && (<div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(videoBlock.data?.description || lesson.description || '') }} />)}
+                      </div>
+                    )}
+                    {videoTab === 'notes' && (<VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                    {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
+                    {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
+                  </div>
+                )}
                 {videoTab === 'ai-tutor' && (
                   <div className="flex-1 overflow-hidden">
                     <AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} />

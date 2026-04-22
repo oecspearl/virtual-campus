@@ -16,11 +16,15 @@ interface CourseHeroProps {
   };
   lessonCount: number;
   sourceTenantName?: string | null;
+  /** When this course was forked from another tenant, the source tenant's display name. */
+  forkedFromTenantName?: string | null;
+  /** ISO timestamp of the fork. */
+  forkedAt?: string | null;
   instructorNames?: string[];
   sectionName?: string | null;
 }
 
-function CourseHeroInner({ course, lessonCount, sourceTenantName, sectionName }: CourseHeroProps) {
+function CourseHeroInner({ course, lessonCount, sourceTenantName, forkedFromTenantName, forkedAt, sectionName }: CourseHeroProps) {
   const desc = stripHtml(course.description || '');
 
   return (
@@ -55,6 +59,17 @@ function CourseHeroInner({ course, lessonCount, sourceTenantName, sectionName }:
               )}
               {sourceTenantName && (
                 <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/10 text-white/80 border border-white/10">Shared from {sourceTenantName}</span>
+              )}
+              {forkedFromTenantName && (
+                <span
+                  className="text-[11px] px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-200 border border-rose-400/20 inline-flex items-center gap-1"
+                  title={forkedAt ? `Forked on ${new Date(forkedAt).toLocaleDateString()}` : undefined}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 3v10m0 0a3 3 0 100 6 3 3 0 000-6m10 0V3m0 10a3 3 0 100 6 3 3 0 000-6m-10 0l7-7" />
+                  </svg>
+                  Forked from {forkedFromTenantName}
+                </span>
               )}
               <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
                 {formatModality(course.modality)}

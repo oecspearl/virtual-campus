@@ -92,6 +92,19 @@ export async function getCourse(tq: TenantQuery, courseId: string): Promise<Cour
     throw new CourseNotFoundError();
   }
 
+  // Enrich with fork provenance — if this course was forked from another
+  // tenant, look up that tenant's display name via the raw client (the
+  // tenants table isn't tenant-scoped).
+  const forkedFromTenantId = (data as any).forked_from_tenant_id;
+  if (forkedFromTenantId) {
+    const { data: srcTenant } = await tq.raw
+      .from('tenants')
+      .select('id, name, slug')
+      .eq('id', forkedFromTenantId)
+      .maybeSingle();
+    (data as any).forked_from_tenant = srcTenant || null;
+  }
+
   return data as CourseRecord;
 }
 

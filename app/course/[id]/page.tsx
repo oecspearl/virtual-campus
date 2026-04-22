@@ -541,7 +541,13 @@ export default function CourseDetailPage() {
       )}
 
       {/* Hero */}
-      <CourseHero course={course} lessonCount={lessons.length} sectionName={enrolledSectionName} />
+      <CourseHero
+        course={course}
+        lessonCount={lessons.length}
+        sectionName={enrolledSectionName}
+        forkedFromTenantName={(course as any).forked_from_tenant?.name || null}
+        forkedAt={(course as any).forked_at || null}
+      />
 
       {/* Tab Bar */}
       <CourseTabBar

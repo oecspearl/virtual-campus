@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
         source_tenant_id,
         target_tenant_id,
         permission,
+        can_enroll,
+        can_add_supplemental_content,
+        can_schedule_live_sessions,
+        can_post_grades,
+        allow_fork,
         shared_by,
         title_snapshot,
         description_snapshot,
@@ -110,6 +115,21 @@ export async function POST(request: NextRequest) {
     if (!course_id) {
       return NextResponse.json({ error: 'course_id is required' }, { status: 400 });
     }
+
+    // Resolve the granular permission flags. Callers can either pass explicit
+    // booleans or the legacy `permission` string — we map the legacy values.
+    const flags = {
+      can_enroll:
+        body.can_enroll !== undefined ? !!body.can_enroll : permission === 'enroll' || permission === undefined,
+      can_add_supplemental_content: !!body.can_add_supplemental_content,
+      can_schedule_live_sessions: !!body.can_schedule_live_sessions,
+      can_post_grades: !!body.can_post_grades,
+      allow_fork: !!body.allow_fork,
+    };
+    // Legacy summary column: preserve the old values when explicitly passed,
+    // otherwise mark the share as using granular flags.
+    const legacyPermission: 'enroll' | 'view_only' | 'granular' =
+      permission === 'enroll' || permission === 'view_only' ? permission : 'granular';
 
     // Normalize payload into a list of targets (null = global)
     let targets: (string | null)[] = [];
@@ -223,7 +243,8 @@ export async function POST(request: NextRequest) {
           .from('course_shares')
           .update({
             revoked_at: null,
-            permission: permission || 'enroll',
+            permission: legacyPermission,
+            ...flags,
             title_snapshot: course.title,
             description_snapshot: course.description,
             thumbnail_snapshot: course.thumbnail,
@@ -248,7 +269,8 @@ export async function POST(request: NextRequest) {
           course_id,
           source_tenant_id: tenantId,
           target_tenant_id: target,
-          permission: permission || 'enroll',
+          permission: legacyPermission,
+          ...flags,
           shared_by: authResult.user.id,
           title_snapshot: course.title,
           description_snapshot: course.description,

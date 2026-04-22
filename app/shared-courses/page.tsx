@@ -9,6 +9,8 @@ interface SharedCourse {
   share_id: string;
   course_id: string;
   permission: string;
+  can_enroll?: boolean;
+  allow_fork?: boolean;
   source_tenant: { id: string; name: string; slug: string } | null;
   course: {
     id: string;
@@ -335,7 +337,7 @@ function CourseCard({
                 <Icon icon="mdi:close" className="w-4 h-4" />
               </button>
             </div>
-          ) : item.permission === 'enroll' ? (
+          ) : (item.can_enroll ?? item.permission === 'enroll') ? (
             <Button
               size="sm"
               className="w-full"

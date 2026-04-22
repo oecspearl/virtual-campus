@@ -33,6 +33,11 @@ interface Lesson {
 interface CourseDetail {
   share_id: string;
   permission: string;
+  can_enroll?: boolean;
+  can_add_supplemental_content?: boolean;
+  can_schedule_live_sessions?: boolean;
+  can_post_grades?: boolean;
+  allow_fork?: boolean;
   source_tenant: { id: string; name: string; slug: string } | null;
   course: {
     id: string; title: string; description: string | null; thumbnail: string | null;
@@ -66,6 +71,15 @@ export default function SharedCourseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [showEnrollmentSuccess, setShowEnrollmentSuccess] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [forking, setForking] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/profile', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(p => setUserRole(p?.role || null))
+      .catch(() => {});
+  }, []);
 
   const fetchCourse = useCallback(async () => {
     try {
@@ -107,6 +121,41 @@ export default function SharedCourseDetailPage() {
       const res = await fetch(`/api/shared-courses/${shareId}/enroll`, { method: 'DELETE' });
       if (res.ok) fetchCourse();
     } catch { console.error('Error dropping course'); }
+  };
+
+  const handleFork = async () => {
+    if (!data) return;
+    const confirmMsg =
+      `Fork "${data.course.title}" into your institution?\n\n` +
+      `This creates an unpublished copy of the course (lessons, sections, quizzes, assignments, grade items) ` +
+      `in your tenant. Your instructors own the copy and can edit it freely. The copy will not stay in sync with ` +
+      `the source.`;
+    if (!confirm(confirmMsg)) return;
+    setForking(true);
+    try {
+      const res = await fetch(`/api/shared-courses/${shareId}/fork`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || 'Fork failed');
+        return;
+      }
+      alert(
+        `Fork complete.\n\n` +
+        `Copied ${result.counts?.lessons ?? 0} lessons, ${result.counts?.quizzes ?? 0} quizzes, ` +
+        `${result.counts?.assignments ?? 0} assignments.\n\n` +
+        `You'll be redirected to the new course.`
+      );
+      if (result.course?.id) router.push(`/course/${result.course.id}`);
+    } catch (err) {
+      console.error('Fork error:', err);
+      alert('Fork failed');
+    } finally {
+      setForking(false);
+    }
   };
 
   // ─── Error state ────────────────────────────────────────────────────────────
@@ -245,6 +294,30 @@ export default function SharedCourseDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Fork to my tenant — staff only, when allowed by the share */}
+        {data.allow_fork &&
+          userRole &&
+          ['admin', 'super_admin', 'tenant_admin', 'curriculum_designer', 'instructor'].includes(userRole) && (
+          <div className="rounded-lg border border-gray-200/60 p-4 bg-gradient-to-br from-rose-50 to-amber-50">
+            <div className="flex items-start gap-2 mb-2">
+              <Icon icon="mdi:source-branch" className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Fork to your institution</p>
+                <p className="text-[11px] text-gray-500 leading-snug">
+                  Make an editable copy owned by {data.source_tenant ? 'your' : 'your'} institution. The copy won&apos;t stay in sync with the source.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleFork}
+              disabled={forking}
+              className="w-full py-2 rounded-lg text-[12px] font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50"
+            >
+              {forking ? 'Forking…' : 'Fork this course'}
+            </button>
+          </div>
+        )}
 
         {/* Live Sessions */}
         <CourseLiveSessions courseId={course.id} isInstructor={false} conferences={conferences} isEnrolled={isEnrolled} collapsible />

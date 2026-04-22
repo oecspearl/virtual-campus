@@ -15,6 +15,11 @@ interface ShareValidationResult {
     course_id: string;
     source_tenant_id: string;
     permission: string;
+    can_enroll: boolean;
+    can_add_supplemental_content: boolean;
+    can_schedule_live_sessions: boolean;
+    can_post_grades: boolean;
+    allow_fork: boolean;
   };
   error?: string;
 }
@@ -31,7 +36,7 @@ export async function validateCourseShare(
 
   const { data: share, error } = await supabase
     .from('course_shares')
-    .select('id, course_id, source_tenant_id, permission, revoked_at, target_tenant_id')
+    .select('id, course_id, source_tenant_id, permission, can_enroll, can_add_supplemental_content, can_schedule_live_sessions, can_post_grades, allow_fork, revoked_at, target_tenant_id')
     .eq('id', shareId)
     .single();
 
@@ -61,6 +66,11 @@ export async function validateCourseShare(
       course_id: share.course_id,
       source_tenant_id: share.source_tenant_id,
       permission: share.permission,
+      can_enroll: share.can_enroll ?? share.permission === 'enroll',
+      can_add_supplemental_content: !!share.can_add_supplemental_content,
+      can_schedule_live_sessions: !!share.can_schedule_live_sessions,
+      can_post_grades: !!share.can_post_grades,
+      allow_fork: !!share.allow_fork,
     },
   };
 }
@@ -77,7 +87,7 @@ export async function validateCourseShareByCourse(
 
   const { data: share, error } = await supabase
     .from('course_shares')
-    .select('id, course_id, source_tenant_id, permission, revoked_at, target_tenant_id')
+    .select('id, course_id, source_tenant_id, permission, can_enroll, can_add_supplemental_content, can_schedule_live_sessions, can_post_grades, allow_fork, revoked_at, target_tenant_id')
     .eq('course_id', courseId)
     .is('revoked_at', null)
     .or(`target_tenant_id.is.null,target_tenant_id.eq.${requestingTenantId}`)
@@ -95,6 +105,11 @@ export async function validateCourseShareByCourse(
       course_id: share.course_id,
       source_tenant_id: share.source_tenant_id,
       permission: share.permission,
+      can_enroll: share.can_enroll ?? share.permission === 'enroll',
+      can_add_supplemental_content: !!share.can_add_supplemental_content,
+      can_schedule_live_sessions: !!share.can_schedule_live_sessions,
+      can_post_grades: !!share.can_post_grades,
+      allow_fork: !!share.allow_fork,
     },
   };
 }

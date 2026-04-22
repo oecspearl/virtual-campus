@@ -28,6 +28,11 @@ export async function GET(
         course_id,
         source_tenant_id,
         permission,
+        can_enroll,
+        can_add_supplemental_content,
+        can_schedule_live_sessions,
+        can_post_grades,
+        allow_fork,
         created_at,
         source_tenant:tenants!course_shares_source_tenant_id_fkey(id, name, slug)
       `)
@@ -176,6 +181,11 @@ export async function GET(
     return NextResponse.json({
       share_id: share.id,
       permission: share.permission,
+      can_enroll: (share as any).can_enroll ?? share.permission === 'enroll',
+      can_add_supplemental_content: !!(share as any).can_add_supplemental_content,
+      can_schedule_live_sessions: !!(share as any).can_schedule_live_sessions,
+      can_post_grades: !!(share as any).can_post_grades,
+      allow_fork: !!(share as any).allow_fork,
       source_tenant: share.source_tenant,
       course,
       lessons: (lessonsResult.data || []).map(l => ({

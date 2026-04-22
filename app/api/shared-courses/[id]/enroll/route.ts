@@ -31,7 +31,7 @@ export async function POST(
 
     const share = shareValidation.share!;
 
-    if (share.permission !== 'enroll') {
+    if (!share.can_enroll) {
       return NextResponse.json({ error: 'This shared course is view-only' }, { status: 403 });
     }
 

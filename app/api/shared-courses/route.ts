@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
         course_id,
         source_tenant_id,
         permission,
+        can_enroll,
+        can_add_supplemental_content,
+        can_schedule_live_sessions,
+        can_post_grades,
+        allow_fork,
         created_at,
         source_tenant:tenants!course_shares_source_tenant_id_fkey(id, name, slug),
         course:courses!course_shares_course_id_fkey!inner(
@@ -90,6 +95,11 @@ export async function GET(request: NextRequest) {
         share_id: share.id,
         course_id: share.course_id,
         permission: share.permission,
+        can_enroll: share.can_enroll ?? share.permission === 'enroll',
+        can_add_supplemental_content: !!share.can_add_supplemental_content,
+        can_schedule_live_sessions: !!share.can_schedule_live_sessions,
+        can_post_grades: !!share.can_post_grades,
+        allow_fork: !!share.allow_fork,
         source_tenant: share.source_tenant,
         course: {
           ...share.course,

@@ -99,8 +99,17 @@ export async function PATCH(
     }
 
     const updates: Record<string, any> = {};
-    if (body.permission && ['enroll', 'view_only'].includes(body.permission)) {
+    if (body.permission && ['enroll', 'view_only', 'granular'].includes(body.permission)) {
       updates.permission = body.permission;
+    }
+    for (const flag of [
+      'can_enroll',
+      'can_add_supplemental_content',
+      'can_schedule_live_sessions',
+      'can_post_grades',
+      'allow_fork',
+    ]) {
+      if (body[flag] !== undefined) updates[flag] = !!body[flag];
     }
 
     if (Object.keys(updates).length === 0) {

@@ -13,6 +13,11 @@ interface CourseShare {
   source_tenant_id: string;
   target_tenant_id: string | null;
   permission: string;
+  can_enroll?: boolean;
+  can_add_supplemental_content?: boolean;
+  can_schedule_live_sessions?: boolean;
+  can_post_grades?: boolean;
+  allow_fork?: boolean;
   shared_by: string;
   title_snapshot: string;
   description_snapshot: string | null;
@@ -29,6 +34,11 @@ interface IncomingSharedCourse {
   share_id: string;
   course_id: string;
   permission: string;
+  can_enroll?: boolean;
+  can_add_supplemental_content?: boolean;
+  can_schedule_live_sessions?: boolean;
+  can_post_grades?: boolean;
+  allow_fork?: boolean;
   source_tenant: { id: string; name: string; slug: string } | null;
   course: {
     id: string;
@@ -73,12 +83,20 @@ export default function SharedCoursesAdminPage() {
     course_id: string;
     target_tenant_ids: string[];
     share_globally: boolean;
-    permission: string;
+    can_enroll: boolean;
+    can_add_supplemental_content: boolean;
+    can_schedule_live_sessions: boolean;
+    can_post_grades: boolean;
+    allow_fork: boolean;
   }>({
     course_id: '',
     target_tenant_ids: [],
     share_globally: false,
-    permission: 'enroll',
+    can_enroll: true,
+    can_add_supplemental_content: false,
+    can_schedule_live_sessions: false,
+    can_post_grades: false,
+    allow_fork: false,
   });
   const [tenantSearch, setTenantSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -145,7 +163,11 @@ export default function SharedCoursesAdminPage() {
           course_id: formData.course_id,
           share_globally: formData.share_globally,
           target_tenant_ids: formData.share_globally ? [] : formData.target_tenant_ids,
-          permission: formData.permission,
+          can_enroll: formData.can_enroll,
+          can_add_supplemental_content: formData.can_add_supplemental_content,
+          can_schedule_live_sessions: formData.can_schedule_live_sessions,
+          can_post_grades: formData.can_post_grades,
+          allow_fork: formData.allow_fork,
         }),
       });
 
@@ -161,7 +183,16 @@ export default function SharedCoursesAdminPage() {
           alert(parts.join(', '));
         }
         setShowShareForm(false);
-        setFormData({ course_id: '', target_tenant_ids: [], share_globally: false, permission: 'enroll' });
+        setFormData({
+          course_id: '',
+          target_tenant_ids: [],
+          share_globally: false,
+          can_enroll: true,
+          can_add_supplemental_content: false,
+          can_schedule_live_sessions: false,
+          can_post_grades: false,
+          allow_fork: false,
+        });
         setTenantSearch('');
         fetchShares();
       } else {
@@ -370,18 +401,35 @@ export default function SharedCoursesAdminPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="share-permission" className="block text-sm font-medium text-gray-700 mb-1">
-                      Permission
-                    </label>
-                    <select
-                      id="share-permission"
-                      value={formData.permission}
-                      onChange={(e) => setFormData({ ...formData, permission: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="enroll">Enroll (students can enroll and take the course)</option>
-                      <option value="view_only">View Only (browse content but no enrollment)</option>
-                    </select>
+                    <span className="block text-sm font-medium text-gray-700 mb-2">
+                      Permissions granted to the target institution
+                    </span>
+                    <div className="space-y-2 border border-gray-200 rounded-lg p-3">
+                      {([
+                        ['can_enroll', 'Enrol students', 'Target-tenant students can enrol and consume the course.'],
+                        ['can_add_supplemental_content', 'Supplement with local content', 'Target instructors can add lessons, resources, and announcements visible only to their students.'],
+                        ['can_schedule_live_sessions', 'Schedule live sessions', 'Target instructors can schedule conferences against this course.'],
+                        ['can_post_grades', 'Post grades', 'Target instructors can grade their enrolled students on your assessments.'],
+                        ['allow_fork', 'Allow forking to target tenancy', 'Target admins may clone the course into their own institution, severing the live link.'],
+                      ] as Array<[keyof typeof formData, string, string]>).map(([key, label, desc]) => (
+                        <label key={String(key)} className="flex items-start gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(formData[key])}
+                            onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
+                            className="h-4 w-4 mt-0.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm text-gray-900">{label}</span>
+                            <span className="block text-xs text-gray-500">{desc}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Leave all unchecked to publish a read-only (view only) reference — target students can browse
+                      the outline but not enrol.
+                    </p>
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-gray-200 mt-4">
@@ -461,13 +509,7 @@ export default function SharedCoursesAdminPage() {
                                 : 'Shared with all tenants'}
                             </p>
                           </div>
-                          <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
-                            share.permission === 'enroll'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {share.permission === 'enroll' ? 'Enroll' : 'View Only'}
-                          </span>
+                          <PermissionBadges share={share} />
                         </div>
 
                         <div className="space-y-1 text-sm text-gray-500 mb-4">
@@ -579,13 +621,10 @@ export default function SharedCoursesAdminPage() {
                               {item.course.lesson_count} lessons
                             </span>
                           )}
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                            item.permission === 'enroll'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {item.permission === 'enroll' ? 'Enroll' : 'View Only'}
-                          </span>
+                        </div>
+
+                        <div className="mb-2">
+                          <PermissionBadges share={item} />
                         </div>
 
                         <div className="mt-auto pt-2">
@@ -618,5 +657,42 @@ export default function SharedCoursesAdminPage() {
         </div>
       </div>
     </RoleGuard>
+  );
+}
+
+type PermissionSurface = {
+  permission?: string;
+  can_enroll?: boolean;
+  can_add_supplemental_content?: boolean;
+  can_schedule_live_sessions?: boolean;
+  can_post_grades?: boolean;
+  allow_fork?: boolean;
+};
+
+function PermissionBadges({ share }: { share: PermissionSurface }) {
+  const canEnroll = share.can_enroll ?? share.permission === 'enroll';
+  const flags: Array<[boolean, string, string]> = [
+    [!!canEnroll, 'Enrol', 'bg-green-100 text-green-700'],
+    [!!share.can_add_supplemental_content, 'Supplement', 'bg-indigo-100 text-indigo-700'],
+    [!!share.can_schedule_live_sessions, 'Live sessions', 'bg-amber-100 text-amber-700'],
+    [!!share.can_post_grades, 'Grade', 'bg-purple-100 text-purple-700'],
+    [!!share.allow_fork, 'Forkable', 'bg-rose-100 text-rose-700'],
+  ];
+  const active = flags.filter(([on]) => on);
+  if (active.length === 0) {
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+        View only
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {active.map(([, label, cls]) => (
+        <span key={label} className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+          {label}
+        </span>
+      ))}
+    </div>
   );
 }

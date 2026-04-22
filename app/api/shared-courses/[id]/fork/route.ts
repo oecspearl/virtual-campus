@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
-import { validateCourseShare } from '@/lib/share-validation';
+import { requireAcceptedShare } from '@/lib/share-validation';
 
 /**
  * POST /api/shared-courses/[id]/fork
@@ -43,8 +43,8 @@ export async function POST(
     const tq = createTenantQuery(tenantId);
     const raw = tq.raw;
 
-    // 1. Validate share
-    const shareValidation = await validateCourseShare(shareId, tenantId);
+    // 1. Validate share + require acceptance
+    const shareValidation = await requireAcceptedShare(shareId, tenantId);
     if (!shareValidation.valid) {
       return NextResponse.json({ error: shareValidation.error }, { status: 404 });
     }

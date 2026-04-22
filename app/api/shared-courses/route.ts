@@ -26,6 +26,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ courses: [], governance_disabled: true });
     }
 
+    // Student catalogue: only return shares the caller's tenant has ACCEPTED.
+    // Pending/declined/unreviewed global shares stay out of the catalogue
+    // until an admin explicitly accepts them.
+    const { data: acceptedAcceptances } = await tq.raw
+      .from('shared_course_acceptances')
+      .select('course_share_id')
+      .eq('accepting_tenant_id', tenantId)
+      .eq('status', 'accepted');
+
+    const acceptedShareIds = (acceptedAcceptances || []).map((a: any) => a.course_share_id);
+    if (acceptedShareIds.length === 0) {
+      return NextResponse.json({ courses: [] });
+    }
+
     // Single query: fetch shares with joined course data
     // !inner on courses filters out shares where the course is unpublished
     const { data: shares, error } = await tq.raw
@@ -47,8 +61,8 @@ export async function GET(request: NextRequest) {
           subject_area, estimated_duration, modality
         )
       `)
+      .in('id', acceptedShareIds)
       .is('revoked_at', null)
-      .or(`target_tenant_id.is.null,target_tenant_id.eq.${tenantId}`)
       .neq('source_tenant_id', tenantId)
       .eq('course.published', true);
 

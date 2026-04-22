@@ -258,6 +258,20 @@ export async function POST(request: NextRequest) {
           console.error('Error reactivating share:', reactivateError);
           results.push({ target_tenant_id: target, status: 'error', error: 'Failed to reactivate share' });
         } else {
+          // Re-seed a pending acceptance row for the targeted tenant if absent.
+          // For global shares, acceptances are created lazily on first view.
+          if (target) {
+            await tq.raw
+              .from('shared_course_acceptances')
+              .upsert(
+                {
+                  course_share_id: reactivated.id,
+                  accepting_tenant_id: target,
+                  status: 'pending',
+                },
+                { onConflict: 'course_share_id,accepting_tenant_id', ignoreDuplicates: true }
+              );
+          }
           results.push({ target_tenant_id: target, status: 'reactivated', share: reactivated });
         }
         continue;
@@ -283,6 +297,18 @@ export async function POST(request: NextRequest) {
         console.error('Error creating share:', shareError);
         results.push({ target_tenant_id: target, status: 'error', error: 'Failed to share course' });
       } else {
+        // For targeted shares, seed a pending acceptance so the target admin
+        // can accept or decline. Global shares (target=null) create
+        // acceptances lazily when a consuming tenant first sees them.
+        if (target) {
+          await tq.raw
+            .from('shared_course_acceptances')
+            .insert({
+              course_share_id: share.id,
+              accepting_tenant_id: target,
+              status: 'pending',
+            });
+        }
         results.push({ target_tenant_id: target, status: 'created', share });
       }
     }

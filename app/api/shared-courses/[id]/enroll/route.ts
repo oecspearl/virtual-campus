@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
-import { validateCourseShare } from '@/lib/share-validation';
+import { requireAcceptedShare } from '@/lib/share-validation';
 import { withIdempotency } from '@/lib/idempotency';
 
 /**
@@ -23,8 +23,8 @@ export async function POST(
     const tq = createTenantQuery(tenantId);
     const { id: shareId } = await params;
 
-    // Validate share using centralized validation (enforces revocation)
-    const shareValidation = await validateCourseShare(shareId, tenantId);
+    // Validate share + require acceptance by this tenant
+    const shareValidation = await requireAcceptedShare(shareId, tenantId);
     if (!shareValidation.valid) {
       return NextResponse.json({ error: shareValidation.error }, { status: 404 });
     }

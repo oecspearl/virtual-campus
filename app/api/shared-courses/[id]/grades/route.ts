@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { hasRole } from '@/lib/rbac';
-import { validateCourseShare } from '@/lib/share-validation';
+import { requireAcceptedShare } from '@/lib/share-validation';
 
 const ASSESSMENT_TYPES = ['quiz', 'assignment', 'discussion', 'survey'] as const;
 type AssessmentType = (typeof ASSESSMENT_TYPES)[number];
@@ -30,7 +30,7 @@ export async function GET(
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    const validation = await validateCourseShare(shareId, tenantId);
+    const validation = await requireAcceptedShare(shareId, tenantId);
     if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 404 });
     const share = validation.share!;
 
@@ -112,7 +112,7 @@ export async function POST(
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    const validation = await validateCourseShare(shareId, tenantId);
+    const validation = await requireAcceptedShare(shareId, tenantId);
     if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 404 });
     const share = validation.share!;
     if (!share.can_post_grades) {

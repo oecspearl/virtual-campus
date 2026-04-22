@@ -8,6 +8,8 @@ import { createServiceSupabaseClient } from '@/lib/supabase-server';
  * don't inherently check course_shares, so this fills that gap.
  */
 
+export type AcceptanceStatus = 'pending' | 'accepted' | 'declined' | 'none';
+
 interface ShareValidationResult {
   valid: boolean;
   share?: {
@@ -20,6 +22,8 @@ interface ShareValidationResult {
     can_schedule_live_sessions: boolean;
     can_post_grades: boolean;
     allow_fork: boolean;
+    /** The caller's tenant's current acceptance state for this share. */
+    acceptance_status: AcceptanceStatus;
   };
   error?: string;
 }
@@ -59,6 +63,9 @@ export async function validateCourseShare(
     return { valid: false, error: 'Use the course directly — you are the source tenant' };
   }
 
+  // Fetch current acceptance status for the requesting tenant (if any)
+  const acceptanceStatus = await fetchAcceptanceStatus(supabase, share.id, requestingTenantId);
+
   return {
     valid: true,
     share: {
@@ -71,8 +78,51 @@ export async function validateCourseShare(
       can_schedule_live_sessions: !!share.can_schedule_live_sessions,
       can_post_grades: !!share.can_post_grades,
       allow_fork: !!share.allow_fork,
+      acceptance_status: acceptanceStatus,
     },
   };
+}
+
+/**
+ * Helper for content-consuming flows: require the share to be accepted by
+ * the caller's tenant. Returns the same shape as validateCourseShare but with
+ * a 403-equivalent error when acceptance_status !== 'accepted'.
+ */
+export async function requireAcceptedShare(
+  shareId: string,
+  requestingTenantId: string
+): Promise<ShareValidationResult> {
+  const validation = await validateCourseShare(shareId, requestingTenantId);
+  if (!validation.valid) return validation;
+  if (validation.share!.acceptance_status !== 'accepted') {
+    return {
+      valid: false,
+      error: 'This shared course has not yet been accepted by your institution',
+    };
+  }
+  return validation;
+}
+
+/**
+ * Read acceptance status for a (share, tenant) pair. Returns 'none' if no
+ * acceptance row exists yet (typical for network-wide shares a tenant hasn't
+ * interacted with).
+ */
+async function fetchAcceptanceStatus(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  shareId: string,
+  tenantId: string
+): Promise<AcceptanceStatus> {
+  const { data } = await supabase
+    .from('shared_course_acceptances')
+    .select('status')
+    .eq('course_share_id', shareId)
+    .eq('accepting_tenant_id', tenantId)
+    .maybeSingle();
+  if (!data) return 'none';
+  const status = data.status as AcceptanceStatus;
+  return status === 'pending' || status === 'accepted' || status === 'declined' ? status : 'none';
 }
 
 /**
@@ -98,6 +148,7 @@ export async function validateCourseShareByCourse(
     return { valid: false, error: 'No active share found for this course' };
   }
 
+  const acceptanceStatus = await fetchAcceptanceStatus(supabase, share.id, requestingTenantId);
   return {
     valid: true,
     share: {
@@ -110,6 +161,7 @@ export async function validateCourseShareByCourse(
       can_schedule_live_sessions: !!share.can_schedule_live_sessions,
       can_post_grades: !!share.can_post_grades,
       allow_fork: !!share.allow_fork,
+      acceptance_status: acceptanceStatus,
     },
   };
 }

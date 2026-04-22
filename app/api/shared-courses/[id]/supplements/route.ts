@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { hasRole } from '@/lib/rbac';
-import { validateCourseShare } from '@/lib/share-validation';
+import { requireAcceptedShare } from '@/lib/share-validation';
 
 const SUPPLEMENT_KINDS = ['announcement', 'resource_link'] as const;
 type SupplementKind = (typeof SUPPLEMENT_KINDS)[number];
@@ -27,7 +27,7 @@ export async function GET(
     const tq = createTenantQuery(tenantId);
 
     // Validate share exists and is accessible by this tenant
-    const validation = await validateCourseShare(shareId, tenantId);
+    const validation = await requireAcceptedShare(shareId, tenantId);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 404 });
     }
@@ -85,7 +85,7 @@ export async function POST(
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    const validation = await validateCourseShare(shareId, tenantId);
+    const validation = await requireAcceptedShare(shareId, tenantId);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 404 });
     }

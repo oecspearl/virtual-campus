@@ -39,6 +39,13 @@ interface IncomingSharedCourse {
   can_schedule_live_sessions?: boolean;
   can_post_grades?: boolean;
   allow_fork?: boolean;
+  target_scope?: 'targeted' | 'network';
+  acceptance?: {
+    status: 'pending' | 'accepted' | 'declined';
+    accepted_at: string | null;
+    declined_at: string | null;
+    decline_reason: string | null;
+  };
   source_tenant: { id: string; name: string; slug: string } | null;
   course: {
     id: string;
@@ -105,18 +112,41 @@ export default function SharedCoursesAdminPage() {
     try {
       const [outgoingRes, incomingRes] = await Promise.all([
         fetch('/api/admin/shared-courses'),
-        fetch('/api/shared-courses'),
+        fetch('/api/admin/shared-courses/incoming'),
       ]);
       const outgoingData = await outgoingRes.json();
       const incomingData = await incomingRes.json();
       if (outgoingData.shares) setShares(outgoingData.shares);
-      if (incomingData.courses) setIncomingCourses(incomingData.courses);
+      if (incomingData.shares) setIncomingCourses(incomingData.shares);
     } catch (error) {
       console.error('Error fetching shares:', error);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleAccept = async (shareId: string) => {
+    const res = await fetch(`/api/shared-courses/${shareId}/accept`, { method: 'POST' });
+    if (res.ok) fetchShares();
+    else {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error || 'Failed to accept');
+    }
+  };
+
+  const handleDecline = async (shareId: string) => {
+    const reason = prompt('Reason for declining (optional):') ?? '';
+    const res = await fetch(`/api/shared-courses/${shareId}/decline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason || undefined }),
+    });
+    if (res.ok) fetchShares();
+    else {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error || 'Failed to decline');
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -623,17 +653,51 @@ export default function SharedCoursesAdminPage() {
                           )}
                         </div>
 
+                        <div className="mb-2 flex items-center gap-2 flex-wrap">
+                          <AcceptanceBadge status={item.acceptance?.status || 'pending'} />
+                          {item.target_scope === 'network' && (
+                            <span className="px-2 py-0.5 text-[10px] font-medium text-gray-500 bg-gray-100 border border-gray-200 rounded-full">
+                              Network-wide
+                            </span>
+                          )}
+                        </div>
+
                         <div className="mb-2">
                           <PermissionBadges share={item} />
                         </div>
 
-                        <div className="mt-auto pt-2">
-                          <Link href={`/shared-courses/${item.share_id}`}>
-                            <Button size="sm" variant="outline" className="w-full">
-                              <Icon icon="mdi:eye" className="w-4 h-4 mr-1" />
-                              View Course
-                            </Button>
-                          </Link>
+                        {item.acceptance?.status === 'declined' && item.acceptance?.decline_reason && (
+                          <p className="text-xs text-red-700 italic mb-2">
+                            Declined: {item.acceptance.decline_reason}
+                          </p>
+                        )}
+
+                        <div className="mt-auto pt-2 space-y-2">
+                          {item.acceptance?.status === 'accepted' ? (
+                            <Link href={`/shared-courses/${item.share_id}`}>
+                              <Button size="sm" variant="outline" className="w-full">
+                                <Icon icon="mdi:eye" className="w-4 h-4 mr-1" />
+                                View in catalogue
+                              </Button>
+                            </Link>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => handleAccept(item.share_id)}
+                                className="px-3 py-2 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md"
+                              >
+                                <Icon icon="mdi:check" className="w-3.5 h-3.5 inline mr-1" />
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleDecline(item.share_id)}
+                                className="px-3 py-2 text-xs font-medium text-red-700 border border-red-200 hover:bg-red-50 rounded-md"
+                              >
+                                <Icon icon="mdi:close" className="w-3.5 h-3.5 inline mr-1" />
+                                Decline
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -657,6 +721,19 @@ export default function SharedCoursesAdminPage() {
         </div>
       </div>
     </RoleGuard>
+  );
+}
+
+function AcceptanceBadge({ status }: { status: 'pending' | 'accepted' | 'declined' }) {
+  const map: Record<string, string> = {
+    pending: 'bg-amber-50 text-amber-800 border-amber-200',
+    accepted: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    declined: 'bg-red-50 text-red-800 border-red-200',
+  };
+  return (
+    <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full border capitalize ${map[status] || map.pending}`}>
+      {status}
+    </span>
   );
 }
 

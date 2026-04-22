@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { hasRole } from '@/lib/rbac';
-import { validateCourseShare } from '@/lib/share-validation';
+import { requireAcceptedShare } from '@/lib/share-validation';
 
 const PROVIDERS = ['zoom', 'teams', 'meet', 'jitsi', 'other'] as const;
 const STATUSES = ['scheduled', 'live', 'completed', 'cancelled'] as const;
@@ -29,7 +29,7 @@ export async function PATCH(
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    const validation = await validateCourseShare(shareId, tenantId);
+    const validation = await requireAcceptedShare(shareId, tenantId);
     if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 404 });
     if (!validation.share!.can_schedule_live_sessions) {
       return NextResponse.json(

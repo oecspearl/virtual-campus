@@ -11,6 +11,7 @@ import type { Section } from '@/app/components/course/SectionManager';
 import SessionRecordingsCard from '@/app/components/conference/SessionRecordingsCard';
 import DiscussionList from '@/app/components/discussions/DiscussionList';
 import SupplementsPanel from '@/app/components/shared-courses/SupplementsPanel';
+import MyGradesPanel from '@/app/components/shared-courses/MyGradesPanel';
 
 import {
   CourseHero,
@@ -332,6 +333,38 @@ export default function SharedCourseDetailPage() {
               {forking ? 'Forking…' : 'Fork this course'}
             </button>
           </div>
+        )}
+
+        {/* Gradebook link — staff, when grade posting is enabled */}
+        {data.can_post_grades &&
+          userRole &&
+          ['super_admin', 'tenant_admin', 'admin', 'instructor', 'curriculum_designer'].includes(userRole) && (
+          <Link
+            href={`/shared-courses/${shareId}/grades`}
+            className="flex items-center justify-between p-3 rounded-lg border border-gray-200/60 bg-white hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Icon icon="mdi:check-decagram-outline" className="w-5 h-5 text-blue-600" />
+              <span>
+                <span className="block text-sm font-semibold text-gray-900">Gradebook</span>
+                <span className="block text-[11px] text-gray-500">
+                  Post grades for your students on source assessments
+                </span>
+              </span>
+            </span>
+            <Icon icon="mdi:chevron-right" className="w-4 h-4 text-gray-400" />
+          </Link>
+        )}
+
+        {/* Student's own grades — only when enrolled */}
+        {isEnrolled && (
+          <MyGradesPanel
+            shareId={shareId}
+            assessments={[
+              ...quizzes.map((q) => ({ id: q.id, title: q.title, type: 'quiz' as const })),
+              ...assignments.map((a) => ({ id: a.id, title: a.title, type: 'assignment' as const })),
+            ]}
+          />
         )}
 
         {/* Target-tenant supplements (announcements + resource links) */}

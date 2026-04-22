@@ -149,7 +149,7 @@ const ActivityDashboardFormat: React.FC<{
             <LessonLink
               key={lesson.id}
               courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
-              className={`block rounded-lg border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 group ${
+              className={`flex flex-col h-full w-full text-left rounded-lg border overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 group ${
                 status === 'completed'
                   ? 'border-green-200'
                   : status === 'in_progress'
@@ -192,7 +192,7 @@ const ActivityDashboardFormat: React.FC<{
                 </div>
               )}
 
-              <div className="p-4">
+              <div className="p-4 flex-1 flex flex-col">
                 <h4 className="font-semibold text-gray-900 text-sm mb-1.5 line-clamp-2 group-hover:text-blue-600 transition-colors">
                   {lesson.title}
                 </h4>
@@ -201,7 +201,7 @@ const ActivityDashboardFormat: React.FC<{
                   <p className="text-xs text-gray-500 line-clamp-2 mb-3">{lesson.description}</p>
                 )}
 
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-auto">
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     {lesson.estimated_time > 0 && (
                       <span className="flex items-center gap-0.5">

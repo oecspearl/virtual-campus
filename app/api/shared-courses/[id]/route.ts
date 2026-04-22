@@ -155,6 +155,19 @@ export async function GET(
         .order('created_at', { ascending: false }),
     ]);
 
+    // Target-tenant supplements attached to this share (visible to the
+    // caller's tenant only — RLS handles isolation).
+    const { data: supplements } = await tq
+      .from('shared_course_supplements')
+      .select(`
+        id, kind, title, description, body, url, link_type, icon,
+        position, published, created_at,
+        author:users!shared_course_supplements_author_id_fkey(id, name)
+      `)
+      .eq('course_share_id', shareId)
+      .eq('published', true)
+      .order('position', { ascending: true });
+
     // Check enrollment for current user
     const { data: enrollment } = await tq
       .from('cross_tenant_enrollments')
@@ -203,6 +216,7 @@ export async function GET(
       recordings: (recordingsResult.data || []).filter(
         (r: any) => r.conference?.course_id === share.course_id
       ),
+      supplements: supplements || [],
       enrollment: enrollment || null,
     });
   } catch (error) {

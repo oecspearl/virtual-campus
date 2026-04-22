@@ -10,6 +10,7 @@ import type { CourseFormat } from '@/app/components/course/CourseFormatSelector'
 import type { Section } from '@/app/components/course/SectionManager';
 import SessionRecordingsCard from '@/app/components/conference/SessionRecordingsCard';
 import DiscussionList from '@/app/components/discussions/DiscussionList';
+import SupplementsPanel from '@/app/components/shared-courses/SupplementsPanel';
 
 import {
   CourseHero,
@@ -55,6 +56,20 @@ interface CourseDetail {
   conferences: Array<{ id: string; title: string; description: string | null; status: string; meeting_url: string | null; video_provider: string; scheduled_at: string | null; instructor: { id: string; name: string; email: string } | null }>;
   resource_links: any[];
   recordings: any[];
+  supplements?: Array<{
+    id: string;
+    kind: 'announcement' | 'resource_link';
+    title: string;
+    description: string | null;
+    body: string | null;
+    url: string | null;
+    link_type: string | null;
+    icon: string | null;
+    position: number;
+    published: boolean;
+    created_at: string;
+    author: { id: string; name: string } | null;
+  }>;
   enrollment: { id: string; status: string; progress_percentage: number; enrolled_at: string; completed_at: string | null } | null;
 }
 
@@ -318,6 +333,17 @@ export default function SharedCourseDetailPage() {
             </button>
           </div>
         )}
+
+        {/* Target-tenant supplements (announcements + resource links) */}
+        <SupplementsPanel
+          shareId={shareId}
+          canEdit={
+            !!userRole &&
+            ['super_admin', 'tenant_admin', 'admin', 'instructor', 'curriculum_designer'].includes(userRole)
+          }
+          canAddSupplementalContent={!!data.can_add_supplemental_content}
+          initial={data.supplements as any}
+        />
 
         {/* Live Sessions */}
         <CourseLiveSessions courseId={course.id} isInstructor={false} conferences={conferences} isEnrolled={isEnrolled} collapsible />

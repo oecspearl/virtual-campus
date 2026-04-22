@@ -168,6 +168,18 @@ export async function GET(
       .eq('published', true)
       .order('position', { ascending: true });
 
+    // Target-tenant live sessions scheduled for this share.
+    const { data: localLiveSessions } = await tq
+      .from('shared_course_live_sessions')
+      .select(`
+        id, title, description, scheduled_at, duration_minutes,
+        meeting_url, provider, status,
+        instructor:users!shared_course_live_sessions_instructor_id_fkey(id, name, email)
+      `)
+      .eq('course_share_id', shareId)
+      .in('status', ['scheduled', 'live'])
+      .order('scheduled_at', { ascending: true });
+
     // Check enrollment for current user
     const { data: enrollment } = await tq
       .from('cross_tenant_enrollments')
@@ -217,6 +229,7 @@ export async function GET(
         (r: any) => r.conference?.course_id === share.course_id
       ),
       supplements: supplements || [],
+      local_live_sessions: localLiveSessions || [],
       enrollment: enrollment || null,
     });
   } catch (error) {

@@ -12,6 +12,7 @@ import SessionRecordingsCard from '@/app/components/conference/SessionRecordings
 import DiscussionList from '@/app/components/discussions/DiscussionList';
 import SupplementsPanel from '@/app/components/shared-courses/SupplementsPanel';
 import MyGradesPanel from '@/app/components/shared-courses/MyGradesPanel';
+import LiveSessionsPanel from '@/app/components/shared-courses/LiveSessionsPanel';
 
 import {
   CourseHero,
@@ -57,6 +58,17 @@ interface CourseDetail {
   conferences: Array<{ id: string; title: string; description: string | null; status: string; meeting_url: string | null; video_provider: string; scheduled_at: string | null; instructor: { id: string; name: string; email: string } | null }>;
   resource_links: any[];
   recordings: any[];
+  local_live_sessions?: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    scheduled_at: string;
+    duration_minutes: number;
+    meeting_url: string | null;
+    provider: 'zoom' | 'teams' | 'meet' | 'jitsi' | 'other';
+    status: 'scheduled' | 'live' | 'completed' | 'cancelled';
+    instructor: { id: string; name: string; email: string } | null;
+  }>;
   supplements?: Array<{
     id: string;
     kind: 'announcement' | 'resource_link';
@@ -378,8 +390,19 @@ export default function SharedCourseDetailPage() {
           initial={data.supplements as any}
         />
 
-        {/* Live Sessions */}
+        {/* Live Sessions — source tenant's */}
         <CourseLiveSessions courseId={course.id} isInstructor={false} conferences={conferences} isEnrolled={isEnrolled} collapsible />
+
+        {/* Target-tenant live sessions (scheduled locally on this share) */}
+        <LiveSessionsPanel
+          shareId={shareId}
+          canEdit={
+            !!userRole &&
+            ['super_admin', 'tenant_admin', 'admin', 'instructor', 'curriculum_designer'].includes(userRole)
+          }
+          canScheduleLiveSessions={!!data.can_schedule_live_sessions}
+          initial={data.local_live_sessions as any}
+        />
 
         {/* Session Recordings */}
         <SessionRecordingsCard courseId={course.id} collapsible />

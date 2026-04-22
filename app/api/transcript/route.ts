@@ -68,6 +68,22 @@ export async function GET(request: NextRequest) {
       .eq('student_id', studentId)
       .eq('status', 'approved');
 
+    // Cross-tenant grades posted by this tenant's registrars/instructors for
+    // the student's shared-course work. Join through the enrollment to
+    // surface which shared course each grade belongs to.
+    const { data: crossTenantGrades } = await tq
+      .from('cross_tenant_grades')
+      .select(`
+        id, assessment_type, assessment_id, score, max_score, percentage, graded_at,
+        enrollment:cross_tenant_enrollments!cross_tenant_grades_enrollment_id_fkey(
+          source_course_id,
+          source_tenant:tenants!cross_tenant_enrollments_source_tenant_id_fkey(id, name),
+          course:courses!cross_tenant_enrollments_source_course_id_fkey(id, title)
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('graded_at', { ascending: false, nullsFirst: false });
+
     // Student identity (for the transcript header)
     const { data: student } = await tq.raw
       .from('users')
@@ -89,6 +105,7 @@ export async function GET(request: NextRequest) {
       local_completions: localEnrollments || [],
       cross_tenant_completions: crossTenant || [],
       transferred_credits: approvedCredits || [],
+      cross_tenant_grades: crossTenantGrades || [],
     });
   } catch (error) {
     console.error('Transcript GET error:', error);

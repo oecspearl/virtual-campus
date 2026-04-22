@@ -12,6 +12,7 @@ interface TranscriptResponse {
   local_completions: any[];
   cross_tenant_completions: any[];
   transferred_credits: any[];
+  cross_tenant_grades?: any[];
 }
 
 export default function TranscriptPage() {
@@ -76,6 +77,8 @@ export default function TranscriptPage() {
     (sum, r) => sum + Number(r.awarded_credits || 0),
     0
   );
+  const crossTenantGrades = data.cross_tenant_grades || [];
+  const totalRegionalGrades = crossTenantGrades.length;
 
   return (
     <div className="min-h-screen bg-gray-50/50 py-8 print:bg-white print:py-0">
@@ -121,9 +124,10 @@ export default function TranscriptPage() {
           </div>
 
           {/* Summary strip */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
             <SummaryStat label="Local courses" value={totalLocal} />
             <SummaryStat label="Regional courses" value={totalCrossTenant} />
+            <SummaryStat label="Regional grades" value={totalRegionalGrades} />
             <SummaryStat label="Transferred credits" value={totalTransferred} />
             <SummaryStat label="Credits awarded" value={totalAwardedCredits.toFixed(2)} />
           </div>
@@ -176,6 +180,46 @@ export default function TranscriptPage() {
                       <td className="py-2 pr-3 text-gray-600">{e.source_tenant?.name || '—'}</td>
                       <td className="py-2 pr-3 text-gray-600">
                         {e.completed_at ? new Date(e.completed_at).toLocaleDateString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Section>
+
+          {/* Regional grades — posted by this institution's instructors on shared-course assessments */}
+          <Section title="Grades on Regional-Catalogue Assessments" count={totalRegionalGrades}>
+            {crossTenantGrades.length === 0 ? (
+              <EmptyRow text="No grades posted for regional-catalogue coursework yet." />
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                    <th className="py-2 pr-3">Course</th>
+                    <th className="py-2 pr-3">Issuing Institution</th>
+                    <th className="py-2 pr-3">Assessment</th>
+                    <th className="py-2 pr-3">Score</th>
+                    <th className="py-2 pr-3">%</th>
+                    <th className="py-2 pr-3">Graded</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {crossTenantGrades.map((g: any) => (
+                    <tr key={g.id} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 pr-3 text-gray-900">{g.enrollment?.course?.title || '—'}</td>
+                      <td className="py-2 pr-3 text-gray-600">{g.enrollment?.source_tenant?.name || '—'}</td>
+                      <td className="py-2 pr-3 text-gray-600 capitalize">{g.assessment_type}</td>
+                      <td className="py-2 pr-3 text-gray-900">
+                        {g.score !== null && g.max_score !== null
+                          ? `${Number(g.score).toFixed(2)} / ${Number(g.max_score).toFixed(2)}`
+                          : '—'}
+                      </td>
+                      <td className="py-2 pr-3 text-gray-900 font-medium">
+                        {g.percentage !== null ? `${Number(g.percentage).toFixed(1)}%` : '—'}
+                      </td>
+                      <td className="py-2 pr-3 text-gray-600">
+                        {g.graded_at ? new Date(g.graded_at).toLocaleDateString() : '—'}
                       </td>
                     </tr>
                   ))}

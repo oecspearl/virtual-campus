@@ -11,6 +11,11 @@ import ReactMarkdown from 'react-markdown';
 interface AITutorPanelProps {
   lessonId: string;
   courseId?: string;
+  /**
+   * When rendered for a cross-tenant shared course, pass the course_shares
+   * row id so the context/chat APIs can read from the source tenant.
+   */
+  shareId?: string;
 }
 
 interface Message {
@@ -19,7 +24,7 @@ interface Message {
   content: string;
 }
 
-export default function AITutorPanel({ lessonId, courseId }: AITutorPanelProps) {
+export default function AITutorPanel({ lessonId, courseId, shareId }: AITutorPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,13 +40,13 @@ export default function AITutorPanel({ lessonId, courseId }: AITutorPanelProps) 
       fetch('/api/ai/tutor/context', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId, courseId }),
+        body: JSON.stringify({ lessonId, courseId, shareId }),
       })
         .then(r => r.ok ? r.json() : null)
         .then(data => { if (data?.context) setContext(data.context); })
         .catch(() => {});
     }
-  }, [lessonId, courseId]);
+  }, [lessonId, courseId, shareId]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -66,7 +71,7 @@ export default function AITutorPanel({ lessonId, courseId }: AITutorPanelProps) 
       const res = await fetch('/api/ai/tutor/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, lessonId, courseId, context }),
+        body: JSON.stringify({ message, lessonId, courseId, shareId, context }),
       });
       if (!res.ok) throw new Error('Failed to get AI response');
       const data = await res.json();

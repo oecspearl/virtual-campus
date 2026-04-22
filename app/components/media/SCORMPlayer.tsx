@@ -15,6 +15,8 @@ interface SCORMPlayerProps {
   scormVersion: '1.2' | '2004';
   courseId?: string;
   lessonId?: string;
+  /** When rendered inside a cross-tenant shared-course surface, the share id. */
+  shareId?: string;
   title?: string;
   // Lesson metadata for context panels
   lessonTitle?: string;
@@ -231,7 +233,7 @@ function fmtTime(s: number) {
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
 export default function SCORMPlayer({
-  packageUrl, scormPackageId, scormVersion, courseId, lessonId,
+  packageUrl, scormPackageId, scormVersion, courseId, lessonId, shareId,
   title = 'SCORM Content',
   lessonTitle, moduleTitle, lessonDescription, learningOutcomes, instructions,
   lessonIndex = 0, totalLessons = 1, onMarkComplete, isCompleted = false,
@@ -514,7 +516,7 @@ export default function SCORMPlayer({
             )}
             {activePanel === 'ai-tutor' && lessonId && (
               <div className="flex-1 overflow-hidden min-h-[50vh]">
-                <AITutorPanel lessonId={lessonId} courseId={courseId} />
+                <AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} />
               </div>
             )}
           </div>
@@ -723,7 +725,7 @@ export default function SCORMPlayer({
               {/* AI Tutor — fills drawer, has its own scroll */}
               {activePanel === 'ai-tutor' && lessonId && (
                 <div className="flex-1 overflow-hidden">
-                  <AITutorPanel lessonId={lessonId} courseId={courseId} />
+                  <AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} />
                 </div>
               )}
             </div>

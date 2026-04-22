@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 interface AITutorWidgetProps {
   lessonId: string;
   courseId?: string;
+  /** Pass when rendered on a shared (cross-tenant) course lesson. */
+  shareId?: string;
   isEnabled: boolean;
   onToggle: () => void;
 }
@@ -19,7 +21,7 @@ interface Message {
   timestamp: string;
 }
 
-export default function AITutorWidget({ lessonId, courseId, isEnabled, onToggle }: AITutorWidgetProps) {
+export default function AITutorWidget({ lessonId, courseId, shareId, isEnabled, onToggle }: AITutorWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -35,7 +37,9 @@ export default function AITutorWidget({ lessonId, courseId, isEnabled, onToggle 
     if (isEnabled && lessonId) {
       loadLessonContext();
     }
-  }, [lessonId, isEnabled]);
+    // loadLessonContext closure depends on lessonId, courseId, shareId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId, courseId, shareId, isEnabled]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function AITutorWidget({ lessonId, courseId, isEnabled, onToggle 
       const response = await fetch('/api/ai/tutor/context', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId, courseId })
+        body: JSON.stringify({ lessonId, courseId, shareId })
       });
 
       if (response.ok) {
@@ -89,6 +93,7 @@ export default function AITutorWidget({ lessonId, courseId, isEnabled, onToggle 
           message,
           lessonId,
           courseId,
+          shareId,
           context
         })
       });

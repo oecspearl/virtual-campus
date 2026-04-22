@@ -18,6 +18,8 @@ import { sanitizeHtml } from '@/lib/sanitize';
 interface RichTextPlayerProps {
   courseId: string;
   lessonId: string;
+  /** When rendered on a cross-tenant shared-course surface, the share id. */
+  shareId?: string;
   lessonTitle: string;
   courseTitle?: string;
   lessonDescription?: string;
@@ -69,7 +71,7 @@ function extractSections(content: any[]): { index: number; title: string }[] {
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
 export default function RichTextPlayer({
-  courseId, lessonId, lessonTitle, courseTitle, lessonDescription,
+  courseId, lessonId, shareId, lessonTitle, courseTitle, lessonDescription,
   learningOutcomes, instructions, content, lessonIndex, totalLessons,
   isCompleted, isCompleting, isInstructor, onMarkComplete, onNavigate,
   onContentUpdate, prevLessonId, nextLessonId,
@@ -275,7 +277,7 @@ export default function RichTextPlayer({
             )}
             {activePanel === 'ai-tutor' && (
               <div className="flex-1 overflow-hidden min-h-[50vh]">
-                <AITutorPanel lessonId={lessonId} courseId={courseId} />
+                <AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} />
               </div>
             )}
           </div>
@@ -721,7 +723,7 @@ export default function RichTextPlayer({
               {/* AI Tutor — fills drawer */}
               {activePanel === 'ai-tutor' && (
                 <div className="flex-1 overflow-hidden">
-                  <AITutorPanel lessonId={lessonId} courseId={courseId} />
+                  <AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} />
                 </div>
               )}
             </div>

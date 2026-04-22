@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { parseTranscript, condenseTranscript, transcriptToPlainText } from "@/lib/ai/transcript-utils";
+import { validateCourseShare } from "@/lib/share-validation";
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
     const user = authResult.userProfile!;
 
-    const { lessonId, courseId } = await request.json();
+    const { lessonId, courseId, shareId } = await request.json();
     if (!lessonId) {
       return NextResponse.json({ error: "Lesson ID required" }, { status: 400 });
     }
@@ -17,39 +18,60 @@ export async function POST(request: Request) {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
+    // When shareId is present, the lesson + related content live in the
+    // SOURCE tenant, not the caller's tenant. We validate the share, then
+    // use tq.raw (unscoped) for those reads. Progress history still lives
+    // in the caller's tenant (cross_tenant_enrollments + _lesson_progress).
+    let crossTenant = false;
+    let sharedCourseId: string | null = null;
+    if (shareId) {
+      const shareValidation = await validateCourseShare(shareId, tenantId);
+      if (!shareValidation.valid) {
+        return NextResponse.json({ error: shareValidation.error }, { status: 404 });
+      }
+      crossTenant = true;
+      sharedCourseId = shareValidation.share!.course_id;
+    }
+
+    // Use raw client for source-tenant reads when cross-tenant; otherwise
+    // use tenant-scoped reads for the caller's own courses. Cast to any so
+    // the two client types (TenantFilteredQuery vs raw Supabase) unify at
+    // this call-site — we only hit shared surface (.from().select()).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lessonClient: any = crossTenant ? tq.raw : tq;
+
     // ── Parallel data fetches ────────────────────────────────────────────
-    const effectiveCourseId = courseId; // may be undefined; resolved after lesson fetch
 
     const [lessonResult, scormResult, captionsResult, resourceLinksResult, libraryResult] =
       await Promise.allSettled([
         // 1. Lesson with course context
-        tq.from("lessons")
+        lessonClient.from("lessons")
           .select(`*, course:courses(title, description, subject_area)`)
           .eq("id", lessonId)
           .single(),
 
         // 2. SCORM package (if this is a SCORM lesson)
-        tq.from("scorm_packages")
+        lessonClient.from("scorm_packages")
           .select("title, description, scorm_version, manifest_xml")
           .eq("lesson_id", lessonId)
           .single(),
 
         // 3. Video captions / transcripts
-        tq.from("video_captions")
+        lessonClient.from("video_captions")
           .select("language, label, caption_content, caption_url, caption_format")
           .eq("lesson_id", lessonId)
           .eq("is_default", true)
           .limit(1),
 
         // 4. Resource links attached to this lesson
-        tq.from("resource_links")
+        lessonClient.from("resource_links")
           .select("title, description, link_type, url")
           .eq("lesson_id", lessonId)
           .order("order", { ascending: true })
           .limit(10),
 
         // 5. Library resources attached to this lesson
-        tq.from("course_library_resources")
+        lessonClient.from("course_library_resources")
           .select("resource:library_resources(title, description, resource_type, file_name)")
           .eq("lesson_id", lessonId)
           .limit(10),
@@ -61,17 +83,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
     }
     const lesson = lessonData.data;
-    const resolvedCourseId = courseId || lesson.course_id;
+    const resolvedCourseId = sharedCourseId || courseId || lesson.course_id;
 
     // ── Fetch student progress & related lessons (depend on resolvedCourseId) ──
-    const [enrollmentResult, relatedResult, historyResult] = await Promise.allSettled([
-      tq.from("enrollments")
-        .select("progress_percentage")
-        .eq("student_id", user.id)
-        .eq("course_id", resolvedCourseId)
-        .single(),
+    // Progress: for shared courses, progress lives in the caller's tenant as
+    // cross_tenant_enrollments; otherwise it's the local enrollments table.
+    const enrollmentPromise = crossTenant
+      ? tq.from("cross_tenant_enrollments")
+          .select("progress_percentage")
+          .eq("student_id", user.id)
+          .eq("source_course_id", resolvedCourseId)
+          .single()
+      : tq.from("enrollments")
+          .select("progress_percentage")
+          .eq("student_id", user.id)
+          .eq("course_id", resolvedCourseId)
+          .single();
 
-      tq.from("lessons")
+    const [enrollmentResult, relatedResult, historyResult] = await Promise.allSettled([
+      enrollmentPromise,
+
+      // Related lessons in the same course — in source tenant for shared courses
+      lessonClient.from("lessons")
         .select("id, title, description, difficulty")
         .eq("course_id", resolvedCourseId)
         .neq("id", lessonId)

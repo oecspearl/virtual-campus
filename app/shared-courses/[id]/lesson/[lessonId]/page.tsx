@@ -42,6 +42,7 @@ export default function SharedCourseLessonPage() {
   const [videoCurrentTime, setVideoCurrentTime] = React.useState(0);
   const videoSeekRef = React.useRef<((time: number) => void) | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [aiTutorEnabled, setAiTutorEnabled] = React.useState(true);
 
   // ─── Data fetching ────────────────────────────────────────────────────────
 
@@ -232,6 +233,7 @@ export default function SharedCourseLessonPage() {
       { id: 'notes', label: 'Notes & Questions', icon: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z' },
       { id: 'discussions', label: 'Discussions', icon: 'M20 12c0 1.363-.469 2.621-1.256 3.613-.236.297-.462.564-.676.808C17.012 17.547 12 20 12 20s-5.012-2.453-6.068-3.579a10.06 10.06 0 01-.676-.808A5.961 5.961 0 014 12c0-3.314 2.686-6 6-6a5.96 5.96 0 012 .344A5.96 5.96 0 0114 6c3.314 0 6 2.686 6 6z' },
       { id: 'resources', label: 'Resources', icon: 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z' },
+      { id: 'ai-tutor', label: 'AI Tutor', icon: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z' },
     ];
 
     const currentChapterIdx = vChapters.reduce((acc: number, ch: any, i: number) => (videoCurrentTime >= ch.time ? i : acc), 0);
@@ -306,6 +308,7 @@ export default function SharedCourseLessonPage() {
                 {videoTab === 'notes' && (<VideoNotesPanel lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
                 {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
                 {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
+                {videoTab === 'ai-tutor' && (<div className="h-full"><AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} /></div>)}
               </div>
             </div>
           </div>
@@ -387,6 +390,11 @@ export default function SharedCourseLessonPage() {
                   {videoTab === 'discussions' && (<VideoDiscussionThread lessonId={lessonId} courseId={courseId} currentTime={videoCurrentTime} onSeek={(time) => videoSeekRef.current?.(time)} />)}
                   {videoTab === 'resources' && (<div className="p-4 space-y-4"><ResourceLinksSidebar courseId={courseId} lessonId={lessonId} collapsible={false} /><SessionRecordingsCard courseId={courseId} lessonId={lessonId} /></div>)}
                 </div>
+                {videoTab === 'ai-tutor' && (
+                  <div className="flex-1 overflow-hidden">
+                    <AITutorPanel lessonId={lessonId} courseId={courseId} shareId={shareId} />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -424,6 +432,7 @@ export default function SharedCourseLessonPage() {
             scormVersion={scormPackage.scorm_version}
             courseId={course?.id}
             lessonId={lessonId}
+            shareId={shareId}
             title={scormPackage.title || lesson.title}
             lessonTitle={lesson.title}
             moduleTitle={course?.title}
@@ -448,6 +457,7 @@ export default function SharedCourseLessonPage() {
         <RichTextPlayer
           courseId={course?.id || ''}
           lessonId={lessonId}
+          shareId={shareId}
           lessonTitle={lesson.title}
           courseTitle={course?.title}
           lessonDescription={lesson.description}
@@ -629,6 +639,14 @@ export default function SharedCourseLessonPage() {
       </div>
 
       {NextLessonPrompt}
+
+      <AITutorWidget
+        lessonId={lessonId}
+        courseId={course?.id}
+        shareId={shareId}
+        isEnabled={aiTutorEnabled}
+        onToggle={() => setAiTutorEnabled(!aiTutorEnabled)}
+      />
     </div>
   );
 }

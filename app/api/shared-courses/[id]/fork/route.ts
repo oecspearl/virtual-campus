@@ -286,7 +286,69 @@ export async function POST(
     });
     if (rlInserts.length > 0) await tq.from('resource_links').insert(rlInserts);
 
-    // 12. Optionally revoke the share
+    // 11b. Clone lesson-level resource links — remap lesson_id via lessonIdMap
+    const { data: sourceLessonResourceLinks } = await raw
+      .from('resource_links')
+      .select('*')
+      .eq('course_id', share.course_id)
+      .not('lesson_id', 'is', null);
+    const lessonRlInserts = (sourceLessonResourceLinks || [])
+      .map((r: any) => {
+        const newLessonId = lessonIdMap.get(r.lesson_id);
+        if (!newLessonId) return null;
+        const { id: _rid, tenant_id: _rtid, course_id: _rcid, created_at: _rca, updated_at: _rua, ...rf } = r;
+        return { ...rf, course_id: newCourse.id, lesson_id: newLessonId };
+      })
+      .filter(Boolean) as any[];
+    if (lessonRlInserts.length > 0) await tq.from('resource_links').insert(lessonRlInserts);
+
+    // 12. Clone SCORM packages — keyed by lesson_id. Without this, forked
+    // SCORM lessons have content_type='scorm' but no package row, which
+    // makes the player fall through. SCORM files live in source-tenant
+    // storage; we keep the same package_url (no deep file copy in v1).
+    const sourceLessonIds = Array.from(lessonIdMap.keys());
+    let scormCount = 0;
+    if (sourceLessonIds.length > 0) {
+      const { data: sourceScorm } = await raw
+        .from('scorm_packages')
+        .select('*')
+        .in('lesson_id', sourceLessonIds);
+      const scormInserts = (sourceScorm || [])
+        .map((s: any) => {
+          const newLessonId = lessonIdMap.get(s.lesson_id);
+          if (!newLessonId) return null;
+          const { id: _sid, tenant_id: _stid, lesson_id: _slid, created_at: _sca, updated_at: _sua, ...sf } = s;
+          return { ...sf, lesson_id: newLessonId };
+        })
+        .filter(Boolean) as any[];
+      if (scormInserts.length > 0) {
+        await tq.from('scorm_packages').insert(scormInserts);
+        scormCount = scormInserts.length;
+      }
+    }
+
+    // 13. Clone video captions — also keyed by lesson_id.
+    let captionCount = 0;
+    if (sourceLessonIds.length > 0) {
+      const { data: sourceCaptions } = await raw
+        .from('video_captions')
+        .select('*')
+        .in('lesson_id', sourceLessonIds);
+      const captionInserts = (sourceCaptions || [])
+        .map((c: any) => {
+          const newLessonId = lessonIdMap.get(c.lesson_id);
+          if (!newLessonId) return null;
+          const { id: _cid, tenant_id: _ctid, lesson_id: _clid, created_at: _cca, updated_at: _cua, ...cf } = c;
+          return { ...cf, lesson_id: newLessonId };
+        })
+        .filter(Boolean) as any[];
+      if (captionInserts.length > 0) {
+        await tq.from('video_captions').insert(captionInserts);
+        captionCount = captionInserts.length;
+      }
+    }
+
+    // 14. Optionally revoke the share
     if (revokeAfterFork) {
       await raw
         .from('course_shares')
@@ -304,7 +366,9 @@ export async function POST(
         assignments: assignmentInserts.length,
         grade_items: gradeItemInserts.length,
         competencies: compInserts.length,
-        resource_links: rlInserts.length,
+        resource_links: rlInserts.length + lessonRlInserts.length,
+        scorm_packages: scormCount,
+        video_captions: captionCount,
       },
       revoked: revokeAfterFork,
     });

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSupabase } from '@/lib/supabase-provider';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
+import AccessibleModal, { ModalFooter } from '@/app/components/ui/AccessibleModal';
 import RoleGuard from '@/app/components/RoleGuard';
 import CourseRestoreButton from '@/app/components/course/CourseRestoreButton';
 import { stripHtml } from '@/lib/utils';
@@ -52,6 +53,10 @@ export default function ManageCoursesPage() {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [cloningCourse, setCloningCourse] = useState<string | null>(null);
 
+  // Delete confirmation
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const [deletingCourse, setDeletingCourse] = useState(false);
+
   useEffect(() => { loadData(); }, []);
 
   // Derived data
@@ -97,7 +102,10 @@ export default function ManageCoursesPage() {
       setLoading(true);
       setError('');
       const token = await getToken();
-      const res = await fetch('/api/courses', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/courses', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
       if (!res.ok) throw new Error('Failed to load courses');
       const data = await res.json();
       setCourses(data.courses || []);
@@ -151,15 +159,24 @@ export default function ManageCoursesPage() {
     }
   }
 
-  async function handleDeleteCourse(courseId: string, title: string) {
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+  function handleDeleteCourse(courseId: string, title: string) {
+    setPendingDelete({ id: courseId, title });
+  }
+
+  async function confirmDeleteCourse() {
+    if (!pendingDelete) return;
+    const { id, title } = pendingDelete;
     try {
       setError(''); setSuccess('');
-      await apiCall('DELETE', `/api/courses/${courseId}`);
+      setDeletingCourse(true);
+      await apiCall('DELETE', `/api/courses/${id}`);
       setSuccess(`Course "${title}" deleted.`);
+      setPendingDelete(null);
       loadData();
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setDeletingCourse(false);
     }
   }
 
@@ -356,6 +373,59 @@ export default function ManageCoursesPage() {
           />
         </div>
       </div>
+
+      <AccessibleModal
+        isOpen={!!pendingDelete}
+        onClose={() => { if (!deletingCourse) setPendingDelete(null); }}
+        title="Delete course?"
+        size="md"
+        closeOnBackdropClick={!deletingCourse}
+        closeOnEscape={!deletingCourse}
+      >
+        <div className="space-y-3 text-sm text-gray-700">
+          <p>
+            You&rsquo;re about to delete{' '}
+            <span className="font-semibold text-gray-900">&ldquo;{pendingDelete?.title}&rdquo;</span>.
+          </p>
+          <div className="rounded-md bg-red-50 border border-red-200 p-3">
+            <p className="font-medium text-red-800 mb-1 flex items-center gap-2">
+              <Icon icon="material-symbols:warning-outline" className="w-5 h-5" />
+              This cannot be undone.
+            </p>
+            <p className="text-red-700">
+              All related data will be removed: lessons, quizzes and attempts,
+              assignments and submissions, enrollments, announcements, discussions,
+              grades, and recorded sessions. Uploaded files are kept but unlinked.
+            </p>
+          </div>
+        </div>
+        <ModalFooter>
+          <Button
+            onClick={() => setPendingDelete(null)}
+            variant="outline"
+            disabled={deletingCourse}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteCourse}
+            disabled={deletingCourse}
+            className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+          >
+            {deletingCourse ? (
+              <>
+                <Icon icon="material-symbols:progress-activity" className="w-4 h-4 animate-spin" />
+                Deleting…
+              </>
+            ) : (
+              <>
+                <Icon icon="material-symbols:delete-outline" className="w-4 h-4" />
+                Delete course
+              </>
+            )}
+          </Button>
+        </ModalFooter>
+      </AccessibleModal>
     </RoleGuard>
   );
 }

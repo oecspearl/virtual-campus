@@ -2,12 +2,13 @@
  * Course service — read/update/delete for the `courses` table and its
  * related data.
  *
- * The delete function currently cascades through a hard-coded list of
- * related tables. This is a known piece of tech debt (architectural
- * assessment Issue #8): the correct long-term fix is `ON DELETE CASCADE`
- * foreign keys at the database level. Until that migration lands, this
- * service is the single source of truth for the list — do not duplicate
- * it elsewhere.
+ * Cascade cleanup for deletes lives in the database: every FK that points
+ * at `courses` (directly or transitively) is declared with `ON DELETE
+ * CASCADE` or `ON DELETE SET NULL` — see migration
+ * `database/consolidated/036-course-delete-cascade.sql`. The delete
+ * function here is therefore a single-row delete; new child tables added
+ * in the future just need an FK with the right ON DELETE action and they
+ * will participate automatically.
  */
 
 import type { TenantQuery } from '@/lib/tenant-query';
@@ -47,8 +48,6 @@ export interface UpdateCourseOptions {
 
 export interface DeleteCourseResult {
   deleted: true;
-  /** Number of related-table operations attempted during cascade cleanup. */
-  cascadeOperations: number;
 }
 
 // ─── Permission ─────────────────────────────────────────────────────────────
@@ -151,64 +150,7 @@ export async function updateCourse(
   return updated as CourseRecord;
 }
 
-// ─── Delete (with cascade) ──────────────────────────────────────────────────
-
-/**
- * Tables whose rows reference a course and should be DELETED when the
- * course is deleted. Ordered so that children are removed before their
- * parents (e.g. `quiz_attempts` before `quizzes`).
- *
- * TODO (Architectural Issue #8): replace with `ON DELETE CASCADE` FK
- * constraints at the database level. A new table added here will silently
- * leak orphaned rows if any developer forgets to update this list.
- */
-const COURSE_CASCADE_DELETE_TABLES: readonly string[] = [
-  'course_grades',
-  'course_grade_items',
-  'course_gradebook_settings',
-  'quiz_attempts',
-  'quizzes',
-  'assignments',
-  'assignment_submissions',
-  'lesson_progress',
-  'lessons',
-  'subjects',
-  'enrollments',
-  'course_instructors',
-  'course_announcements',
-  'course_discussions',
-  'discussions',
-  'lesson_discussions',
-  'classes',
-  'resource_links',
-  'scorm_tracking',
-  'scorm_packages',
-  'video_conferences',
-  'ai_tutor_analytics',
-  'ai_tutor_conversations',
-  'user_badges',
-  'certificates',
-  'ceu_credits',
-  'student_activity_log',
-  'course_sections',
-];
-
-/**
- * Tables whose course_id should be set to NULL (rather than deleted)
- * when the course is deleted — typically historical/analytical data we
- * want to preserve.
- */
-const COURSE_SET_NULL_TABLES: readonly string[] = [
-  'student_risk_indicators',
-  'learning_analytics_predictions',
-  'engagement_metrics',
-  'proctoring_sessions',
-  'plagiarism_checks',
-  'lti_launches',
-  'lti_grade_passback',
-  'oneroster_classes',
-  'files',
-];
+// ─── Delete ─────────────────────────────────────────────────────────────────
 
 /**
  * Whether the caller has permission to delete this course (stricter than update
@@ -219,17 +161,11 @@ export function canDeleteCourse(userRole: string): boolean {
 }
 
 /**
- * Delete a course and cascade-cleanup its related data.
+ * Delete a course. The DB handles all child cleanup via ON DELETE CASCADE /
+ * ON DELETE SET NULL (see migration 036-course-delete-cascade.sql), so this
+ * is a single-row delete — no cascade list to maintain here.
  *
- * This runs the cascade as two parallel waves:
- *   1. DELETE rows in all known child tables.
- *   2. SET course_id = NULL in tables where we want to keep the rows.
- * Both waves use `Promise.allSettled` so that a missing table (or a
- * permission error on one table) doesn't abort the whole cleanup.
- *
- * Callers that want to skip the permission check can pass `userRole`
- * explicitly; otherwise the caller is responsible for checking
- * `canDeleteCourse` before invoking this.
+ * Callers are responsible for checking `canDeleteCourse` first.
  */
 export async function deleteCourse(
   tq: TenantQuery,
@@ -239,39 +175,19 @@ export async function deleteCourse(
     throw new Error('courseId is required');
   }
 
-  // Verify the course exists — produces a clean 404 in the route.
-  const { data: course } = await tq
+  const { data: deleted, error } = await tq
     .from('courses')
-    .select('id')
+    .delete()
     .eq('id', courseId)
-    .single();
+    .select('id')
+    .maybeSingle();
 
-  if (!course) {
-    throw new CourseNotFoundError();
-  }
-
-  // Wave 1: cascade deletes.
-  await Promise.allSettled(
-    COURSE_CASCADE_DELETE_TABLES.map((table) =>
-      tq.from(table).delete().eq('course_id', courseId)
-    )
-  );
-
-  // Wave 2: null out course_id on preserved tables.
-  await Promise.allSettled(
-    COURSE_SET_NULL_TABLES.map((table) =>
-      tq.from(table).update({ course_id: null }).eq('course_id', courseId)
-    )
-  );
-
-  // Finally, delete the course row itself.
-  const { error } = await tq.from('courses').delete().eq('id', courseId);
   if (error) {
     throw new Error(`Failed to delete course: ${error.message}`);
   }
+  if (!deleted) {
+    throw new CourseNotFoundError();
+  }
 
-  return {
-    deleted: true,
-    cascadeOperations: COURSE_CASCADE_DELETE_TABLES.length + COURSE_SET_NULL_TABLES.length,
-  };
+  return { deleted: true };
 }

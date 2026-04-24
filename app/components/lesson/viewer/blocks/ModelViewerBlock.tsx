@@ -5,29 +5,32 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { BookmarkButton } from '@/app/components/student';
 import ContentProgressCheckbox from '../ContentProgressCheckbox';
 
-// model-viewer is a web component (custom element). React's JSX namespace
-// doesn't know about it, so declare the subset of attributes we use here.
-declare global {
+// model-viewer is a web component (custom element). React 19 moved the JSX
+// namespace under `react`, so augment there — the old global `JSX` namespace
+// isn't picked up at type-check time under Next 15 + React 19.
+type ModelViewerAttributes = React.DetailedHTMLProps<
+  React.HTMLAttributes<HTMLElement> & {
+    src?: string;
+    'ios-src'?: string;
+    poster?: string;
+    alt?: string;
+    ar?: boolean | '';
+    'ar-modes'?: string;
+    'ar-scale'?: string;
+    'camera-controls'?: boolean | '';
+    'auto-rotate'?: boolean | '';
+    'shadow-intensity'?: string;
+    exposure?: string;
+    loading?: 'auto' | 'lazy' | 'eager';
+    reveal?: 'auto' | 'interaction' | 'manual';
+  },
+  HTMLElement
+>;
+
+declare module 'react' {
   namespace JSX {
     interface IntrinsicElements {
-      'model-viewer': React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement> & {
-          src?: string;
-          'ios-src'?: string;
-          poster?: string;
-          alt?: string;
-          ar?: boolean | '';
-          'ar-modes'?: string;
-          'ar-scale'?: string;
-          'camera-controls'?: boolean | '';
-          'auto-rotate'?: boolean | '';
-          'shadow-intensity'?: string;
-          exposure?: string;
-          loading?: 'auto' | 'lazy' | 'eager';
-          reveal?: 'auto' | 'interaction' | 'manual';
-        },
-        HTMLElement
-      >;
+      'model-viewer': ModelViewerAttributes;
     }
   }
 }

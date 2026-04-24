@@ -96,6 +96,15 @@ export default function RichTextPlayer({
   const courseProgress = courseLessons.length > 0 ? Math.round((completedCount / courseLessons.length) * 100) : 0;
   const sectionProgress = content.length > 0 ? Math.round((readSections.size / content.length) * 100) : 100;
 
+  // Lazy-register the <model-viewer> web component — only when the lesson
+  // actually contains a 3D block so lessons without 3D content don't pull
+  // the ~300KB viewer bundle.
+  useEffect(() => {
+    if (content?.some((b: any) => b?.type === '3d_model')) {
+      import('@google/model-viewer');
+    }
+  }, [content]);
+
   // Persist read sections
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -512,6 +521,35 @@ export default function RichTextPlayer({
                                 style={{ minHeight: 400 }}
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
+                              />
+                            </div>
+                          )}
+
+                          {/* ── 3D Model ── */}
+                          {item.type === '3d_model' && (item.data?.url || item.data?.fileId) && (
+                            <div className="rounded-lg overflow-hidden border border-gray-200 bg-slate-50">
+                              {item.title && (
+                                <p className="text-sm font-medium text-gray-900 px-4 pt-3 pb-2">{item.title}</p>
+                              )}
+                              <model-viewer
+                                src={item.data?.url || `/api/files/${item.data?.fileId}`}
+                                ios-src={item.data?.iosUrl || undefined}
+                                poster={item.data?.posterUrl || undefined}
+                                alt={item.data?.alt || item.title || '3D model'}
+                                ar={item.data?.enableAR ? '' : undefined}
+                                ar-modes="webxr scene-viewer quick-look"
+                                ar-scale="auto"
+                                camera-controls=""
+                                auto-rotate={item.data?.autoRotate ? '' : undefined}
+                                shadow-intensity="1"
+                                exposure="1"
+                                loading="lazy"
+                                reveal="auto"
+                                style={{
+                                  width: '100%',
+                                  height: 'min(70vh, 500px)',
+                                  backgroundColor: '#f8fafc',
+                                }}
                               />
                             </div>
                           )}

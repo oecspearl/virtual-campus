@@ -5,7 +5,7 @@ import TextEditor from '@/app/components/editor/TextEditor';
 import FileUpload, { UploadResult } from '@/app/components/file-upload/FileUpload';
 
 type ContentItem = {
-  type: 'video' | 'text' | 'slideshow' | 'file' | 'embed' | 'quiz' | 'survey' | 'assignment' | 'image' | 'pdf' | 'audio' | 'interactive_video' | 'code_sandbox' | 'label' | 'whiteboard';
+  type: 'video' | 'text' | 'slideshow' | 'file' | 'embed' | 'quiz' | 'survey' | 'assignment' | 'image' | 'pdf' | 'audio' | 'interactive_video' | 'code_sandbox' | 'label' | 'whiteboard' | '3d_model';
   title: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
@@ -29,6 +29,7 @@ interface ContentBlockEditorProps {
 }
 
 const TYPE_ICONS: Record<string, string> = {
+  '3d_model': '3D',
   text: 'Aa',
   video: '\u25B6',
   audio: '\u266A',
@@ -62,6 +63,7 @@ const TYPE_LABELS: Record<string, string> = {
   assignment: 'Assignment',
   label: 'Label',
   whiteboard: 'Whiteboard',
+  '3d_model': '3D Model',
 };
 
 export default function ContentBlockEditor({
@@ -323,6 +325,84 @@ export default function ContentBlockEditor({
           {/* IMAGE / PDF */}
           {(item.type === 'image' || item.type === 'pdf') && (
             <FileUpload onUploaded={onFileUploaded} />
+          )}
+
+          {/* 3D MODEL */}
+          {item.type === '3d_model' && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">3D Model (.glb or .gltf)</label>
+                <FileUpload
+                  onUploaded={(res: UploadResult) => patch({
+                    fileId: res.fileId,
+                    url: res.fileUrl,
+                    fileName: res.fileName,
+                    fileSize: res.fileSize,
+                    fileType: res.fileType,
+                  })}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Recommended format: binary glTF (.glb). Keep models under ~25&nbsp;MB for acceptable load times on student devices.
+                </p>
+                {d?.fileName && (
+                  <p className="mt-1 text-xs text-gray-600">Uploaded: <span className="font-mono">{d.fileName}</span></p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">iOS AR file (.usdz) <span className="font-normal text-gray-500">— optional</span></label>
+                <input
+                  value={String(d?.iosUrl || '')}
+                  onChange={(e) => patch({ iosUrl: e.target.value })}
+                  placeholder="https://... (USDZ URL for iOS Quick Look)"
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  iOS devices use a separate USDZ file for native Quick Look AR. If omitted, iOS users see the flat 3D viewer only.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Poster image URL <span className="font-normal text-gray-500">— optional</span></label>
+                <input
+                  value={String(d?.posterUrl || '')}
+                  onChange={(e) => patch({ posterUrl: e.target.value })}
+                  placeholder="https://... (shown while model loads)"
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Description / alt text</label>
+                <input
+                  value={String(d?.alt || '')}
+                  onChange={(e) => patch({ alt: e.target.value })}
+                  placeholder="Describe the model for screen readers and SEO"
+                  className={inputCls}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-4 pt-1">
+                <label className="flex items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={d?.enableAR ?? true}
+                    onChange={(e) => patch({ enableAR: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Enable AR button on mobile (Scene Viewer / Quick Look)
+                </label>
+                <label className="flex items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(d?.autoRotate)}
+                    onChange={(e) => patch({ autoRotate: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Auto-rotate model
+                </label>
+              </div>
+            </div>
           )}
 
           {/* FILE */}

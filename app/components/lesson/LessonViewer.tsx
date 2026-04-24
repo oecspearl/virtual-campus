@@ -21,13 +21,14 @@ import CodeSandboxBlock from './viewer/blocks/CodeSandboxBlock';
 import QuizBlock from './viewer/blocks/QuizBlock';
 import AssignmentBlock from './viewer/blocks/AssignmentBlock';
 import SurveyBlock from './viewer/blocks/SurveyBlock';
+import ModelViewerBlock from './viewer/blocks/ModelViewerBlock';
 import { useCollapseState } from './viewer/hooks/useCollapseState';
 import { useContentProgress } from './viewer/hooks/useContentProgress';
 import { useQuizAssignmentData } from './viewer/hooks/useQuizAssignmentData';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
-  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label'|'survey'|'whiteboard';
+  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label'|'survey'|'whiteboard'|'3d_model';
   title: string;
   data: any;
   id?: string;
@@ -367,6 +368,26 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
             fileId={item.data?.fileId}
             url={item.data?.url}
             alt={item.data?.title}
+            isCollapsed={isCollapsed(index)}
+            onToggleCollapse={() => toggleCollapse(index)}
+            isComplete={contentProgress[index] || false}
+            onToggleComplete={() => toggleContentComplete(index, item)}
+          />
+        );
+
+      case '3d_model':
+        return (
+          <ModelViewerBlock
+            index={index}
+            lessonId={lessonId}
+            title={item.title}
+            fileId={item.data?.fileId}
+            url={item.data?.url}
+            iosUrl={item.data?.iosUrl}
+            posterUrl={item.data?.posterUrl}
+            alt={item.data?.alt || item.data?.description}
+            enableAR={item.data?.enableAR ?? true}
+            autoRotate={item.data?.autoRotate ?? false}
             isCollapsed={isCollapsed(index)}
             onToggleCollapse={() => toggleCollapse(index)}
             isComplete={contentProgress[index] || false}

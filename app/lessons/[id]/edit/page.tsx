@@ -15,7 +15,7 @@ import VideoModeEditor from './_components/VideoModeEditor';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
-  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'survey'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label'|'whiteboard';
+  type: 'video'|'text'|'slideshow'|'file'|'embed'|'quiz'|'survey'|'assignment'|'image'|'pdf'|'audio'|'interactive_video'|'code_sandbox'|'label'|'whiteboard'|'3d_model';
   title: string;
   data: any;
   id?: string;
@@ -145,6 +145,7 @@ export default function EditLessonPage() {
     else if (type === 'code_sandbox') initialData = { language: 'javascript', code: '', instructions: '', readOnly: false };
     else if (type === 'label') { initialData = { text: '', style: 'heading', size: 'medium' }; initialTitle = 'Section Label'; }
     else if (type === 'whiteboard') { initialData = { whiteboard_id: null, elements: [], app_state: {}, mode: 'collaborate' }; initialTitle = 'Whiteboard'; }
+    else if (type === '3d_model') { initialData = { url: '', iosUrl: '', posterUrl: '', alt: '', enableAR: true, autoRotate: false }; initialTitle = '3D Model'; }
     setContent([...content, { type, title: initialTitle, data: initialData, id: `${type}-${Date.now()}` }]);
   };
 
@@ -490,6 +491,7 @@ export default function EditLessonPage() {
                         <option value="code_sandbox">Code Sandbox</option>
                         <option value="whiteboard">Whiteboard</option>
                         <option value="image">Image</option>
+                        <option value="3d_model">3D Model</option>
                         <option value="pdf">PDF Document</option>
                         <option value="file">File Upload</option>
                         <option value="embed">Embed Content</option>

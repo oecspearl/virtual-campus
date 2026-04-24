@@ -77,6 +77,9 @@ export default function RichTextPlayer({
   onContentUpdate, prevLessonId, nextLessonId,
   courseLessons, lessonProgressMap,
 }: RichTextPlayerProps) {
+  // Start with the player full-width; useEffect upgrades to 'outcomes' on
+  // desktop if there are any. A lazy initializer would cause a hydration
+  // mismatch because window is unavailable during SSR.
   const [activePanel, setActivePanel] = useState<PanelId>('player');
   const [currentSection, setCurrentSection] = useState(0);
   const [readSections, setReadSections] = useState<Set<number>>(() => {
@@ -104,6 +107,18 @@ export default function RichTextPlayer({
       import('@google/model-viewer');
     }
   }, [content]);
+
+  // Default the right-side panel to "Learning Outcomes" on desktop when the
+  // lesson has any, so instructors' stated outcomes are visible without an
+  // extra click. Skip on mobile (the panel is a full-screen drawer there and
+  // would cover the lesson content) and when there are no outcomes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+    const hasOutcomes = Array.isArray(learningOutcomes) && learningOutcomes.length > 0;
+    if (isDesktop && hasOutcomes) setActivePanel('outcomes');
+  }, [lessonId]);
 
   // Persist read sections
   useEffect(() => {

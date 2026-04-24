@@ -145,7 +145,7 @@ export default function EditLessonPage() {
     else if (type === 'code_sandbox') initialData = { language: 'javascript', code: '', instructions: '', readOnly: false };
     else if (type === 'label') { initialData = { text: '', style: 'heading', size: 'medium' }; initialTitle = 'Section Label'; }
     else if (type === 'whiteboard') { initialData = { whiteboard_id: null, elements: [], app_state: {}, mode: 'collaborate' }; initialTitle = 'Whiteboard'; }
-    else if (type === '3d_model') { initialData = { url: '', iosUrl: '', posterUrl: '', alt: '', enableAR: true, autoRotate: false }; initialTitle = '3D Model'; }
+    else if (type === '3d_model') { initialData = { url: '', iosUrl: '', posterUrl: '', alt: '', enableAR: true, autoRotate: false, instructions: '', instructionsPosition: 'before' }; initialTitle = '3D Model'; }
     setContent([...content, { type, title: initialTitle, data: initialData, id: `${type}-${Date.now()}` }]);
   };
 

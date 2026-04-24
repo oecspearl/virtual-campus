@@ -402,6 +402,31 @@ export default function ContentBlockEditor({
                   Auto-rotate model
                 </label>
               </div>
+
+              <div className="pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-medium text-gray-700">
+                    Instructions <span className="font-normal text-gray-500">— optional</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-gray-600">Position:</label>
+                    <select
+                      value={d?.instructionsPosition || 'before'}
+                      onChange={(e) => patch({ instructionsPosition: e.target.value })}
+                      className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="before">Before the model</option>
+                      <option value="after">After the model</option>
+                    </select>
+                  </div>
+                </div>
+                <TextEditor
+                  value={String(d?.instructions || '')}
+                  onChange={(html: string) => patch({ instructions: html })}
+                  placeholder="Explain how students should navigate or use this 3D model (e.g. drag to rotate, scroll to zoom, tap the AR button on mobile)..."
+                  height={200}
+                />
+              </div>
             </div>
           )}
 

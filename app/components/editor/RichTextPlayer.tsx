@@ -526,33 +526,51 @@ export default function RichTextPlayer({
                           )}
 
                           {/* ── 3D Model ── */}
-                          {item.type === '3d_model' && (item.data?.url || item.data?.fileId) && (
-                            <div className="rounded-lg overflow-hidden border border-gray-200 bg-slate-50">
-                              {item.title && (
-                                <p className="text-sm font-medium text-gray-900 px-4 pt-3 pb-2">{item.title}</p>
-                              )}
-                              <model-viewer
-                                src={item.data?.url || `/api/files/${item.data?.fileId}`}
-                                ios-src={item.data?.iosUrl || undefined}
-                                poster={item.data?.posterUrl || undefined}
-                                alt={item.data?.alt || item.title || '3D model'}
-                                ar={item.data?.enableAR ? '' : undefined}
-                                ar-modes="webxr scene-viewer quick-look"
-                                ar-scale="auto"
-                                camera-controls=""
-                                auto-rotate={item.data?.autoRotate ? '' : undefined}
-                                shadow-intensity="1"
-                                exposure="1"
-                                loading="lazy"
-                                reveal="auto"
-                                style={{
-                                  width: '100%',
-                                  height: 'min(70vh, 500px)',
-                                  backgroundColor: '#f8fafc',
-                                }}
+                          {item.type === '3d_model' && (item.data?.url || item.data?.fileId) && (() => {
+                            const instructionsHtml = item.data?.instructions;
+                            const hasInstructions = typeof instructionsHtml === 'string' &&
+                              instructionsHtml.replace(/<[^>]*>/g, '').trim().length > 0;
+                            const position = item.data?.instructionsPosition === 'after' ? 'after' : 'before';
+                            const instructionsNode = hasInstructions ? (
+                              <div
+                                className="prose prose-sm sm:prose-base max-w-none text-gray-700 px-4"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructionsHtml) }}
                               />
-                            </div>
-                          )}
+                            ) : null;
+                            return (
+                              <div className="rounded-lg overflow-hidden border border-gray-200 bg-slate-50">
+                                {item.title && (
+                                  <p className="text-sm font-medium text-gray-900 px-4 pt-3 pb-2">{item.title}</p>
+                                )}
+                                {position === 'before' && instructionsNode && (
+                                  <div className="pt-1 pb-3">{instructionsNode}</div>
+                                )}
+                                <model-viewer
+                                  src={item.data?.url || `/api/files/${item.data?.fileId}`}
+                                  ios-src={item.data?.iosUrl || undefined}
+                                  poster={item.data?.posterUrl || undefined}
+                                  alt={item.data?.alt || item.title || '3D model'}
+                                  ar={item.data?.enableAR ? '' : undefined}
+                                  ar-modes="webxr scene-viewer quick-look"
+                                  ar-scale="auto"
+                                  camera-controls=""
+                                  auto-rotate={item.data?.autoRotate ? '' : undefined}
+                                  shadow-intensity="1"
+                                  exposure="1"
+                                  loading="lazy"
+                                  reveal="auto"
+                                  style={{
+                                    width: '100%',
+                                    height: 'min(70vh, 500px)',
+                                    backgroundColor: '#f8fafc',
+                                  }}
+                                />
+                                {position === 'after' && instructionsNode && (
+                                  <div className="pt-3 pb-3">{instructionsNode}</div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })}

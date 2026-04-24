@@ -388,6 +388,8 @@ export default function LessonViewer({ content, lessonId, courseId, lessonTitle,
             alt={item.data?.alt || item.data?.description}
             enableAR={item.data?.enableAR ?? true}
             autoRotate={item.data?.autoRotate ?? false}
+            instructions={item.data?.instructions}
+            instructionsPosition={item.data?.instructionsPosition || 'before'}
             isCollapsed={isCollapsed(index)}
             onToggleCollapse={() => toggleCollapse(index)}
             isComplete={contentProgress[index] || false}

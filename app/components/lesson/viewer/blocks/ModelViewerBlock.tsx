@@ -3,6 +3,7 @@
 import React from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { BookmarkButton } from '@/app/components/student';
+import { sanitizeHtml } from '@/lib/sanitize';
 import ContentProgressCheckbox from '../ContentProgressCheckbox';
 
 // model-viewer is a web component (custom element). React 19 moved the JSX
@@ -53,6 +54,10 @@ export interface ModelViewerBlockProps {
   enableAR?: boolean;
   /** Auto-rotate the model in the viewport. */
   autoRotate?: boolean;
+  /** Optional rich-text instructions (sanitized HTML). */
+  instructions?: string;
+  /** Where the instructions render relative to the model. Defaults to 'before'. */
+  instructionsPosition?: 'before' | 'after';
 
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -71,11 +76,20 @@ export default function ModelViewerBlock({
   alt,
   enableAR = true,
   autoRotate = false,
+  instructions,
+  instructionsPosition = 'before',
   isCollapsed,
   onToggleCollapse,
   isComplete,
   onToggleComplete,
 }: ModelViewerBlockProps) {
+  const hasInstructions = typeof instructions === 'string' && instructions.replace(/<[^>]*>/g, '').trim().length > 0;
+  const instructionsBlock = hasInstructions ? (
+    <div
+      className="prose prose-sm sm:prose-base max-w-none text-gray-700"
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructions as string) }}
+    />
+  ) : null;
   // The custom element is registered on first import — do it lazily so the
   // ~300KB viewer bundle stays out of the initial page payload for lessons
   // that don't have any 3D blocks.
@@ -125,6 +139,9 @@ export default function ModelViewerBlock({
         }`}
       >
         <div className="p-4 sm:p-6">
+          {instructionsPosition === 'before' && instructionsBlock && (
+            <div className="mb-4">{instructionsBlock}</div>
+          )}
           {src ? (
             <model-viewer
               src={src}
@@ -165,6 +182,9 @@ export default function ModelViewerBlock({
               <p className="text-lg font-medium">No 3D model uploaded yet</p>
               <p className="text-sm">Upload a .glb or .gltf file to display an interactive model</p>
             </div>
+          )}
+          {instructionsPosition === 'after' && instructionsBlock && (
+            <div className="mt-4">{instructionsBlock}</div>
           )}
         </div>
       </div>

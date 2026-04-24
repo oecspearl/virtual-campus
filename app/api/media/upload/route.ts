@@ -39,13 +39,22 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     'application/zip', 'application/x-zip-compressed',
     // Text
     'text/plain', 'text/csv', 'text/html',
+    // 3D models (lesson 3D model block)
+    'model/gltf-binary', 'model/gltf+json', 'model/vnd.usdz+zip',
   ];
-  if (!allowedMimeTypes.includes(file.type)) {
+  const fileExtension = (file.name.split('.').pop() || '').toLowerCase();
+  // Browsers frequently report .glb/.gltf/.usdz as application/octet-stream
+  // or an empty string — accept those only when the extension confirms a 3D
+  // model so we don't open a generic "any binary" hole.
+  const threedExtensions = new Set(['glb', 'gltf', 'usdz']);
+  const isThreeDByExtension =
+    (file.type === 'application/octet-stream' || file.type === '') &&
+    threedExtensions.has(fileExtension);
+  if (!allowedMimeTypes.includes(file.type) && !isThreeDByExtension) {
     return NextResponse.json({ error: `File type '${file.type}' is not allowed.` }, { status: 415 });
   }
 
   // Validate file extension matches MIME type (prevent extension spoofing)
-  const fileExtension = (file.name.split('.').pop() || '').toLowerCase();
   const dangerousExtensions = ['exe', 'bat', 'cmd', 'sh', 'ps1', 'vbs', 'js', 'msi', 'dll', 'scr', 'com', 'pif'];
   if (dangerousExtensions.includes(fileExtension)) {
     return NextResponse.json({ error: "This file type is not allowed for security reasons." }, { status: 415 });

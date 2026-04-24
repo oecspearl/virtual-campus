@@ -11,6 +11,7 @@ import ResourceLinksSidebar from '@/app/components/lesson/ResourceLinksSidebar';
 import SessionRecordingsCard from '@/app/components/conference/SessionRecordingsCard';
 import AITutorPanel from '@/app/components/ai/AITutorPanel';
 import InlineNotesPanel from '@/app/components/lesson/InlineNotesPanel';
+import ModelViewerWithFullscreen from '@/app/components/lesson/viewer/blocks/ModelViewerWithFullscreen';
 import { sanitizeHtml } from '@/lib/sanitize';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -98,15 +99,6 @@ export default function RichTextPlayer({
   const completedCount = courseLessons.filter(l => lessonProgressMap[l.id]).length;
   const courseProgress = courseLessons.length > 0 ? Math.round((completedCount / courseLessons.length) * 100) : 0;
   const sectionProgress = content.length > 0 ? Math.round((readSections.size / content.length) * 100) : 100;
-
-  // Lazy-register the <model-viewer> web component — only when the lesson
-  // actually contains a 3D block so lessons without 3D content don't pull
-  // the ~300KB viewer bundle.
-  useEffect(() => {
-    if (content?.some((b: any) => b?.type === '3d_model')) {
-      import('@google/model-viewer');
-    }
-  }, [content]);
 
   // Default the right-side panel to "Learning Outcomes" on desktop when the
   // lesson has any, so instructors' stated outcomes are visible without an
@@ -560,25 +552,13 @@ export default function RichTextPlayer({
                                 {position === 'before' && instructionsNode && (
                                   <div className="pt-1 pb-3">{instructionsNode}</div>
                                 )}
-                                <model-viewer
+                                <ModelViewerWithFullscreen
                                   src={item.data?.url || `/api/files/${item.data?.fileId}`}
-                                  ios-src={item.data?.iosUrl || undefined}
-                                  poster={item.data?.posterUrl || undefined}
+                                  iosUrl={item.data?.iosUrl || undefined}
+                                  posterUrl={item.data?.posterUrl || undefined}
                                   alt={item.data?.alt || item.title || '3D model'}
-                                  ar={item.data?.enableAR ? '' : undefined}
-                                  ar-modes="webxr scene-viewer quick-look"
-                                  ar-scale="auto"
-                                  camera-controls=""
-                                  auto-rotate={item.data?.autoRotate ? '' : undefined}
-                                  shadow-intensity="1"
-                                  exposure="1"
-                                  loading="lazy"
-                                  reveal="auto"
-                                  style={{
-                                    width: '100%',
-                                    height: 'min(70vh, 500px)',
-                                    backgroundColor: '#f8fafc',
-                                  }}
+                                  enableAR={!!item.data?.enableAR}
+                                  autoRotate={!!item.data?.autoRotate}
                                 />
                                 {position === 'after' && instructionsNode && (
                                   <div className="pt-3 pb-3">{instructionsNode}</div>

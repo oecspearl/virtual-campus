@@ -5,36 +5,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { BookmarkButton } from '@/app/components/student';
 import { sanitizeHtml } from '@/lib/sanitize';
 import ContentProgressCheckbox from '../ContentProgressCheckbox';
-
-// model-viewer is a web component (custom element). React 19 moved the JSX
-// namespace under `react`, so augment there — the old global `JSX` namespace
-// isn't picked up at type-check time under Next 15 + React 19.
-type ModelViewerAttributes = React.DetailedHTMLProps<
-  React.HTMLAttributes<HTMLElement> & {
-    src?: string;
-    'ios-src'?: string;
-    poster?: string;
-    alt?: string;
-    ar?: boolean | '';
-    'ar-modes'?: string;
-    'ar-scale'?: string;
-    'camera-controls'?: boolean | '';
-    'auto-rotate'?: boolean | '';
-    'shadow-intensity'?: string;
-    exposure?: string;
-    loading?: 'auto' | 'lazy' | 'eager';
-    reveal?: 'auto' | 'interaction' | 'manual';
-  },
-  HTMLElement
->;
-
-declare module 'react' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'model-viewer': ModelViewerAttributes;
-    }
-  }
-}
+import ModelViewerWithFullscreen from './ModelViewerWithFullscreen';
 
 export interface ModelViewerBlockProps {
   index: number;
@@ -90,13 +61,6 @@ export default function ModelViewerBlock({
       dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructions as string) }}
     />
   ) : null;
-  // The custom element is registered on first import — do it lazily so the
-  // ~300KB viewer bundle stays out of the initial page payload for lessons
-  // that don't have any 3D blocks.
-  React.useEffect(() => {
-    import('@google/model-viewer');
-  }, []);
-
   const src = url || (fileId ? `/api/files/${fileId}` : null);
 
   return (
@@ -143,26 +107,13 @@ export default function ModelViewerBlock({
             <div className="mb-4">{instructionsBlock}</div>
           )}
           {src ? (
-            <model-viewer
+            <ModelViewerWithFullscreen
               src={src}
-              ios-src={iosUrl}
-              poster={posterUrl}
+              iosUrl={iosUrl}
+              posterUrl={posterUrl}
               alt={alt || title || '3D model'}
-              ar={enableAR ? '' : undefined}
-              ar-modes="webxr scene-viewer quick-look"
-              ar-scale="auto"
-              camera-controls=""
-              auto-rotate={autoRotate ? '' : undefined}
-              shadow-intensity="1"
-              exposure="1"
-              loading="lazy"
-              reveal="auto"
-              style={{
-                width: '100%',
-                height: 'min(70vh, 500px)',
-                backgroundColor: '#f8fafc',
-                borderRadius: '0.5rem',
-              }}
+              enableAR={enableAR}
+              autoRotate={autoRotate}
             />
           ) : (
             <div className="p-12 border-2 border-dashed border-gray-300 rounded-lg text-center text-gray-500 bg-gray-50">

@@ -131,7 +131,10 @@ CREATE TABLE public.courses (
   featured BOOLEAN DEFAULT false,
   ceu_credits NUMERIC DEFAULT 0,
   credit_type VARCHAR DEFAULT 'CEU',
-  modality VARCHAR DEFAULT 'online' CHECK (modality IN ('online', 'blended', 'in_person')),
+  -- Preferred values: self_paced | blended | instructor_led. Legacy
+  -- values online and in_person are still accepted for backwards
+  -- compatibility (see migration 038-course-modality-expand.sql).
+  modality VARCHAR DEFAULT 'self_paced' CHECK (modality IN ('self_paced', 'blended', 'instructor_led', 'online', 'in_person')),
   estimated_duration VARCHAR,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

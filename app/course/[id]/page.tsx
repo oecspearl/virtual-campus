@@ -36,6 +36,7 @@ import {
   CourseTeam,
   SidebarPlayerLayout,
   CourseTabBar,
+  CourseOnlineUsers,
 } from '@/app/components/course';
 
 export default function CourseDetailPage() {
@@ -425,9 +426,19 @@ export default function CourseDetailPage() {
 
       {/* Quick Actions */}
       <div className="rounded-lg border border-gray-200/60 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
+        <button
+          type="button"
+          onClick={() => setIsQuickActionsOpen(o => !o)}
+          aria-expanded={isQuickActionsOpen}
+          className="w-full px-4 py-3 border-b border-gray-100 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
+        >
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Quick actions</h3>
-        </div>
+          <Icon
+            icon="mdi:chevron-down"
+            className={`w-4 h-4 text-gray-400 transition-transform ${isQuickActionsOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+        {isQuickActionsOpen && (
         <div className="p-2">
           {[
             { href: `/course/${courseId}/announcements`, label: 'Announcements', icon: 'M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75' },
@@ -468,7 +479,19 @@ export default function CourseDetailPage() {
             <CourseRestoreButton onRestoreComplete={(restoredId) => window.location.href = `/course/${restoredId}`} variant="link" />
           </RoleGuard>
         </div>
+        )}
       </div>
+
+      {/* Online Now */}
+      {profile?.id && (
+        <CourseOnlineUsers
+          courseId={courseId}
+          currentUserId={profile.id}
+          currentUserName={profile.name || profile.email || 'User'}
+          currentUserAvatar={profile.avatar || null}
+          currentUserRole={profile.role || 'student'}
+        />
+      )}
 
       {/* Session Recordings */}
       <SessionRecordingsCard courseId={courseId} collapsible />

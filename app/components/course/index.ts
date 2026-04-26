@@ -10,6 +10,7 @@ export { default as CourseEnrollmentCard } from './CourseEnrollmentCard';
 export { default as CourseTeam } from './CourseTeam';
 export { default as SidebarPlayerLayout } from './SidebarPlayerLayout';
 export { default as CourseTabBar } from './CourseTabBar';
+export { default as CourseOnlineUsers } from './CourseOnlineUsers';
 
 // Re-export types and helpers
 export * from './types';

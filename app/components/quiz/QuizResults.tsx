@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Icon } from "@iconify/react";
 import Button from "@/app/components/ui/Button";
 import { sanitizeHtml } from '@/lib/sanitize';
 
@@ -131,8 +132,9 @@ export default function QuizResults({ quiz, attempt, questions }: QuizResultProp
           <span>Score: {attempt.score} / {attempt.max_score} ({pct}%)</span>
         </div>
         {pass !== null && (
-          <div className={`mt-1 text-xs font-medium ${pass ? "text-[#10B981]" : "text-red-600"}`}>
-            <span>{pass ? "✓ Passed" : "✗ Failed"}</span>
+          <div className={`mt-1 inline-flex items-center gap-1 text-xs font-medium ${pass ? "text-[#10B981]" : "text-red-600"}`}>
+            <Icon icon={pass ? "mdi:check-circle" : "mdi:close-circle"} className="h-4 w-4" aria-hidden />
+            <span>{pass ? "Passed" : "Failed"}</span>
           </div>
         )}
       </div>
@@ -162,9 +164,15 @@ export default function QuizResults({ quiz, attempt, questions }: QuizResultProp
                   <div className="text-sm font-medium text-gray-800 mb-1">
                     <span>Question {i + 1}</span>
                     {isCorrect ? (
-                      <span className="ml-2 text-xs text-green-700 font-semibold">✓ Correct</span>
+                      <span className="ml-2 inline-flex items-center gap-1 text-xs text-green-700 font-semibold">
+                        <Icon icon="mdi:check-circle" className="h-3.5 w-3.5" aria-hidden />
+                        Correct
+                      </span>
                     ) : (
-                      <span className="ml-2 text-xs text-red-700 font-semibold">✗ Incorrect</span>
+                      <span className="ml-2 inline-flex items-center gap-1 text-xs text-red-700 font-semibold">
+                        <Icon icon="mdi:close-circle" className="h-3.5 w-3.5" aria-hidden />
+                        Incorrect
+                      </span>
                     )}
                   </div>
                   <div 
@@ -206,9 +214,10 @@ export default function QuizResults({ quiz, attempt, questions }: QuizResultProp
                       <Button
                         variant="outline"
                         onClick={() => getAIInsights(questionId, a, question)}
-                        className="text-xs py-1.5 px-3"
+                        className="inline-flex items-center gap-1.5 text-xs py-1.5 px-3"
                       >
-                        🤖 Get AI Insights
+                        <Icon icon="mdi:robot-outline" className="h-3.5 w-3.5" aria-hidden />
+                        Get AI Insights
                       </Button>
                     )}
 

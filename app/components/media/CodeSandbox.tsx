@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { Icon } from '@iconify/react';
 
 interface CodeSandboxProps {
   title?: string;
@@ -12,14 +13,14 @@ interface CodeSandboxProps {
 }
 
 const LANGUAGES = [
-  { value: 'javascript', label: 'JavaScript', icon: '📜' },
-  { value: 'typescript', label: 'TypeScript', icon: '📘' },
-  { value: 'html', label: 'HTML/CSS/JS', icon: '🌐' },
-  { value: 'python', label: 'Python', icon: '🐍' },
-  { value: 'java', label: 'Java', icon: '☕' },
-  { value: 'cpp', label: 'C++', icon: '⚙️' },
-  { value: 'sql', label: 'SQL', icon: '🗄️' },
-  { value: 'json', label: 'JSON', icon: '📋' },
+  { value: 'javascript', label: 'JavaScript', icon: 'mdi:language-javascript' },
+  { value: 'typescript', label: 'TypeScript', icon: 'mdi:language-typescript' },
+  { value: 'html', label: 'HTML/CSS/JS', icon: 'mdi:language-html5' },
+  { value: 'python', label: 'Python', icon: 'mdi:language-python' },
+  { value: 'java', label: 'Java', icon: 'mdi:language-java' },
+  { value: 'cpp', label: 'C++', icon: 'mdi:language-cpp' },
+  { value: 'sql', label: 'SQL', icon: 'mdi:database' },
+  { value: 'json', label: 'JSON', icon: 'mdi:code-json' },
 ];
 
 const CODE_TEMPLATES: Record<string, string> = {
@@ -251,7 +252,7 @@ export default function CodeSandbox({
               >
                 {LANGUAGES.map((lang) => (
                   <option key={lang.value} value={lang.value}>
-                    {lang.icon} {lang.label}
+                    {lang.label}
                   </option>
                 ))}
               </select>
@@ -268,9 +269,16 @@ export default function CodeSandbox({
         <div className="border-r border-gray-200">
           <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-600">
-                {LANGUAGES.find(l => l.value === selectedLanguage)?.icon} {LANGUAGES.find(l => l.value === selectedLanguage)?.label}
-              </span>
+              {(() => {
+                const lang = LANGUAGES.find(l => l.value === selectedLanguage);
+                if (!lang) return null;
+                return (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                    <Icon icon={lang.icon} className="h-4 w-4" aria-hidden />
+                    {lang.label}
+                  </span>
+                );
+              })()}
             </div>
             {!readOnly && (
               <div className="flex items-center gap-2">

@@ -139,43 +139,43 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
           
           <div className="space-y-3">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📚 Course Content Types (12 Available)</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:shape-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Course Content Types (12 Available)</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">1. 📝 Text Content</strong> - Rich text with formatting
+                  <strong className="text-gray-900">1. <Icon icon="mdi:format-text" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Text Content</strong> - Rich text with formatting
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">2. 🎥 Video</strong> - YouTube, Vimeo, embedded videos
+                  <strong className="text-gray-900">2. <Icon icon="mdi:video-outline" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Video</strong> - YouTube, Vimeo, embedded videos
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">3. 🎬 Interactive Video</strong> - Videos with questions at checkpoints
+                  <strong className="text-gray-900">3. <Icon icon="mdi:movie-open-play-outline" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Interactive Video</strong> - Videos with questions at checkpoints
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">4. 🎵 Audio/Podcast</strong> - Audio files with player controls
+                  <strong className="text-gray-900">4. <Icon icon="mdi:podcast" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Audio/Podcast</strong> - Audio files with player controls
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">5. 💻 Code Sandbox</strong> - Interactive code editor and execution
+                  <strong className="text-gray-900">5. <Icon icon="mdi:code-tags" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Code Sandbox</strong> - Interactive code editor and execution
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">6. 🖼️ Images</strong> - Image uploads and displays
+                  <strong className="text-gray-900">6. <Icon icon="mdi:image-outline" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Images</strong> - Image uploads and displays
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">7. 📄 PDF Documents</strong> - PDF uploads and viewers
+                  <strong className="text-gray-900">7. <Icon icon="mdi:file-pdf-box" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> PDF Documents</strong> - PDF uploads and viewers
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">8. 📎 File Uploads</strong> - Any file type for download
+                  <strong className="text-gray-900">8. <Icon icon="mdi:paperclip" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> File Uploads</strong> - Any file type for download
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">9. 🔗 Embedded Content</strong> - External content embedding
+                  <strong className="text-gray-900">9. <Icon icon="mdi:link-variant" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Embedded Content</strong> - External content embedding
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">10. 📊 Slideshows</strong> - Presentation embeds
+                  <strong className="text-gray-900">10. <Icon icon="mdi:presentation-play" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Slideshows</strong> - Presentation embeds
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">11. ❓ Quizzes</strong> - Interactive assessments
+                  <strong className="text-gray-900">11. <Icon icon="mdi:help-circle-outline" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Quizzes</strong> - Interactive assessments
                 </div>
                 <div className="text-sm text-gray-600">
-                  <strong className="text-gray-900">12. 📋 Assignments</strong> - Student work tasks
+                  <strong className="text-gray-900">12. <Icon icon="mdi:clipboard-text-outline" className="inline-block w-4 h-4 mr-1.5 align-text-bottom" aria-hidden /> Assignments</strong> - Student work tasks
                 </div>
               </div>
               <div className="mt-3 pt-3 border-t border-gray-200">
@@ -187,7 +187,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📝 Assignments & Quizzes</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:clipboard-text-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Assignments & Quizzes</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Submit assignments and track grades</li>
                 <li>• Take quizzes to test your knowledge</li>
@@ -197,7 +197,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">💬 Discussions</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:forum-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Discussions</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Participate in course discussions</li>
                 <li>• Ask questions and get help from peers</li>
@@ -232,7 +232,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
           
           <div className="space-y-3">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">🎥 Joining Conferences</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:video-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Joining Conferences</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Click "Join Conference" on scheduled meetings</li>
                 <li>• Conferences open in a new tab for better experience</li>
@@ -242,7 +242,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📅 Scheduling (Instructors Only)</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:calendar-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Scheduling (Instructors Only)</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Schedule meetings for specific lessons or courses</li>
                 <li>• Set meeting duration and participant limits</li>
@@ -252,7 +252,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">🔧 Conference Types</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:cog-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Conference Types</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                 <div className="bg-blue-50 p-3 rounded">
                   <p className="font-medium text-blue-900">8x8.vc (Jitsi Meet)</p>
@@ -291,7 +291,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
           
           <div className="space-y-3">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📝 Submitting Assignments</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:upload-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Submitting Assignments</h4>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
                 <li>Navigate to the assignment in your course</li>
                 <li>Read the instructions carefully</li>
@@ -302,7 +302,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">🧠 Taking Quizzes</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:help-circle-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Taking Quizzes</h4>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
                 <li>Click on the quiz you want to take</li>
                 <li>Read all questions carefully</li>
@@ -313,7 +313,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📊 Tracking Progress</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:chart-line" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Tracking Progress</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• View grades and feedback in your dashboard</li>
                 <li>• Track completion status for all assignments</li>
@@ -348,7 +348,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
           
           <div className="space-y-3">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">💬 Participating in Discussions</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:forum-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Participating in Discussions</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Click on discussion topics to read and respond</li>
                 <li>• Post questions and share insights</li>
@@ -358,7 +358,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📧 Contacting Instructors</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:email-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Contacting Instructors</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Use the email icon next to instructor names</li>
                 <li>• Pre-filled subject and body for course inquiries</li>
@@ -368,7 +368,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">👥 Course Team</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:account-group-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Course Team</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• View all course instructors and their roles</li>
                 <li>• See instructor contact information</li>
@@ -403,7 +403,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
           
           <div className="space-y-3">
             <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-              <h4 className="font-medium text-red-900 mb-2">❌ Page Not Loading</h4>
+              <h4 className="font-medium text-red-900 mb-2"><Icon icon="mdi:close-circle-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Page Not Loading</h4>
               <ul className="text-sm text-red-700 space-y-1 ml-4">
                 <li>• Refresh the page (Ctrl+F5 or Cmd+Shift+R)</li>
                 <li>• Clear your browser cache and cookies</li>
@@ -413,7 +413,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
-              <h4 className="font-medium text-yellow-900 mb-2">⚠️ Video Conference Issues</h4>
+              <h4 className="font-medium text-yellow-900 mb-2"><Icon icon="mdi:alert-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Video Conference Issues</h4>
               <ul className="text-sm text-yellow-700 space-y-1 ml-4">
                 <li>• Allow camera and microphone permissions</li>
                 <li>• Check your internet connection speed</li>
@@ -423,7 +423,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-              <h4 className="font-medium text-blue-900 mb-2">ℹ️ Assignment Submission Issues</h4>
+              <h4 className="font-medium text-blue-900 mb-2"><Icon icon="mdi:information-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Assignment Submission Issues</h4>
               <ul className="text-sm text-blue-700 space-y-1 ml-4">
                 <li>• Check file size limits (usually 10MB max)</li>
                 <li>• Ensure file format is supported (PDF, DOC, DOCX, etc.)</li>
@@ -433,7 +433,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-green-200 rounded-lg p-4 bg-green-50">
-              <h4 className="font-medium text-green-900 mb-2">✅ Login Problems</h4>
+              <h4 className="font-medium text-green-900 mb-2"><Icon icon="mdi:check-circle-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Login Problems</h4>
               <ul className="text-sm text-green-700 space-y-1 ml-4">
                 <li>• Use the "Forgot Password" link if needed</li>
                 <li>• Check your email for account verification</li>
@@ -472,7 +472,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
           
           <div className="space-y-3">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📚 Course Management</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:book-cog-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Course Management</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Create and edit course content</li>
                 <li>• Add lessons, assignments, and quizzes</li>
@@ -482,7 +482,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">✏️ Content Creation</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:pencil-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Content Creation</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Use the rich text editor for lesson content</li>
                 <li>• Upload and manage course materials (12 content types available)</li>
@@ -503,7 +503,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📊 Grading & Feedback</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:clipboard-check-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Grading & Feedback</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Grade assignments and provide feedback</li>
                 <li>• View quiz results and analytics</li>
@@ -513,7 +513,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">🎥 Video Conferences</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:video-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Video Conferences</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
                 <li>• Schedule meetings for specific lessons</li>
                 <li>• Set up recurring conference sessions</li>
@@ -523,7 +523,7 @@ export default function HelpSystem({ isOpen, onClose, userRole = 'student' }: He
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4 bg-gradient-to-r from-purple-50 to-blue-50">
-              <h4 className="font-medium text-gray-900 mb-2">🤝 Lecturer Collaboration</h4>
+              <h4 className="font-medium text-gray-900 mb-2"><Icon icon="mdi:account-group-outline" className="inline-block w-5 h-5 mr-2 align-text-bottom" aria-hidden /> Lecturer Collaboration</h4>
               <p className="text-sm text-gray-600 mb-3">Connect and collaborate with fellow lecturers through dedicated collaboration tools.</p>
               
               <div className="space-y-3 mt-3">

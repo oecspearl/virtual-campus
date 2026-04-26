@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { Icon } from '@iconify/react';
 import RoleGuard from '@/app/components/RoleGuard';
 import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
 import GoogleDrivePicker, { GoogleDriveFile, getGoogleFileTypeLabel } from '@/app/components/media/GoogleDrivePicker';
@@ -9,17 +10,17 @@ import GoogleDrivePicker, { GoogleDriveFile, getGoogleFileTypeLabel } from '@/ap
 // Allowed file types for resource uploads
 const ALLOWED_FILE_TYPES = {
   // Documents
-  'application/pdf': { ext: 'pdf', type: 'document', icon: '📄' },
-  'application/msword': { ext: 'doc', type: 'document', icon: '📄' },
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { ext: 'docx', type: 'document', icon: '📄' },
-  'application/rtf': { ext: 'rtf', type: 'document', icon: '📄' },
-  'text/plain': { ext: 'txt', type: 'document', icon: '📄' },
+  'application/pdf': { ext: 'pdf', type: 'document' },
+  'application/msword': { ext: 'doc', type: 'document' },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { ext: 'docx', type: 'document' },
+  'application/rtf': { ext: 'rtf', type: 'document' },
+  'text/plain': { ext: 'txt', type: 'document' },
   // Presentations
-  'application/vnd.ms-powerpoint': { ext: 'ppt', type: 'presentation', icon: '📊' },
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { ext: 'pptx', type: 'presentation', icon: '📊' },
+  'application/vnd.ms-powerpoint': { ext: 'ppt', type: 'presentation' },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { ext: 'pptx', type: 'presentation' },
   // Spreadsheets (bonus - often needed with presentations)
-  'application/vnd.ms-excel': { ext: 'xls', type: 'document', icon: '📊' },
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { ext: 'xlsx', type: 'document', icon: '📊' },
+  'application/vnd.ms-excel': { ext: 'xls', type: 'document' },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { ext: 'xlsx', type: 'document' },
 };
 
 const ALLOWED_EXTENSIONS = Object.values(ALLOWED_FILE_TYPES).map(f => `.${f.ext}`).join(',');
@@ -246,23 +247,25 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
     }
   };
 
-  const getLinkIcon = (link: ResourceLink) => {
-    if (link.icon) {
+  // Returns an MDI icon name. Honours `link.icon` only if it already
+  // looks like an MDI name (legacy DB rows may contain emoji which we
+  // ignore in favour of the type-based default).
+  const getLinkIcon = (link: ResourceLink): string => {
+    if (link.icon && /^[a-z0-9-]+:[a-z0-9-]+$/i.test(link.icon)) {
       return link.icon;
     }
 
-    // Default icons based on link type
     switch (link.link_type) {
       case 'document':
-        return '📄';
+        return 'mdi:file-document-outline';
       case 'video':
-        return '🎥';
+        return 'mdi:video-outline';
       case 'article':
-        return '📰';
+        return 'mdi:newspaper-variant-outline';
       case 'tool':
-        return '🔧';
+        return 'mdi:wrench-outline';
       default:
-        return '🔗';
+        return 'mdi:link-variant';
     }
   };
 
@@ -352,7 +355,9 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                 key={link.id}
                 className="group relative flex items-start p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-teal-200"
               >
-                <div className="flex-shrink-0 mr-3 text-2xl">{getLinkIcon(link)}</div>
+                <div className="flex-shrink-0 mr-3 mt-0.5 flex h-9 w-9 items-center justify-center rounded-md bg-white text-teal-600 ring-1 ring-gray-200">
+                  <Icon icon={getLinkIcon(link)} className="h-5 w-5" aria-hidden />
+                </div>
                 <div className="flex-1 min-w-0">
                   <a
                     href={link.url}

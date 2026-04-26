@@ -21,13 +21,23 @@ const formatModality = (modality?: string): string => {
   }
 };
 
-// Helper function to get modality icon
+// Helper function to get modality MDI icon name
 const getModalityIcon = (modality?: string): string => {
   switch (modality) {
-    case 'self_paced': return '📖';
-    case 'blended': return '🔄';
-    case 'instructor_led': return '👨‍🏫';
-    default: return '📖';
+    case 'self_paced': return 'mdi:book-open-page-variant-outline';
+    case 'blended': return 'mdi:swap-horizontal';
+    case 'instructor_led': return 'mdi:account-tie-outline';
+    default: return 'mdi:book-open-page-variant-outline';
+  }
+};
+
+// Difficulty colour for the indicator dot
+const getDifficultyDotClass = (difficulty?: string): string => {
+  switch (difficulty) {
+    case 'beginner': return 'bg-emerald-500';
+    case 'intermediate': return 'bg-amber-500';
+    case 'advanced': return 'bg-rose-500';
+    default: return 'bg-slate-400';
   }
 };
 
@@ -254,9 +264,9 @@ export default function CoursesPage() {
                   className="w-full px-4 py-3 sm:px-6 sm:py-4 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-blue-500/20 focus:border-purple-500 transition-all duration-200 text-lg shadow-sm"
                 >
                   <option value="">All Levels</option>
-                  <option value="beginner">🌱 Beginner</option>
-                  <option value="intermediate">🌿 Intermediate</option>
-                  <option value="advanced">🌳 Advanced</option>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
                 </select>
               </div>
             </div>
@@ -389,9 +399,7 @@ export default function CoursesPage() {
                   {/* Difficulty Badge */}
                   <div className="absolute top-4 left-4">
                     <span className="inline-flex items-center gap-2 rounded-full bg-white/95 backdrop-blur-sm px-4 py-2 text-sm font-bold text-gray-800 shadow-lg">
-                      {c.difficulty === 'beginner' && '🌱'}
-                      {c.difficulty === 'intermediate' && '🌿'}
-                      {c.difficulty === 'advanced' && '🌳'}
+                      <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${getDifficultyDotClass(c.difficulty)}`} />
                       <span className="capitalize">{c.difficulty || 'All Levels'}</span>
                     </span>
                   </div>
@@ -399,7 +407,7 @@ export default function CoursesPage() {
                   {/* Modality & Duration Badge */}
                   <div className="absolute top-4 right-4 flex flex-col gap-2">
                     <span className="inline-flex items-center gap-2 rounded-full backdrop-blur-sm px-4 py-2 text-sm font-bold text-white shadow-lg" style={{ background: 'linear-gradient(to right, var(--theme-primary), var(--theme-secondary))' }}>
-                      {getModalityIcon(c.modality)}
+                      <Icon icon={getModalityIcon(c.modality)} className="h-4 w-4" aria-hidden />
                       {formatModality(c.modality)}
                     </span>
                     {c.estimated_duration && (

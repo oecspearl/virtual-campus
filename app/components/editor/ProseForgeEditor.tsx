@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { Icon } from "@iconify/react";
 import { sanitizeHtml } from '@/lib/sanitize';
 import { STYLE_ID, PROSEFORGE_STYLES } from './proseforge/styles';
 import type { ProseForgeEditorProps } from './proseforge/types';
@@ -1181,13 +1182,13 @@ export default function ProseForgeEditor({
             {/* Mode selector */}
             <div className="pf-ai-mode-grid">
               {[
-                { key: 'beautify', icon: '✨', label: 'Beautify', desc: 'Styled headings, blockquotes & callouts' },
-                { key: 'lesson_format', icon: '📖', label: 'Lesson Format', desc: 'Rich textbook-style layout' },
-                { key: 'add_visuals', icon: '🎨', label: 'Add Visuals', desc: 'Add boxes, grids & styled lists' },
-                { key: 'expand', icon: '📚', label: 'Expand', desc: 'Add detail, examples & tables' },
-                { key: 'summarize', icon: '📋', label: 'Summarize', desc: 'Key takeaways box & bullets' },
-                { key: 'simplify', icon: '📝', label: 'Simplify', desc: 'Simpler text, keep styling' },
-                { key: 'fix_grammar', icon: '✓', label: 'Fix Grammar', desc: 'Correct grammar & spelling' },
+                { key: 'beautify', icon: 'mdi:auto-fix', label: 'Beautify', desc: 'Styled headings, blockquotes & callouts' },
+                { key: 'lesson_format', icon: 'mdi:book-open-outline', label: 'Lesson Format', desc: 'Rich textbook-style layout' },
+                { key: 'add_visuals', icon: 'mdi:palette-outline', label: 'Add Visuals', desc: 'Add boxes, grids & styled lists' },
+                { key: 'expand', icon: 'mdi:expand-all-outline', label: 'Expand', desc: 'Add detail, examples & tables' },
+                { key: 'summarize', icon: 'mdi:format-list-bulleted-square', label: 'Summarize', desc: 'Key takeaways box & bullets' },
+                { key: 'simplify', icon: 'mdi:format-letter-case-lower', label: 'Simplify', desc: 'Simpler text, keep styling' },
+                { key: 'fix_grammar', icon: 'mdi:spellcheck', label: 'Fix Grammar', desc: 'Correct grammar & spelling' },
               ].map(m => (
                 <button
                   key={m.key}
@@ -1195,7 +1196,7 @@ export default function ProseForgeEditor({
                   onClick={() => setAiMode(m.key)}
                   type="button"
                 >
-                  <span className="pf-ai-mode-icon">{m.icon}</span>
+                  <span className="pf-ai-mode-icon"><Icon icon={m.icon} aria-hidden /></span>
                   <span className="pf-ai-mode-label">{m.label}</span>
                   <span className="pf-ai-mode-desc">{m.desc}</span>
                 </button>

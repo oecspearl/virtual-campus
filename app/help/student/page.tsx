@@ -272,6 +272,10 @@ export default function StudentHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">📋 Assignments</h4>
               <p className="text-sm text-gray-600">Tasks and projects to submit for grading.</p>
             </div>
+            <div className="border border-gray-200 rounded-lg p-4 bg-indigo-50">
+              <h4 className="font-medium text-indigo-900 mb-2">🧊 3D Model (NEW)</h4>
+              <p className="text-sm text-indigo-700">An interactive 3D viewer you can rotate, zoom, and view in <strong>fullscreen</strong>. On mobile, tap <strong>View in AR</strong> to drop the model into your real environment via your phone&apos;s camera.</p>
+            </div>
           </div>
 
           <div className="bg-indigo-50 border-l-4 border-indigo-400 p-4">
@@ -281,7 +285,20 @@ export default function StudentHelpPage() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-indigo-700">
-                  <strong>Tip:</strong> Interactive content like Code Sandbox and Interactive Video provide hands-on learning experiences. Take advantage of these features to deepen your understanding!
+                  <strong>Tip:</strong> Interactive content like Code Sandbox, Interactive Video, and the 3D Model viewer provide hands-on learning experiences. Take advantage of these features to deepen your understanding!
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <Icon icon="mdi:format-list-bulleted-square" className="h-5 w-5 text-blue-400" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-700">
+                  <strong>Learning Outcomes sidebar:</strong> On lessons that have learning outcomes attached, the outcomes panel now opens by default on desktop so you can see what you&apos;re aiming for as you work through the page. Collapse it if you want a wider reading view.
                 </p>
               </div>
             </div>
@@ -513,12 +530,11 @@ export default function StudentHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">💬 Direct Messages</h4>
               <p className="text-sm text-gray-600 mb-3">Send private one-on-one messages to other students, instructors, or staff members.</p>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Access Messages from the chat icon in the navbar - Click the chat icon in the top navigation bar to open the messaging center. You'll see all your conversations here.</li>
-                <li>Start a new conversation - Click "New Message" and search for a user by their name or email. Select them to start a private conversation.</li>
-                <li>Send text messages - Type your message and press Enter or click Send. Messages are delivered instantly.</li>
-                <li>Share files and images - Attach files or images to your messages by clicking the attachment icon. Great for sharing notes, assignments, or study materials.</li>
-                <li>Reply to specific messages - Click on any message to reply directly to it, keeping conversations organized and easy to follow.</li>
-                <li>Real-time updates - Messages appear instantly without needing to refresh the page. You'll see when the other person is typing.</li>
+                <li>Access Messages from the chat icon in the navbar — click it to open the messaging centre, where all your rooms appear sorted by most recent activity.</li>
+                <li>Start a new conversation — click <strong>New Message</strong>, search by name or email, and select someone to open a private DM room.</li>
+                <li>Send text, files, or images — type and press Enter, or attach a file/image with the paperclip icon (great for sharing notes or screenshots).</li>
+                <li>Reply to a specific message — click the reply action on any message to thread your response under it.</li>
+                <li>Unread badge — each room shows your personal unread count, which resets when you open the room.</li>
               </ol>
             </div>
 
@@ -526,29 +542,38 @@ export default function StudentHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">👥 Group Chats</h4>
               <p className="text-sm text-gray-600 mb-3">Create group conversations for study groups, project teams, or any group of people you want to communicate with together.</p>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Create a group chat - Click "New Message" and select "Group Chat" mode. Give your group a name (like "Math Study Group" or "Project Team").</li>
-                <li>Add members - Search for and add multiple users to your group. You can add classmates, instructors, or anyone on the platform.</li>
-                <li>Group conversations - Everyone in the group sees all messages. This is perfect for coordinating study sessions, sharing resources, or discussing group projects.</li>
-                <li>Manage group membership - Group admins can add or remove members as needed. Keep your study groups organized and focused.</li>
-                <li>Leave groups - If you no longer need to be in a group, you can leave at any time from the group settings.</li>
+                <li>Create a group chat — click <strong>New Message</strong>, switch to <strong>Group</strong> mode, and give it a name like &quot;Math Study Group&quot; or &quot;Project Team&quot;.</li>
+                <li>Add members — search and add multiple users at once. You can add classmates and instructors.</li>
+                <li>Roles — the room creator becomes the <strong>owner</strong> and can promote others to <strong>admin</strong>. Admins manage the member list; everyone else is a regular member.</li>
+                <li>Mute or leave — mute a noisy room without leaving it, or leave any group from the room settings.</li>
               </ol>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">🔔 Message Notifications</h4>
-              <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Unread message badges - The chat icon shows a badge with your unread message count so you never miss important conversations.</li>
-                <li>In-app notifications - Receive notifications when you get new messages, even when you're not in the messaging area.</li>
-                <li>Mute conversations - If a conversation is too active, you can mute it to stop receiving notifications while still being able to read messages when you want.</li>
-              </ol>
+              <h4 className="font-medium text-gray-900 mb-2">🎓 Course Rooms (Auto-Created)</h4>
+              <p className="text-sm text-gray-600 mb-3">Every course you&apos;re enrolled in automatically has its own course chat room. The membership tracks the course&apos;s enrolment list — when someone joins or leaves the course, the room updates to match.</p>
+              <ul className="text-sm text-gray-600 space-y-1 ml-4">
+                <li>Open a course chat from the course detail page or from your messages list.</li>
+                <li>Use it for class-wide questions, study coordination, or asking your instructor in front of the rest of the cohort.</li>
+              </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">🚫 Privacy & Safety</h4>
+              <h4 className="font-medium text-gray-900 mb-2">📍 &quot;Online Now&quot; on the Course Page</h4>
+              <p className="text-sm text-gray-600 mb-3">Each course detail page has a collapsible <strong>Online Now</strong> card showing classmates who&apos;ve been active recently.</p>
+              <ul className="text-sm text-gray-600 space-y-1 ml-4">
+                <li>Click <strong>Message</strong> next to anyone&apos;s name to jump straight into a DM with them — if you don&apos;t already have one, the room is created on the spot.</li>
+                <li>Anyone you&apos;ve blocked is hidden from this list.</li>
+              </ul>
+            </div>
+
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h4 className="font-medium text-gray-900 mb-2">🚫 Blocking &amp; Privacy</h4>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Block users - If someone is bothering you, you can block them. They won't be able to send you messages anymore.</li>
-                <li>Messages are private - Your conversations are only visible to participants. Instructors and admins cannot read your private messages unless you're in a conversation with them.</li>
-                <li>Report inappropriate behavior - If you receive inappropriate messages, you can report them to administrators for review.</li>
+                <li><strong>Block a user</strong> — opens the user&apos;s profile or DM and blocks them. After blocking: you can&apos;t open new DMs with them, and any messages they send to existing rooms are hidden from your view.</li>
+                <li>Unblock from your account settings to restore the conversation.</li>
+                <li><strong>Privacy</strong> — DMs and group rooms are only visible to participants. Admins cannot read private rooms; admin tooling stops at the room metadata (name, member list, message counts) for moderation purposes.</li>
+                <li><strong>Reporting</strong> — if you receive harassment or inappropriate content, report it to your administrator with a screenshot of the message ID.</li>
               </ol>
             </div>
           </div>

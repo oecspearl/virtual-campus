@@ -147,8 +147,8 @@ export default function InstructorHelpPage() {
           
           <div className="space-y-3">
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📚 Available Content Types (12 Types)</h4>
-              <p className="text-sm text-gray-600 mb-3">The platform supports 12 different content types to create engaging, diverse learning experiences. Here's what's available:</p>
+              <h4 className="font-medium text-gray-900 mb-2">📚 Available Content Types (13 Types)</h4>
+              <p className="text-sm text-gray-600 mb-3">The platform supports 13 different content types to create engaging, diverse learning experiences. Here&apos;s what&apos;s available:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 mb-3">
                 <div className="text-sm text-gray-600">1. 📝 <strong>Text Content</strong> - Rich text editor</div>
                 <div className="text-sm text-gray-600">2. 🎥 <strong>Video</strong> - YouTube, Vimeo, embedded videos</div>
@@ -162,7 +162,22 @@ export default function InstructorHelpPage() {
                 <div className="text-sm text-gray-600">10. 📊 <strong>Slideshows</strong> - Presentations</div>
                 <div className="text-sm text-gray-600">11. ❓ <strong>Quizzes</strong> - Assessments</div>
                 <div className="text-sm text-gray-600">12. 📋 <strong>Assignments</strong> - Student tasks</div>
+                <div className="text-sm text-indigo-600">13. 🧊 <strong>3D Model</strong> - Interactive 3D viewer with AR</div>
               </div>
+            </div>
+
+            <div className="border border-indigo-200 rounded-lg p-4 bg-indigo-50">
+              <h4 className="font-medium text-indigo-900 mb-2">🧊 3D Model Block (NEW)</h4>
+              <p className="text-sm text-indigo-700 mb-3">Embed a real 3D model students can rotate, zoom, and view in AR on supported devices. Powered by <code className="bg-indigo-100 px-1 rounded">&lt;model-viewer&gt;</code>.</p>
+              <ol className="text-sm text-indigo-700 space-y-1 ml-4 list-decimal">
+                <li>Add a <strong>3D Model</strong> content block to your lesson.</li>
+                <li>Upload a <code className="bg-indigo-100 px-1 rounded">.glb</code>, <code className="bg-indigo-100 px-1 rounded">.gltf</code>, or <code className="bg-indigo-100 px-1 rounded">.usdz</code> file. GLB is the best general-purpose format; USDZ enables native iOS Quick Look AR.</li>
+                <li>Optionally add <strong>instructions</strong> (rich text) and choose whether to show them <strong>before</strong> or <strong>after</strong> the model in the lesson.</li>
+                <li>Students get orbit/zoom controls, a <strong>fullscreen</strong> toggle, and a <strong>View in AR</strong> button on mobile (USDZ on iOS, GLB on Android).</li>
+              </ol>
+              <p className="text-xs text-indigo-700 mt-3">
+                <strong>Tip:</strong> Keep models under ~25 MB for snappy loading. Compress textures (Draco, KTX2) and remove animations you don&apos;t need.
+              </p>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
@@ -724,12 +739,35 @@ export default function InstructorHelpPage() {
               <h4 className="font-medium text-gray-900 mb-2">📊 AI Rubric Generation</h4>
               <p className="text-sm text-gray-600 mb-3">Generate grading rubrics that align with your assignment objectives.</p>
               <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>When creating an assignment, click "Generate Rubric with AI"</li>
+                <li>When creating an assignment, click &quot;Generate Rubric with AI&quot;</li>
                 <li>The AI analyzes your assignment description</li>
                 <li>Review the generated criteria and point values</li>
                 <li>Edit criteria, descriptions, and scoring as needed</li>
                 <li>Save the rubric for consistent grading</li>
               </ol>
+            </div>
+
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h4 className="font-medium text-gray-900 mb-2">✨ AI Content Enhancement (Lesson Editor)</h4>
+              <p className="text-sm text-gray-600 mb-3">Inside the lesson rich-text editor (ProseForge), the <strong>AI Enhance</strong> button rewrites or restyles the current selection (or the whole document) using one of seven modes.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600 mb-3">
+                <div>✨ <strong>Beautify</strong> — styled headings, blockquotes &amp; callouts</div>
+                <div>📖 <strong>Lesson Format</strong> — textbook-style layout</div>
+                <div>🎨 <strong>Add Visuals</strong> — boxes, grids &amp; styled lists</div>
+                <div>📚 <strong>Expand</strong> — more detail, examples &amp; tables</div>
+                <div>📋 <strong>Summarize</strong> — key takeaways box &amp; bullets</div>
+                <div>📝 <strong>Simplify</strong> — simpler text, keep styling</div>
+                <div>✓ <strong>Fix Grammar</strong> — corrections only</div>
+              </div>
+              <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
+                <li>Select the text you want to enhance (or leave nothing selected to enhance the whole document).</li>
+                <li>Click the AI button in the toolbar and pick a mode.</li>
+                <li>Optionally add custom instructions (&quot;keep the British spellings&quot;, &quot;add an example about photosynthesis&quot;, etc.).</li>
+                <li>Review the preview pane on the right. Click <strong>Accept</strong> to insert, or pick a different mode.</li>
+              </ol>
+              <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-700">
+                <strong>What changed recently:</strong> The AI no longer adds <code className="bg-gray-100 px-1 rounded">&lt;mark&gt;</code> yellow-highlight markers to your text — emphasis routes through bold, headings, callouts, and styled blockquotes instead. <strong>Blockquotes</strong> are now first-class: every blockquote in your source survives, and the Beautify, Lesson Format, Expand, and Add Visuals modes will use styled blockquotes for any quoted material or pull quote.
+              </div>
             </div>
           </div>
 

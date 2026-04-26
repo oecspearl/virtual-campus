@@ -185,16 +185,17 @@ export default function AdminHelpPage() {
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">🗑️ Deleting Courses</h4>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li>Delete courses that are no longer needed</li>
-                <li>System will warn about enrolled students</li>
-                <li>Consider archiving instead of deleting</li>
-                <li>Deleted courses cannot be recovered</li>
+                <li>From <strong>Admin → Courses → Manage</strong>, click the delete icon on a course row</li>
+                <li>A two-step confirmation dialog shows the course title and enrolment count before any destructive action</li>
+                <li>Deletion cascades to lessons, content blocks, quizzes, assignments, and uploads — there is no undo</li>
+                <li>If the course has been shared to another tenant, deleting at the source removes the forks too — review &quot;Course Sharing&quot; first</li>
+                <li>Prefer unpublishing or archiving when possible</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">📚 Course Content Types (12 Available)</h4>
-              <p className="text-sm text-gray-600 mb-3">The platform supports 12 different content types that instructors can add to lessons. Admins should understand these options when managing courses and supporting instructors.</p>
+              <h4 className="font-medium text-gray-900 mb-2">📚 Course Content Types (13 Available)</h4>
+              <p className="text-sm text-gray-600 mb-3">The platform supports 13 different content types that instructors can add to lessons. Admins should understand these options when managing courses and supporting instructors.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 mb-3">
                 <div className="text-sm text-gray-600">1. 📝 <strong>Text Content</strong> - Rich text editor</div>
                 <div className="text-sm text-gray-600">2. 🎥 <strong>Video</strong> - YouTube, Vimeo, embedded videos</div>
@@ -208,6 +209,7 @@ export default function AdminHelpPage() {
                 <div className="text-sm text-gray-600">10. 📊 <strong>Slideshows</strong> - Presentations</div>
                 <div className="text-sm text-gray-600">11. ❓ <strong>Quizzes</strong> - Assessments</div>
                 <div className="text-sm text-gray-600">12. 📋 <strong>Assignments</strong> - Student tasks</div>
+                <div className="text-sm text-indigo-600">13. 🧊 <strong>3D Model</strong> - Interactive 3D viewer with AR support</div>
               </div>
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <p className="text-xs font-medium text-gray-900 mb-2">New Interactive Content Types:</p>
@@ -215,6 +217,7 @@ export default function AdminHelpPage() {
                   <li><strong>Interactive Video:</strong> Videos pause at checkpoints to ask questions, increasing engagement and comprehension</li>
                   <li><strong>Audio/Podcast:</strong> Audio content with playback controls, speed adjustment, and optional transcripts for accessibility</li>
                   <li><strong>Code Sandbox:</strong> Interactive code editor supporting 8 languages (JavaScript, Python, HTML/CSS, Java, C++, SQL, JSON) with live execution</li>
+                  <li><strong>3D Model:</strong> Renders <code className="bg-gray-100 px-1 rounded">.glb</code>, <code className="bg-gray-100 px-1 rounded">.gltf</code>, or <code className="bg-gray-100 px-1 rounded">.usdz</code> models via <code className="bg-gray-100 px-1 rounded">&lt;model-viewer&gt;</code>. Supports orbit/zoom, fullscreen, mobile AR (USDZ on iOS, GLB on Android), and optional instructions placed before or after the model.</li>
                 </ul>
                 <p className="text-xs text-gray-500 mt-2">
                   <strong>Note:</strong> Admins can view all content types when reviewing courses. These features enhance learning engagement and support diverse teaching methods.
@@ -601,24 +604,23 @@ export default function AdminHelpPage() {
 
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">📊 Database Tables</h4>
-              <p className="text-sm text-gray-600 mb-3">Student messaging uses the following database tables:</p>
+              <p className="text-sm text-gray-600 mb-3">Student messaging is backed by four tenant-scoped tables (see migration <code className="bg-gray-100 px-1 rounded">037-student-chat.sql</code>):</p>
               <ul className="text-sm text-gray-600 space-y-1 ml-4">
-                <li><code className="bg-gray-100 px-1 rounded">student_chat_rooms</code> - Chat rooms (direct, group, course, study_group types)</li>
-                <li><code className="bg-gray-100 px-1 rounded">student_chat_members</code> - Room membership and roles</li>
-                <li><code className="bg-gray-100 px-1 rounded">student_chat_messages</code> - Messages with file attachment support</li>
-                <li><code className="bg-gray-100 px-1 rounded">student_chat_reactions</code> - Emoji reactions on messages</li>
-                <li><code className="bg-gray-100 px-1 rounded">student_chat_blocked_users</code> - User blocking for safety</li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_rooms</code> — chat rooms (direct, group, course, study_group types) with <code className="bg-gray-100 px-1 rounded">last_message_at</code> auto-updated by trigger</li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_members</code> — room membership, roles, mute flag, and per-user <code className="bg-gray-100 px-1 rounded">unread_count</code></li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_messages</code> — messages of type text/image/file/system with file attachment fields and threaded replies (<code className="bg-gray-100 px-1 rounded">reply_to_id</code>); soft-deleted via <code className="bg-gray-100 px-1 rounded">is_deleted</code></li>
+                <li><code className="bg-gray-100 px-1 rounded">student_chat_blocked_users</code> — per-user block list filtering both DM creation and inbound messages</li>
               </ul>
             </div>
 
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">⚙️ Realtime Configuration</h4>
-              <p className="text-sm text-gray-600 mb-3">For real-time messaging to work, ensure the following is configured in Supabase:</p>
-              <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
-                <li>Enable Realtime for <code className="bg-gray-100 px-1 rounded">student_chat_messages</code> table in Supabase Dashboard → Database → Replication</li>
-                <li>Verify RLS policies are enabled and working correctly</li>
-                <li>Check that helper functions (<code className="bg-gray-100 px-1 rounded">is_student_chat_member</code>, <code className="bg-gray-100 px-1 rounded">is_student_chat_admin</code>) exist with SECURITY DEFINER</li>
-              </ol>
+              <h4 className="font-medium text-gray-900 mb-2">📍 Course Detail &quot;Online Now&quot; Card</h4>
+              <p className="text-sm text-gray-600 mb-3">Each course detail page shows recently active classmates with a one-click DM button.</p>
+              <ul className="text-sm text-gray-600 space-y-1 ml-4">
+                <li>The list is derived from <code className="bg-gray-100 px-1 rounded">student_chat_members.last_read_at</code> + the <code className="bg-gray-100 px-1 rounded">last_login</code> column on users</li>
+                <li>Clicking <strong>Message</strong> opens (or creates) a direct-message room with that classmate</li>
+                <li>Blocked users are filtered out automatically</li>
+              </ul>
             </div>
           </div>
 
@@ -1300,6 +1302,124 @@ export default function AdminHelpPage() {
               <li><strong>Admin</strong> — Full administrative access within a tenant</li>
               <li>Other roles (instructor, student, etc.) are scoped to their tenant</li>
             </ul>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'course-sharing',
+      title: 'Cross-Tenant Course Sharing',
+      icon: <Icon icon="mdi:share-variant" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <p className="text-sm text-blue-700">
+              <strong>What this is:</strong> A source tenant can publish a course to one or more target tenants. Each target tenant gets its own forked copy that students enrol into normally, while the source institution retains control over the canonical content.
+            </p>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">🌐 Sharing a Course</h4>
+            <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
+              <li>Open the course at the source tenant and go to <strong>Course → Share</strong>.</li>
+              <li>Pick one or more target tenants via the multi-tenant checkbox list.</li>
+              <li>Set the per-share <strong>delegation flags</strong> (described below).</li>
+              <li>Submit. The target tenant&apos;s admin receives the share for review.</li>
+            </ol>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">✅ Acceptance Workflow (Target Tenant)</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Incoming shares appear under <strong>Admin → Shared Courses</strong> as &quot;pending&quot;.</li>
+              <li>The target admin reviews the course and clicks <strong>Accept</strong> to make it visible in their catalogue, or <strong>Reject</strong> to discard.</li>
+              <li>Only after acceptance does the forked course show up to instructors and students at the target tenant.</li>
+              <li>Forked courses display a <strong>&quot;Forked from {'{'}Institution{'}'}&quot;</strong> chip on the course detail page so users know the canonical source.</li>
+            </ul>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">⚙️ Delegation Flags</h4>
+            <p className="text-sm text-gray-600 mb-3">Each share can independently delegate the following responsibilities to the target tenant:</p>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li><strong>Target-tenant grading</strong> — target instructors grade their own students&apos; submissions on the source assessments.</li>
+              <li><strong>Target-tenant supplements</strong> — target instructors can add their own announcements and resource links alongside the shared content.</li>
+              <li><strong>Target-tenant live sessions</strong> — target instructors run their own video conferences for the shared course.</li>
+              <li>Flags can be changed after the share is created; existing data is preserved.</li>
+            </ul>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">🤖 AI Tutor Across Tenants</h4>
+            <p className="text-sm text-gray-600">
+              The AI tutor is available on shared-course lesson pages and reads content across the source/target boundary, so target-tenant students can ask questions about the canonical material without re-uploading it.
+            </p>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">📦 What Forks With the Course</h4>
+            <p className="text-sm text-gray-600 mb-3">When a target tenant accepts a share, the fork includes:</p>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Course metadata, lessons, and content blocks</li>
+              <li>Quizzes and assignments (assessments stay anchored to the source unless graded locally)</li>
+              <li>SCORM packages, video captions, and lesson-level resource links</li>
+              <li>Announcements and resource links flagged as supplements stay tenant-local</li>
+            </ul>
+          </div>
+
+          <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
+            <p className="text-sm text-orange-700">
+              <strong>Heads-up:</strong> Deleting the source course removes its forks at every target tenant — review &quot;Course Management → Deleting Courses&quot; before destructive actions on a shared course.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'credit-transfer',
+      title: 'Regional Credit Transfer',
+      icon: <Icon icon="mdi:swap-horizontal" className="w-5 h-5" />,
+      content: (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <p className="text-sm text-blue-700">
+              <strong>What this is:</strong> A regional workflow that lets registrars at one tenant request, review, and accept course credits earned by students at another tenant on the platform.
+            </p>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">📋 The Flow</h4>
+            <ol className="text-sm text-gray-600 space-y-1 ml-4 list-decimal">
+              <li>A student requests credit transfer from their dashboard, naming the source tenant + course and (optionally) attaching submissions.</li>
+              <li>The receiving tenant&apos;s registrar opens <strong>Admin → Credit Transfer</strong> to see incoming requests.</li>
+              <li>Registrars view the transcript (including cross-tenant grades from shared courses), past submissions, and any attached evidence.</li>
+              <li>Reviewers leave threaded comments — each new comment fires an email to the other party.</li>
+              <li>Approve, reject, or request more information. The decision and audit trail are recorded against the request.</li>
+            </ol>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">🔧 Per-Tenant Governance</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Each tenant can opt in or out of regional participation via a tenant-level flag.</li>
+              <li>Tenants that don&apos;t participate are hidden from the source-tenant picker on student requests.</li>
+              <li>The registrar dashboard shows a comment-count badge so threads needing attention surface fast.</li>
+              <li>The dashboard supports a <strong>regional date filter</strong> so admins can scope by intake window.</li>
+            </ul>
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-2">📨 Notifications &amp; Templates</h4>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4">
+              <li>Email templates for credit-transfer events live alongside the other branding email templates and can be customised per tenant.</li>
+              <li>Each request has a linkable detail route, so emailed comments deep-link straight to the case.</li>
+            </ul>
+          </div>
+
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <p className="text-sm text-yellow-700">
+              <strong>Privacy:</strong> Transcripts are pulled live across tenants when a request is opened; we don&apos;t store student records at the receiving tenant unless the credit is ultimately accepted.
+            </p>
           </div>
         </div>
       )

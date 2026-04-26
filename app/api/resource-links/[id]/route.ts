@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 // PUT - Update a resource link
 export async function PUT(
@@ -23,27 +24,45 @@ export async function PUT(
     const body = await request.json();
     const { id } = await params;
 
-    const { title, url, description, link_type } = body;
+    const { title, url, description, link_type, body_html } = body;
 
-    if (!title || !url) {
+    const resolvedType = link_type || 'external';
+    const isText = resolvedType === 'text';
+
+    if (!title) {
+      return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+    if (isText && !body_html) {
       return NextResponse.json(
-        { error: 'title and url are required' },
+        { error: 'body_html is required for text resources' },
         { status: 400 }
       );
+    }
+    if (!isText && !url) {
+      return NextResponse.json({ error: 'url is required' }, { status: 400 });
     }
 
     const supabase = await createServerSupabaseClient();
 
-    // Update the resource link
+    // Same shape contract as the POST handler — keep in sync.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: any = {
+      title,
+      description: description || null,
+      link_type: resolvedType,
+      updated_at: new Date().toISOString(),
+    };
+    if (isText) {
+      updateData.body_html = sanitizeHtml(body_html);
+      updateData.url = null;
+    } else {
+      updateData.url = url;
+      updateData.body_html = null;
+    }
+
     const { data: link, error } = await supabase
       .from('resource_links')
-      .update({
-        title,
-        url,
-        description: description || null,
-        link_type: link_type || 'external',
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();

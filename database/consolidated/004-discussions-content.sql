@@ -276,15 +276,24 @@ CREATE TABLE public.resource_links (
   course_id UUID REFERENCES courses(id),
   lesson_id UUID REFERENCES lessons(id),
   title VARCHAR NOT NULL,
-  url TEXT NOT NULL,
+  -- url is required for link-shaped rows (any link_type except 'text')
+  -- and NULL for inline-text rows. body_html holds sanitised HTML for
+  -- text rows. The shape contract is enforced by resource_links_shape_check
+  -- below. See migration 039-resource-links-text.sql.
+  url TEXT,
+  body_html TEXT,
   description TEXT,
-  link_type VARCHAR DEFAULT 'external' CHECK (link_type IN ('external', 'document', 'video', 'article', 'tool', 'other')),
+  link_type VARCHAR DEFAULT 'external' CHECK (link_type IN ('external', 'document', 'video', 'article', 'tool', 'other', 'text')),
   icon VARCHAR,
   "order" INTEGER DEFAULT 0,
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT resource_links_pkey PRIMARY KEY (id)
+  CONSTRAINT resource_links_pkey PRIMARY KEY (id),
+  CONSTRAINT resource_links_shape_check CHECK (
+    (link_type = 'text' AND body_html IS NOT NULL AND url IS NULL)
+    OR (link_type <> 'text' AND url IS NOT NULL)
+  )
 );
 
 CREATE INDEX idx_resource_links_tenant ON resource_links(tenant_id);

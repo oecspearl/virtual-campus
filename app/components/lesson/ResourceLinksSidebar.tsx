@@ -1,11 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Icon } from '@iconify/react';
 import RoleGuard from '@/app/components/RoleGuard';
 import LoadingIndicator from '@/app/components/ui/LoadingIndicator';
-import GoogleDrivePicker, { GoogleDriveFile, getGoogleFileTypeLabel } from '@/app/components/media/GoogleDrivePicker';
+import GoogleDrivePicker, { GoogleDriveFile } from '@/app/components/media/GoogleDrivePicker';
+import { sanitizeHtml } from '@/lib/sanitize';
+
+// TextEditor pulls in heavy rich-text deps — load it client-side only and
+// only when the form is open in 'text' mode.
+const TextEditor = dynamic(() => import('@/app/components/editor/TextEditor'), {
+  ssr: false,
+  loading: () => <div className="h-[160px] border border-gray-300 rounded-md animate-pulse bg-gray-100" />,
+});
 
 // Allowed file types for resource uploads
 const ALLOWED_FILE_TYPES = {
@@ -28,13 +36,19 @@ const ALLOWED_EXTENSIONS = Object.values(ALLOWED_FILE_TYPES).map(f => `.${f.ext}
 interface ResourceLink {
   id: string;
   title: string;
-  url: string;
+  /** Null for inline-text resources (link_type === 'text'). */
+  url: string | null;
+  /** HTML body for text resources; null otherwise. Sanitised server-side. */
+  body_html?: string | null;
   description?: string;
   link_type?: string;
   icon?: string;
   order?: number;
   file_id?: string;
 }
+
+// 'google' is kept in the union because it appears as a tab option below.
+type UploadMode = 'url' | 'file' | 'google' | 'text';
 
 interface ResourceLinksSidebarProps {
   courseId?: string;
@@ -48,11 +62,18 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSectionOpen, setIsSectionOpen] = useState(defaultOpen);
-  const [editForm, setEditForm] = useState({ title: '', url: '', description: '', link_type: 'external' });
+  const [editForm, setEditForm] = useState({
+    title: '',
+    url: '',
+    body_html: '',
+    description: '',
+    link_type: 'external',
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedTextIds, setExpandedTextIds] = useState<Set<string>>(new Set());
 
   // File upload state
-  const [uploadMode, setUploadMode] = useState<'url' | 'file'>('url');
+  const [uploadMode, setUploadMode] = useState<UploadMode>('url');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [maxUploadSizeMB, setMaxUploadSizeMB] = useState(10);
@@ -113,8 +134,18 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editForm.title || !editForm.url) {
-      alert('Please fill in title and URL');
+    const isTextResource = uploadMode === 'text' || editForm.link_type === 'text';
+
+    if (!editForm.title) {
+      alert('Please fill in the title');
+      return;
+    }
+    if (isTextResource && !editForm.body_html.trim()) {
+      alert('Please enter some text content');
+      return;
+    }
+    if (!isTextResource && !editForm.url) {
+      alert('Please fill in the URL');
       return;
     }
 
@@ -125,14 +156,25 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
 
     try {
       const url = editingId ? `/api/resource-links/${editingId}` : '/api/resource-links';
-      const body = editingId 
-        ? { ...editForm }
-        : { ...editForm, courseId, lessonId };
+      // Build the payload to match the API contract: text resources send
+      // body_html (no url); link resources send url (no body_html).
+      const payload: Record<string, unknown> = {
+        title: editForm.title,
+        description: editForm.description,
+      };
+      if (isTextResource) {
+        payload.link_type = 'text';
+        payload.body_html = editForm.body_html;
+      } else {
+        payload.link_type = editForm.link_type === 'text' ? 'external' : editForm.link_type;
+        payload.url = editForm.url;
+      }
+      const body = editingId ? payload : { ...payload, courseId, lessonId };
 
       const response = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -142,7 +184,7 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
 
       await fetchLinks();
       setIsEditing(false);
-      setEditForm({ title: '', url: '', description: '', link_type: 'external' });
+      setEditForm({ title: '', url: '', body_html: '', description: '', link_type: 'external' });
       setEditingId(null);
     } catch (error) {
       console.error('Error saving resource link:', error);
@@ -168,15 +210,17 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
   };
 
   const handleEdit = (link: ResourceLink) => {
+    const isText = link.link_type === 'text';
     setEditForm({
       title: link.title,
-      url: link.url,
+      url: link.url || '',
+      body_html: link.body_html || '',
       description: link.description || '',
-      link_type: link.link_type || 'external'
+      link_type: link.link_type || 'external',
     });
     setEditingId(link.id);
     setIsEditing(true);
-    setUploadMode('url'); // Reset to URL mode when editing
+    setUploadMode(isText ? 'text' : 'url');
   };
 
   // File upload handler
@@ -264,9 +308,20 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
         return 'mdi:newspaper-variant-outline';
       case 'tool':
         return 'mdi:wrench-outline';
+      case 'text':
+        return 'mdi:text-box-outline';
       default:
         return 'mdi:link-variant';
     }
+  };
+
+  const toggleTextExpanded = (id: string) => {
+    setExpandedTextIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const resourceHeader = (
@@ -285,7 +340,7 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsEditing(true);
-                  setEditForm({ title: '', url: '', description: '', link_type: 'external' });
+                  setEditForm({ title: '', url: '', body_html: '', description: '', link_type: 'external' });
                   setEditingId(null);
                 }}
                 className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -338,7 +393,7 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                 <button
                   onClick={() => {
                     setIsEditing(true);
-                    setEditForm({ title: '', url: '', description: '', link_type: 'external' });
+                    setEditForm({ title: '', url: '', body_html: '', description: '', link_type: 'external' });
                     setEditingId(null);
                   }}
                   className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm"
@@ -350,7 +405,10 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
           </div>
         ) : (
           <div className="space-y-3">
-            {links.map((link) => (
+            {links.map((link) => {
+              const isText = link.link_type === 'text';
+              const isExpanded = expandedTextIds.has(link.id);
+              return (
               <div
                 key={link.id}
                 className="group relative flex items-start p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-teal-200"
@@ -359,16 +417,41 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                   <Icon icon={getLinkIcon(link)} className="h-5 w-5" aria-hidden />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-teal-600 hover:text-teal-800 transition-colors break-words"
-                  >
-                    {link.title}
-                  </a>
+                  {isText ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleTextExpanded(link.id)}
+                      className="text-sm font-medium text-teal-600 hover:text-teal-800 transition-colors break-words text-left flex items-center gap-1"
+                      aria-expanded={isExpanded}
+                    >
+                      <span>{link.title}</span>
+                      <svg
+                        className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <a
+                      href={link.url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-teal-600 hover:text-teal-800 transition-colors break-words"
+                    >
+                      {link.title}
+                    </a>
+                  )}
                   {link.description && (
                     <p className="text-xs text-gray-600 mt-1 line-clamp-3 break-words">{link.description}</p>
+                  )}
+                  {isText && isExpanded && link.body_html && (
+                    <div
+                      className="mt-3 prose prose-sm max-w-none text-gray-700 break-words"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(link.body_html) }}
+                    />
                   )}
                 </div>
                 <RoleGuard roles={['instructor', 'curriculum_designer', 'admin', 'super_admin']}>
@@ -392,7 +475,8 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                   </div>
                 </RoleGuard>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -418,8 +502,11 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                   />
                 </div>
 
-                {/* Upload Mode Toggle - Only show for new resources */}
-                {!editingId && (
+                {/* Upload Mode Toggle — only shown when creating new
+                    resources (or when editing a text resource, so the
+                    instructor can see they're in text mode and switch
+                    out of it if they were on the wrong type). */}
+                {(!editingId || uploadMode === 'text') && (
                   <div className="flex rounded-lg border border-gray-300 overflow-hidden">
                     <button
                       type="button"
@@ -456,9 +543,9 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                     {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
                       <button
                         type="button"
-                        onClick={() => setUploadMode('google' as any)}
+                        onClick={() => setUploadMode('google')}
                         className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                          uploadMode === ('google' as any)
+                          uploadMode === 'google'
                             ? 'bg-teal-600 text-white'
                             : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                         }`}
@@ -471,11 +558,27 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                         </span>
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setUploadMode('text')}
+                      className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                        uploadMode === 'text'
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="flex items-center justify-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h10" />
+                        </svg>
+                        Text
+                      </span>
+                    </button>
                   </div>
                 )}
 
-                {/* URL Input */}
-                {(uploadMode === 'url' || editingId) && (
+                {/* URL Input — for url-mode creates and for non-text edits */}
+                {((uploadMode === 'url' && !editingId) || (editingId && uploadMode !== 'text')) && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       URL <span className="text-red-500">*</span>
@@ -488,6 +591,25 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                       placeholder="https://example.com"
                       required
                     />
+                  </div>
+                )}
+
+                {/* Inline rich-text body — for text-mode creates and edits */}
+                {uploadMode === 'text' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Text Content <span className="text-red-500">*</span>
+                    </label>
+                    <TextEditor
+                      value={editForm.body_html}
+                      onChange={(html: string) => setEditForm({ ...editForm, body_html: html })}
+                      placeholder="Write a note, summary, or instructions for students…"
+                      height={200}
+                      showFullscreenButton={false}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Rich text — formatting, links, and lists are preserved. Students see this expanded inline in the resources list.
+                    </p>
                   </div>
                 )}
 
@@ -548,7 +670,7 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                   </div>
                 )}
                 {/* Google Drive Picker */}
-                {uploadMode === ('google' as any) && !editingId && (
+                {uploadMode === 'google' && !editingId && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Select from Google Drive
@@ -569,7 +691,7 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                       buttonVariant="outline"
                       className="w-full"
                     />
-                    {editForm.url && uploadMode === ('google' as any) && (
+                    {editForm.url && uploadMode === 'google' && (
                       <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -592,6 +714,9 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                     rows={2}
                   />
                 </div>
+                {/* Type selector — hidden in text mode (the type is fixed
+                    to 'text' for inline-text resources). */}
+                {uploadMode !== 'text' && (
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Type
@@ -609,18 +734,23 @@ export default function ResourceLinksSidebar({ courseId, lessonId, collapsible =
                     <option value="other">Other</option>
                   </select>
                 </div>
+                )}
                 <div className="flex gap-2">
                   <button
                     type="submit"
                     className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium"
                   >
-                    {editingId ? 'Update' : 'Add Link'}
+                    {editingId
+                      ? 'Update'
+                      : uploadMode === 'text'
+                      ? 'Add Text'
+                      : 'Add Link'}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       setIsEditing(false);
-                      setEditForm({ title: '', url: '', description: '', link_type: 'external' });
+                      setEditForm({ title: '', url: '', body_html: '', description: '', link_type: 'external' });
                       setEditingId(null);
                       setUploadMode('url');
                       setUploadError(null);

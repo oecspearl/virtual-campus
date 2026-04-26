@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 // GET - Fetch resource links for a course or lesson
 export async function GET(request: NextRequest) {
@@ -57,13 +58,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { courseId, lessonId, title, url, description, link_type } = body;
+    const { courseId, lessonId, title, url, description, link_type, body_html } = body;
 
-    if (!title || !url) {
+    const resolvedType = link_type || 'external';
+    const isText = resolvedType === 'text';
+
+    if (!title) {
+      return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+    if (isText && !body_html) {
       return NextResponse.json(
-        { error: 'title and url are required' },
+        { error: 'body_html is required for text resources' },
         { status: 400 }
       );
+    }
+    if (!isText && !url) {
+      return NextResponse.json({ error: 'url is required' }, { status: 400 });
     }
 
     if (!courseId && !lessonId) {
@@ -84,15 +94,25 @@ export async function POST(request: NextRequest) {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
-    // Create the resource link
+    // Create the resource link. The DB CHECK constraint
+    // (resource_links_shape_check) enforces that text rows have body_html +
+    // null url, and link rows have url + null body_html — keep that contract
+    // in sync here.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const insertData: any = {
       title,
-      url,
       description: description || null,
-      link_type: link_type || 'external',
+      link_type: resolvedType,
       created_by: authResult.user.id,
-      order: 0
+      order: 0,
     };
+    if (isText) {
+      insertData.body_html = sanitizeHtml(body_html);
+      insertData.url = null;
+    } else {
+      insertData.url = url;
+      insertData.body_html = null;
+    }
 
     if (courseId) insertData.course_id = courseId;
     if (lessonId) insertData.lesson_id = lessonId;

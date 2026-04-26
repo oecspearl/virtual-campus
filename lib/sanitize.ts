@@ -1,5 +1,13 @@
 import DOMPurify from "dompurify";
 
+// This file is the BROWSER-side sanitiser used by client components and
+// rich-text editors. dompurify auto-initialises against the global window
+// in the browser, so the default import gives us a working instance.
+//
+// For server-side sanitisation (API routes), import `sanitizeHtml` from
+// `@/lib/sanitize-server` instead — that variant pairs DOMPurify with
+// jsdom so it works in Node where there's no global window.
+
 // Register the iframe sandbox hook ONCE at module load (not per call)
 let hookRegistered = false;
 

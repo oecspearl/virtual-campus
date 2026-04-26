@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
-import { sanitizeHtml } from '@/lib/sanitize';
+import { sanitizeHtml } from '@/lib/sanitize-server';
 
 // PUT - Update a resource link
 export async function PUT(

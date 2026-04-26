@@ -10,7 +10,13 @@ import { NextResponse } from 'next/server';
 export const courseUpdateSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().max(50000).optional(),
-  thumbnail: z.string().url().max(2000).nullable().optional(),
+  // Form fields that aren't filled keep their default empty string ('') —
+  // accept '' alongside null/valid URL and normalise '' → null before the
+  // route writes to Postgres so we don't store empty strings.
+  thumbnail: z
+    .union([z.string().url().max(2000), z.literal(''), z.null()])
+    .optional()
+    .transform((v) => (v === '' ? null : v)),
   grade_level: z.string().max(100).optional(),
   subject_area: z.string().max(200).optional(),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),

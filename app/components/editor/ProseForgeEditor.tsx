@@ -841,6 +841,7 @@ export default function ProseForgeEditor({
           <span>Learnboard Native Editor</span>
           {showFullscreenButton && (
             <button
+              type="button"
               onClick={() => setIsFullscreen((f) => !f)}
               className="pf-tb-btn"
               style={{ width: 24, height: 24, color: "#374151" }}
@@ -865,20 +866,20 @@ export default function ProseForgeEditor({
           <div className="pf-menu-item" onClick={(e) => toggleMenu("file", e)}>
             File
             <div className={`pf-menu-dropdown ${activeMenu === "file" ? "pf-show" : ""}`}>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(newDoc)}>New Document <span className="pf-shortcut">Ctrl+N</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(newDoc)}>New Document <span className="pf-shortcut">Ctrl+N</span></button>
               <div className="pf-menu-divider" />
-              <button className="pf-menu-dropdown-item" onClick={menuAction(exportHTML)}>Export as HTML</button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(exportText)}>Export as Text</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(exportHTML)}>Export as HTML</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(exportText)}>Export as Text</button>
             </div>
           </div>
           {/* Edit */}
           <div className="pf-menu-item" onClick={(e) => toggleMenu("edit", e)}>
             Edit
             <div className={`pf-menu-dropdown ${activeMenu === "edit" ? "pf-show" : ""}`}>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(undo)}>Undo <span className="pf-shortcut">Ctrl+Z</span></button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(redo)}>Redo <span className="pf-shortcut">Ctrl+Shift+Z</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(undo)}>Undo <span className="pf-shortcut">Ctrl+Z</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(redo)}>Redo <span className="pf-shortcut">Ctrl+Shift+Z</span></button>
               <div className="pf-menu-divider" />
-              <button className="pf-menu-dropdown-item" onClick={menuAction(() => setShowFindReplace((p) => !p))}>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(() => setShowFindReplace((p) => !p))}>
                 Find & Replace <span className="pf-shortcut">Ctrl+F</span>
               </button>
             </div>
@@ -887,43 +888,43 @@ export default function ProseForgeEditor({
           <div className="pf-menu-item" onClick={(e) => toggleMenu("insert", e)}>
             Insert
             <div className={`pf-menu-dropdown ${activeMenu === "insert" ? "pf-show" : ""}`}>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(openLinkDialog)}>Link</button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(openImageDialog)}>Image</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(openLinkDialog)}>Link</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(openImageDialog)}>Image</button>
               <div className="pf-menu-divider" />
-              <button className="pf-menu-dropdown-item" onClick={menuAction(openTableDialog)}>Table</button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(insertHR)}>Horizontal Rule</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(openTableDialog)}>Table</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(insertHR)}>Horizontal Rule</button>
               <div className="pf-menu-divider" />
-              <button className="pf-menu-dropdown-item" onClick={menuAction(insertCodeBlock)}>Code Block</button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(insertBlockquote)}>Blockquote</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(insertCodeBlock)}>Code Block</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(insertBlockquote)}>Blockquote</button>
               <div className="pf-menu-divider" />
-              <button className="pf-menu-dropdown-item" onClick={menuAction(openAiDialog)}>AI Enhance... <span className="pf-shortcut">Ctrl+Shift+A</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(openAiDialog)}>AI Enhance... <span className="pf-shortcut">Ctrl+Shift+A</span></button>
             </div>
           </div>
           {/* Format */}
           <div className="pf-menu-item" onClick={(e) => toggleMenu("format", e)}>
             Format
             <div className={`pf-menu-dropdown ${activeMenu === "format" ? "pf-show" : ""}`}>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(toggleBold)}>Bold <span className="pf-shortcut">Ctrl+B</span></button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(toggleItalic)}>Italic <span className="pf-shortcut">Ctrl+I</span></button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(toggleUnderline)}>Underline <span className="pf-shortcut">Ctrl+U</span></button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(toggleStrike)}>Strikethrough</button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(toggleCode)}>Code <span className="pf-shortcut">Ctrl+E</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(toggleBold)}>Bold <span className="pf-shortcut">Ctrl+B</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(toggleItalic)}>Italic <span className="pf-shortcut">Ctrl+I</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(toggleUnderline)}>Underline <span className="pf-shortcut">Ctrl+U</span></button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(toggleStrike)}>Strikethrough</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(toggleCode)}>Code <span className="pf-shortcut">Ctrl+E</span></button>
               <div className="pf-menu-divider" />
-              <button className="pf-menu-dropdown-item" onClick={menuAction(clearFormatting)}>Clear Formatting</button>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(clearFormatting)}>Clear Formatting</button>
             </div>
           </div>
           {/* View */}
           <div className="pf-menu-item" onClick={(e) => toggleMenu("view", e)}>
             View
             <div className={`pf-menu-dropdown ${activeMenu === "view" ? "pf-show" : ""}`}>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(() => setIsFullscreen((f) => !f))}>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(() => setIsFullscreen((f) => !f))}>
                 {isFullscreen ? "Exit Fullscreen" : "Fullscreen"} <span className="pf-shortcut">F11</span>
               </button>
-              <button className="pf-menu-dropdown-item" onClick={menuAction(toggleSourceView)}>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(toggleSourceView)}>
                 {sourceView ? "Rich Text" : "Source Code"}
               </button>
               <div className="pf-menu-divider" />
-              <button className="pf-menu-dropdown-item" onClick={menuAction(toggleWordWrap)}>
+              <button type="button" className="pf-menu-dropdown-item" onClick={menuAction(toggleWordWrap)}>
                 {wordWrap ? "Disable Word Wrap" : "Enable Word Wrap"}
               </button>
             </div>
@@ -950,11 +951,11 @@ export default function ProseForgeEditor({
 
           {/* Inline formatting */}
           <div className="pf-toolbar-group">
-            <button className={`pf-tb-btn ${boldActive ? "pf-active" : ""}`} onClick={toggleBold} data-tooltip="Bold (Ctrl+B)"><BoldIcon /></button>
-            <button className={`pf-tb-btn ${italicActive ? "pf-active" : ""}`} onClick={toggleItalic} data-tooltip="Italic (Ctrl+I)"><ItalicIcon /></button>
-            <button className={`pf-tb-btn ${underlineActive ? "pf-active" : ""}`} onClick={toggleUnderline} data-tooltip="Underline (Ctrl+U)"><UnderlineIcon /></button>
-            <button className={`pf-tb-btn ${strikeActive ? "pf-active" : ""}`} onClick={toggleStrike} data-tooltip="Strikethrough"><StrikeIcon /></button>
-            <button className="pf-tb-btn" onClick={toggleCode} data-tooltip="Inline Code (Ctrl+E)"><CodeIcon /></button>
+            <button type="button" className={`pf-tb-btn ${boldActive ? "pf-active" : ""}`} onClick={toggleBold} data-tooltip="Bold (Ctrl+B)"><BoldIcon /></button>
+            <button type="button" className={`pf-tb-btn ${italicActive ? "pf-active" : ""}`} onClick={toggleItalic} data-tooltip="Italic (Ctrl+I)"><ItalicIcon /></button>
+            <button type="button" className={`pf-tb-btn ${underlineActive ? "pf-active" : ""}`} onClick={toggleUnderline} data-tooltip="Underline (Ctrl+U)"><UnderlineIcon /></button>
+            <button type="button" className={`pf-tb-btn ${strikeActive ? "pf-active" : ""}`} onClick={toggleStrike} data-tooltip="Strikethrough"><StrikeIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={toggleCode} data-tooltip="Inline Code (Ctrl+E)"><CodeIcon /></button>
           </div>
 
           {/* Text color */}
@@ -971,40 +972,40 @@ export default function ProseForgeEditor({
 
           {/* Alignment */}
           <div className="pf-toolbar-group">
-            <button className="pf-tb-btn" onClick={() => setAlign("left")} data-tooltip="Align Left"><AlignLeftIcon /></button>
-            <button className="pf-tb-btn" onClick={() => setAlign("center")} data-tooltip="Align Center"><AlignCenterIcon /></button>
-            <button className="pf-tb-btn" onClick={() => setAlign("right")} data-tooltip="Align Right"><AlignRightIcon /></button>
-            <button className="pf-tb-btn" onClick={() => setAlign("justify")} data-tooltip="Justify"><AlignJustifyIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={() => setAlign("left")} data-tooltip="Align Left"><AlignLeftIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={() => setAlign("center")} data-tooltip="Align Center"><AlignCenterIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={() => setAlign("right")} data-tooltip="Align Right"><AlignRightIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={() => setAlign("justify")} data-tooltip="Justify"><AlignJustifyIcon /></button>
           </div>
 
           {/* Lists */}
           <div className="pf-toolbar-group">
-            <button className="pf-tb-btn" onClick={toggleBulletList} data-tooltip="Bullet List"><BulletListIcon /></button>
-            <button className="pf-tb-btn" onClick={toggleOrderedList} data-tooltip="Numbered List"><OrderedListIcon /></button>
-            <button className="pf-tb-btn" onClick={() => exec("indent")} data-tooltip="Increase Indent"><IndentIcon /></button>
-            <button className="pf-tb-btn" onClick={() => exec("outdent")} data-tooltip="Decrease Indent"><OutdentIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={toggleBulletList} data-tooltip="Bullet List"><BulletListIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={toggleOrderedList} data-tooltip="Numbered List"><OrderedListIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={() => exec("indent")} data-tooltip="Increase Indent"><IndentIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={() => exec("outdent")} data-tooltip="Decrease Indent"><OutdentIcon /></button>
           </div>
 
           {/* Insert actions */}
           <div className="pf-toolbar-group">
-            <button className="pf-tb-btn" onClick={openLinkDialog} data-tooltip="Insert Link"><LinkIcon /></button>
-            <button className="pf-tb-btn" onClick={openImageDialog} data-tooltip="Insert Image"><ImageIcon /></button>
-            <button className="pf-tb-btn" onClick={openTableDialog} data-tooltip="Insert Table"><TableIcon /></button>
-            <button className="pf-tb-btn" onClick={insertHR} data-tooltip="Horizontal Rule"><HRIcon /></button>
-            <button className="pf-tb-btn" onClick={insertBlockquote} data-tooltip="Blockquote"><QuoteIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={openLinkDialog} data-tooltip="Insert Link"><LinkIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={openImageDialog} data-tooltip="Insert Image"><ImageIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={openTableDialog} data-tooltip="Insert Table"><TableIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={insertHR} data-tooltip="Horizontal Rule"><HRIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={insertBlockquote} data-tooltip="Blockquote"><QuoteIcon /></button>
           </div>
 
           {/* Utility */}
           <div className="pf-toolbar-group">
-            <button className="pf-tb-btn" onClick={undo} data-tooltip="Undo (Ctrl+Z)"><UndoIcon /></button>
-            <button className="pf-tb-btn" onClick={redo} data-tooltip="Redo (Ctrl+Shift+Z)"><RedoIcon /></button>
-            <button className="pf-tb-btn" onClick={clearFormatting} data-tooltip="Clear Formatting"><ClearIcon /></button>
-            <button className="pf-tb-btn" onClick={() => setIsFullscreen((f) => !f)} data-tooltip="Fullscreen (F11)"><FullscreenIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={undo} data-tooltip="Undo (Ctrl+Z)"><UndoIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={redo} data-tooltip="Redo (Ctrl+Shift+Z)"><RedoIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={clearFormatting} data-tooltip="Clear Formatting"><ClearIcon /></button>
+            <button type="button" className="pf-tb-btn" onClick={() => setIsFullscreen((f) => !f)} data-tooltip="Fullscreen (F11)"><FullscreenIcon /></button>
           </div>
 
           {/* AI Enhance */}
           <div className="pf-toolbar-group">
-            <button className="pf-tb-btn pf-ai-tb-btn" onClick={openAiDialog} data-tooltip="AI Enhance (Ctrl+Shift+A)">
+            <button type="button" className="pf-tb-btn pf-ai-tb-btn" onClick={openAiDialog} data-tooltip="AI Enhance (Ctrl+Shift+A)">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74L12 2z" />
                 <path d="M19 15l1.04 3.13L23 19l-2.96.87L19 23l-1.04-3.13L15 19l2.96-.87L19 15z" opacity="0.6" />
@@ -1019,9 +1020,10 @@ export default function ProseForgeEditor({
             <input ref={findInputRef} type="text" placeholder="Find..." onInput={doFind} />
             <span className="pf-find-count">{findCount}</span>
             <input ref={replaceInputRef} type="text" placeholder="Replace..." />
-            <button className="pf-btn-ghost" onClick={doReplace}>Replace</button>
-            <button className="pf-btn-ghost" onClick={doReplaceAll}>All</button>
+            <button type="button" className="pf-btn-ghost" onClick={doReplace}>Replace</button>
+            <button type="button" className="pf-btn-ghost" onClick={doReplaceAll}>All</button>
             <button
+              type="button"
               className="pf-tb-btn"
               onClick={() => setShowFindReplace(false)}
               style={{ marginLeft: "auto" }}
@@ -1112,8 +1114,8 @@ export default function ProseForgeEditor({
               <input type="text" value={linkTitle} onChange={(e) => setLinkTitle(e.target.value)} placeholder="Tooltip text" />
             </div>
             <div className="pf-dialog-actions">
-              <button className="pf-btn pf-btn-cancel" onClick={() => setLinkDialog(false)}>Cancel</button>
-              <button className="pf-btn pf-btn-primary" onClick={doInsertLink}>Insert</button>
+              <button type="button" className="pf-btn pf-btn-cancel" onClick={() => setLinkDialog(false)}>Cancel</button>
+              <button type="button" className="pf-btn pf-btn-primary" onClick={doInsertLink}>Insert</button>
             </div>
           </div>
         </div>
@@ -1137,8 +1139,8 @@ export default function ProseForgeEditor({
               <input type="text" value={imageTitle} onChange={(e) => setImageTitle(e.target.value)} placeholder="Tooltip text" />
             </div>
             <div className="pf-dialog-actions">
-              <button className="pf-btn pf-btn-cancel" onClick={() => setImageDialog(false)}>Cancel</button>
-              <button className="pf-btn pf-btn-primary" onClick={doInsertImage}>Insert</button>
+              <button type="button" className="pf-btn pf-btn-cancel" onClick={() => setImageDialog(false)}>Cancel</button>
+              <button type="button" className="pf-btn pf-btn-primary" onClick={doInsertImage}>Insert</button>
             </div>
           </div>
         </div>
@@ -1158,8 +1160,8 @@ export default function ProseForgeEditor({
               <input type="number" value={tableCols} onChange={(e) => setTableCols(Number(e.target.value))} min={1} max={10} />
             </div>
             <div className="pf-dialog-actions">
-              <button className="pf-btn pf-btn-cancel" onClick={() => setTableDialog(false)}>Cancel</button>
-              <button className="pf-btn pf-btn-primary" onClick={doInsertTable}>Insert</button>
+              <button type="button" className="pf-btn pf-btn-cancel" onClick={() => setTableDialog(false)}>Cancel</button>
+              <button type="button" className="pf-btn pf-btn-primary" onClick={doInsertTable}>Insert</button>
             </div>
           </div>
         </div>
@@ -1273,9 +1275,9 @@ export default function ProseForgeEditor({
 
             {/* Actions */}
             <div className="pf-dialog-actions">
-              <button className="pf-btn pf-btn-cancel" onClick={cancelAiEnhance} type="button">Cancel</button>
+              <button type="button" className="pf-btn pf-btn-cancel" onClick={cancelAiEnhance}>Cancel</button>
               {aiPreview && (
-                <button className="pf-btn pf-btn-primary" onClick={acceptAiEnhance} type="button">
+                <button type="button" className="pf-btn pf-btn-primary" onClick={acceptAiEnhance}>
                   Accept & Insert
                 </button>
               )}

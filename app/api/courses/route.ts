@@ -123,7 +123,28 @@ export async function GET(request: Request) {
     const { data: courses, error } = await query.limit(100);
 
     if (error) {
-      console.error('Courses fetch error:', error);
+      // The original `console.error('Courses fetch error:', error)` printed
+      // [object Object] in many runtimes — surface the actual fields so 500s
+      // are diagnosable in Vercel logs without a repro.
+      const tenantHeader = (request as unknown as { headers: Headers }).headers.get('x-tenant-id');
+      const tenantOverride = (request as unknown as { headers: Headers }).headers.get('x-tenant-override');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      console.error('Courses fetch error', {
+        userRole,
+        tenantId: tenantHeader,
+        tenantOverride: tenantOverride || null,
+        difficulty,
+        subject_area,
+        instructorId,
+        categoryId,
+        schoolId,
+        name: err?.name,
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+      });
       return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
     }
 
@@ -147,8 +168,24 @@ export async function GET(request: Request) {
     const response = NextResponse.json({ courses: uniqueCourses, userRole, accessType });
     response.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300');
     return response;
-  } catch (e: any) {
-    console.error('Courses API error:', e);
+  } catch (e: unknown) {
+    const tenantHeader = (request as unknown as { headers: Headers }).headers.get('x-tenant-id');
+    const tenantOverride = (request as unknown as { headers: Headers }).headers.get('x-tenant-override');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = e as any;
+    console.error('Courses API error', {
+      tenantId: tenantHeader,
+      tenantOverride: tenantOverride || null,
+      difficulty,
+      subject_area,
+      instructorId,
+      categoryId,
+      schoolId,
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      stack: err?.stack,
+    });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -129,7 +129,11 @@ describe('updateCourse', () => {
   });
 });
 
-// ─── deleteCourse (cascade) ────────────────────────────────────────────────
+// ─── deleteCourse ──────────────────────────────────────────────────────────
+// Cascade across child tables now lives in migration 036-course-delete-
+// cascade.sql (FK actions: ON DELETE CASCADE / SET NULL). The service only
+// issues a single DELETE on `courses` and lets the database take care of
+// the rest, so these tests assert the new one-shot contract.
 
 describe('deleteCourse', () => {
   it('throws when courseId is missing', async () => {
@@ -145,21 +149,37 @@ describe('deleteCourse', () => {
     await expect(deleteCourse(tq, 'c-missing')).rejects.toBeInstanceOf(CourseNotFoundError);
   });
 
-  it('cascades deletes across child tables before deleting the course', async () => {
+  it('throws CourseNotFoundError when the DELETE returns no row', async () => {
+    // No PGRST116 error — just an empty response, which can happen if RLS
+    // hides the row or if the id was already deleted concurrently.
+    const { tq } = makeTenantQueryMock({
+      courses: { select: { data: null, error: null } },
+    });
+
+    await expect(deleteCourse(tq, 'c-missing')).rejects.toBeInstanceOf(CourseNotFoundError);
+  });
+
+  it('issues a single DELETE on courses scoped to the id and returns deleted: true', async () => {
     const { tq, calls } = makeTenantQueryMock({
-      courses: {
-        select: { data: { id: 'c-1' }, error: null },
-      },
+      courses: { select: { data: { id: 'c-1' }, error: null } },
     });
 
     const result = await deleteCourse(tq, 'c-1');
 
-    // Should have attempted ~28 child-table deletes + ~9 null-outs + the
-    // final course delete.
-    const childDeletes = calls.filter((c) => c.method === 'delete' && c.table !== 'courses');
-    expect(childDeletes.length).toBeGreaterThanOrEqual(25);
+    // Exactly one delete, on the courses table.
+    const deletes = calls.filter((c) => c.method === 'delete');
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].table).toBe('courses');
 
-    const nullOuts = calls.filter(
+    // Scoped by id. The .eq('id', 'c-1') call records args ['id', 'c-1'].
+    const idEq = calls.find((c) => c.table === 'courses' && c.method === 'eq');
+    expect(idEq?.args).toEqual(['id', 'c-1']);
+
+    // No application-level cascade calls on child tables — the DB does it.
+    const childDeletes = calls.filter((c) => c.method === 'delete' && c.table !== 'courses');
+    expect(childDeletes).toHaveLength(0);
+
+    const nullOutUpdates = calls.filter(
       (c) =>
         c.method === 'update' &&
         c.table !== 'courses' &&
@@ -167,39 +187,18 @@ describe('deleteCourse', () => {
         c.args[0] !== null &&
         (c.args[0] as Record<string, unknown>).course_id === null
     );
-    expect(nullOuts.length).toBeGreaterThanOrEqual(5);
+    expect(nullOutUpdates).toHaveLength(0);
 
-    // Final delete on the courses table itself
-    expect(findCall(calls, 'courses', 'delete')).toBeDefined();
-
-    expect(result.deleted).toBe(true);
-    expect(result.cascadeOperations).toBeGreaterThanOrEqual(30);
+    expect(result).toEqual({ deleted: true });
   });
 
-  it('deletes key child tables (quizzes, enrollments, lessons)', async () => {
-    const { tq, calls } = makeTenantQueryMock({
-      courses: { select: { data: { id: 'c-1' }, error: null } },
+  it('surfaces a generic error from the DB (other than PGRST116) as a thrown Error', async () => {
+    const { tq } = makeTenantQueryMock({
+      courses: {
+        select: { data: null, error: { code: '42501', message: 'permission denied' } },
+      },
     });
 
-    await deleteCourse(tq, 'c-1');
-
-    expect(findCall(calls, 'quizzes', 'delete')).toBeDefined();
-    expect(findCall(calls, 'enrollments', 'delete')).toBeDefined();
-    expect(findCall(calls, 'lessons', 'delete')).toBeDefined();
-    expect(findCall(calls, 'assignments', 'delete')).toBeDefined();
-  });
-
-  it('nulls out course_id on preservation tables (files, analytics)', async () => {
-    const { tq, calls } = makeTenantQueryMock({
-      courses: { select: { data: { id: 'c-1' }, error: null } },
-    });
-
-    await deleteCourse(tq, 'c-1');
-
-    const filesCall = findCall(calls, 'files', 'update');
-    expect(filesCall).toBeDefined();
-    expect((filesCall?.args[0] as Record<string, unknown>).course_id).toBeNull();
-
-    expect(findCall(calls, 'learning_analytics_predictions', 'update')).toBeDefined();
+    await expect(deleteCourse(tq, 'c-1')).rejects.toThrow(/Failed to delete course: permission denied/);
   });
 });

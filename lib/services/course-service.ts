@@ -183,6 +183,12 @@ export async function deleteCourse(
     .maybeSingle();
 
   if (error) {
+    // PGRST116 from PostgREST = "no rows" — for a DELETE that means the
+    // course wasn't there to begin with, so map it to CourseNotFoundError
+    // instead of a generic 500.
+    if ((error as { code?: string }).code === 'PGRST116') {
+      throw new CourseNotFoundError();
+    }
     throw new Error(`Failed to delete course: ${error.message}`);
   }
   if (!deleted) {

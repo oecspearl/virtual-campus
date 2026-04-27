@@ -55,12 +55,16 @@ export default function CourseDetailPage() {
   const [enrolledSectionName, setEnrolledSectionName] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('overview');
   const [isReorderMode, setIsReorderMode] = React.useState(false);
-  const [editMode, setEditMode] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('lesson-edit-mode') !== 'off';
+  // Default to true on first render (server + client first paint must match,
+  // otherwise React throws the minified hydration error #418). We read the
+  // user's saved preference from localStorage in an effect after mount.
+  const [editMode, setEditMode] = React.useState(true);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem('lesson-edit-mode') === 'off') {
+      setEditMode(false);
     }
-    return true;
-  });
+  }, []);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = React.useState(false);
   const [isGroupsOpen, setIsGroupsOpen] = React.useState(false);
   const [isCohortsOpen, setIsCohortsOpen] = React.useState(false);

@@ -45,12 +45,16 @@ export default function LessonViewerPage() {
   const [videoTab, setVideoTab] = React.useState<string | null>('outcomes');
   const [videoCurrentTime, setVideoCurrentTime] = React.useState(0);
   const videoSeekRef = React.useRef<((time: number) => void) | null>(null);
-  const [editMode, setEditMode] = React.useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('lesson-edit-mode') !== 'off';
+  // Default to true on first render (server + client first paint must match,
+  // otherwise React throws the minified hydration error #418). We read the
+  // user's saved preference from localStorage in an effect after mount.
+  const [editMode, setEditMode] = React.useState(true);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem('lesson-edit-mode') === 'off') {
+      setEditMode(false);
     }
-    return true;
-  });
+  }, []);
 
   const toggleEditMode = () => {
     setEditMode(prev => {

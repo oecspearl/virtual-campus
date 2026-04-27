@@ -185,11 +185,16 @@ export default function EditLessonPage() {
         if (courseId) router.push(`/course/${courseId}/lesson/${lessonId}`);
         else { alert('Lesson saved successfully!'); router.back(); }
       } else {
-        alert('Failed to save lesson. Please try again.');
+        // Surface the actual server error instead of a generic message —
+        // hides bugs like permission failures behind "Please try again".
+        const data = await response.json().catch(() => ({}));
+        const detail = data?.error || `Server returned ${response.status}`;
+        console.error('Failed to save lesson:', { status: response.status, detail, body: data });
+        alert(`Failed to save lesson: ${detail}`);
       }
     } catch (error) {
       console.error('Error saving lesson:', error);
-      alert('An error occurred while saving the lesson.');
+      alert(`An error occurred while saving the lesson: ${error instanceof Error ? error.message : 'unknown error'}`);
     } finally {
       setSaving(false);
     }

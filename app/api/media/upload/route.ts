@@ -22,7 +22,7 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     return NextResponse.json({ error: "File too large. Maximum size is 50MB." }, { status: 413 });
   }
 
-  // MIME type validation — only allow known safe content types
+  // MIME type validation — only allow known safe content types.
   const allowedMimeTypes = [
     // Images
     'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
@@ -35,24 +35,49 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/rtf',
     // Archives (for SCORM packages)
     'application/zip', 'application/x-zip-compressed',
     // Text
-    'text/plain', 'text/csv', 'text/html',
+    'text/plain', 'text/csv', 'text/html', 'text/rtf',
     // 3D models (lesson 3D model block)
     'model/gltf-binary', 'model/gltf+json', 'model/vnd.usdz+zip',
   ];
+
+  // Browsers (especially on Windows + when the file was emailed/zipped)
+  // frequently report Office docs, PDFs, and 3D models as
+  // application/octet-stream or an empty string. Accept those when the
+  // extension confirms a known-safe type, and substitute the real MIME
+  // type for storage so we don't persist "application/octet-stream".
+  const EXTENSION_FALLBACKS: Record<string, string> = {
+    pdf:  'application/pdf',
+    doc:  'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls:  'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt:  'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    rtf:  'application/rtf',
+    txt:  'text/plain',
+    csv:  'text/csv',
+    zip:  'application/zip',
+    glb:  'model/gltf-binary',
+    gltf: 'model/gltf+json',
+    usdz: 'model/vnd.usdz+zip',
+  };
+
   const fileExtension = (file.name.split('.').pop() || '').toLowerCase();
-  // Browsers frequently report .glb/.gltf/.usdz as application/octet-stream
-  // or an empty string — accept those only when the extension confirms a 3D
-  // model so we don't open a generic "any binary" hole.
-  const threedExtensions = new Set(['glb', 'gltf', 'usdz']);
-  const isThreeDByExtension =
-    (file.type === 'application/octet-stream' || file.type === '') &&
-    threedExtensions.has(fileExtension);
-  if (!allowedMimeTypes.includes(file.type) && !isThreeDByExtension) {
+  const isOpaqueType = file.type === 'application/octet-stream' || file.type === '';
+  const fallbackType = isOpaqueType ? EXTENSION_FALLBACKS[fileExtension] : undefined;
+
+  const accepted = allowedMimeTypes.includes(file.type) || !!fallbackType;
+  if (!accepted) {
     return NextResponse.json({ error: `File type '${file.type}' is not allowed.` }, { status: 415 });
   }
+
+  // Use the resolved type from here on (file.type is read-only, so we keep
+  // a separate variable that storage + the metadata row both use).
+  const effectiveContentType = fallbackType ?? file.type;
 
   // Validate file extension matches MIME type (prevent extension spoofing)
   const dangerousExtensions = ['exe', 'bat', 'cmd', 'sh', 'ps1', 'vbs', 'js', 'msi', 'dll', 'scr', 'com', 'pif'];
@@ -80,7 +105,7 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     .upload(fileName, fileBuffer, {
       cacheControl: '3600',
       upsert: false,
-      contentType: file.type
+      contentType: effectiveContentType,
     });
 
   if (uploadError) {
@@ -100,10 +125,10 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     .from('files')
     .insert([{
       name: file.name,
-      type: file.type,
+      type: effectiveContentType,
       size: file.size,
       url: urlData.publicUrl,
-      uploaded_by: user.id
+      uploaded_by: user.id,
     }])
     .select()
     .single();
@@ -121,6 +146,6 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     fileName: file.name,
     fileUrl: urlData.publicUrl,
     fileSize: file.size,
-    fileType: file.type
+    fileType: effectiveContentType,
   });
 });

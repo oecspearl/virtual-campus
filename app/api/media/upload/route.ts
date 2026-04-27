@@ -40,6 +40,8 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     'application/zip', 'application/x-zip-compressed',
     // Text
     'text/plain', 'text/csv', 'text/html', 'text/rtf',
+    // Captions / subtitles
+    'text/vtt', 'application/x-subrip',
     // 3D models (lesson 3D model block)
     'model/gltf-binary', 'model/gltf+json', 'model/vnd.usdz+zip',
   ];
@@ -60,6 +62,8 @@ export const POST = withTenantAuth(async ({ user, request }) => {
     rtf:  'application/rtf',
     txt:  'text/plain',
     csv:  'text/csv',
+    vtt:  'text/vtt',
+    srt:  'application/x-subrip',
     zip:  'application/zip',
     glb:  'model/gltf-binary',
     gltf: 'model/gltf+json',

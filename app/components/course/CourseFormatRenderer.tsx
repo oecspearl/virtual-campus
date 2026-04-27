@@ -17,6 +17,10 @@ interface CourseFormatRendererProps {
   onReorder: (lessons: Lesson[]) => void;
   editMode?: boolean;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
+  /** Reorder lessons within a section/week. sectionId === null = unassigned bucket. */
+  onReorderLessons?: (sectionId: string | null, lessonIds: string[]) => void;
+  /** Reorder the sections (topics or weeks) themselves. */
+  onReorderSections?: (sectionIds: string[]) => void;
   lessonProgress?: LessonProgress[];
   courseStartDate?: string | null;
   /** When provided, lesson clicks call this instead of navigating to /course/[id]/lesson/[lessonId]. Used by shared courses. */
@@ -33,6 +37,8 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
   onReorder,
   editMode = true,
   onAssignSection,
+  onReorderLessons,
+  onReorderSections,
   lessonProgress = [],
   courseStartDate,
   onLessonClick,
@@ -46,6 +52,8 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           sections={sections}
           editMode={editMode}
           onAssignSection={onAssignSection}
+          onReorderLessons={onReorderLessons}
+          onReorderSections={onReorderSections}
           lessonProgress={lessonProgress}
           onLessonClick={onLessonClick}
         />
@@ -58,6 +66,8 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           sections={sections}
           editMode={editMode}
           onAssignSection={onAssignSection}
+          onReorderLessons={onReorderLessons}
+          onReorderSections={onReorderSections}
           lessonProgress={lessonProgress}
           courseStartDate={courseStartDate}
           onLessonClick={onLessonClick}

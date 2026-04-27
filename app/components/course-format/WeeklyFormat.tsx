@@ -6,6 +6,7 @@ import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
 import type { Lesson, LessonProgress, Section } from './types';
 import { LessonLink, getContentMeta, StatusIcon } from './shared';
+import { ReorderList, SortableItem } from './_sortable';
 
 // ============================================================================
 // FORMAT 3: WEEKLY (Time-Paced Cohort Schedule)
@@ -20,10 +21,14 @@ const WeeklyFormat: React.FC<{
   sections: Section[];
   editMode: boolean;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
+  /** Reorder lessons within a week (or the unsectioned bucket when sectionId is null). */
+  onReorderLessons?: (sectionId: string | null, lessonIds: string[]) => void;
+  /** Reorder the weeks themselves. Receives the new ordered list of section ids. */
+  onReorderSections?: (sectionIds: string[]) => void;
   lessonProgress: LessonProgress[];
   courseStartDate?: string | null;
   onLessonClick?: (lessonId: string) => void;
-}> = ({ courseId, lessons, sections, editMode, onAssignSection, lessonProgress, courseStartDate, onLessonClick }) => {
+}> = ({ courseId, lessons, sections, editMode, onAssignSection, onReorderLessons, onReorderSections, lessonProgress, courseStartDate, onLessonClick }) => {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
@@ -231,6 +236,11 @@ const WeeklyFormat: React.FC<{
             </div>
           )}
 
+          <ReorderList
+            ids={sortedSections.map(s => s.id)}
+            disabled={!editMode || !onReorderSections}
+            onReorder={(nextIds) => onReorderSections?.(nextIds)}
+          >
           <div className="space-y-3">
             {sortedSections.map((section, idx) => {
               const sLessons = sectionLessons(section.id);
@@ -249,8 +259,13 @@ const WeeklyFormat: React.FC<{
               if (activeFilter && filteredLessons.length === 0 && !editMode) return null;
 
               return (
-                <div
+                <SortableItem
                   key={section.id}
+                  id={section.id}
+                  disabled={!editMode || !onReorderSections}
+                  handleLabel={`Drag to reorder ${section.title}`}
+                >
+                <div
                   className={`rounded-lg border overflow-hidden transition-all ${
                     isCurrent
                       ? 'border-blue-400 ring-2 ring-blue-100 shadow-md'
@@ -350,14 +365,25 @@ const WeeklyFormat: React.FC<{
                           <p className="text-sm text-gray-500 font-medium">Available {section.start_date ? new Date(section.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'soon'}</p>
                           <p className="text-xs text-gray-400 mt-1">{sLessons.length} activities planned for this week</p>
                         </div>
-                      ) : filteredLessons.length > 0 ? filteredLessons.map(lesson => {
+                      ) : filteredLessons.length > 0 ? (
+                        <ReorderList
+                          ids={filteredLessons.map(l => l.id)}
+                          disabled={!editMode || !onReorderLessons || !!activeFilter || isFuture}
+                          onReorder={(nextIds) => onReorderLessons?.(section.id, nextIds)}
+                        >
+                          {filteredLessons.map(lesson => {
                         const progress = progressMap.get(lesson.id);
                         const status = progress?.status || 'not_started';
                         const meta = getContentMeta(lesson.content_type);
 
                         return (
-                          <div
+                          <SortableItem
                             key={lesson.id}
+                            id={lesson.id}
+                            disabled={!editMode || !onReorderLessons || !!activeFilter || isFuture}
+                            handleLabel={`Drag to reorder ${lesson.title}`}
+                          >
+                          <div
                             className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                               status === 'completed'
                                 ? 'bg-green-50/50 border-green-200'
@@ -403,8 +429,11 @@ const WeeklyFormat: React.FC<{
                               </RoleGuard>
                             )}
                           </div>
+                          </SortableItem>
                         );
-                      }) : (
+                      })}
+                        </ReorderList>
+                      ) : (
                         <div className="text-center py-4">
                           <p className="text-sm text-gray-400">
                             {activeFilter ? 'No matching activities this week' : 'No activities scheduled this week'}
@@ -457,6 +486,7 @@ const WeeklyFormat: React.FC<{
                     </div>
                   )}
                 </div>
+                </SortableItem>
               );
             })}
 
@@ -485,10 +515,21 @@ const WeeklyFormat: React.FC<{
                   )}
                 </div>
                 <div className="p-3 space-y-2">
+                  <ReorderList
+                    ids={filterLessons(unsectionedLessons).map(l => l.id)}
+                    disabled={!editMode || !onReorderLessons || !!activeFilter}
+                    onReorder={(nextIds) => onReorderLessons?.(null, nextIds)}
+                  >
                   {filterLessons(unsectionedLessons).map(lesson => {
                     const meta = getContentMeta(lesson.content_type);
                     return (
-                      <div key={lesson.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                      <SortableItem
+                        key={lesson.id}
+                        id={lesson.id}
+                        disabled={!editMode || !onReorderLessons || !!activeFilter}
+                        handleLabel={`Drag to reorder ${lesson.title}`}
+                      >
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${meta.color}`}>
                           <Icon icon={meta.icon} className="w-3 h-3" />
                         </span>
@@ -504,8 +545,10 @@ const WeeklyFormat: React.FC<{
                           </select>
                         )}
                       </div>
+                      </SortableItem>
                     );
                   })}
+                  </ReorderList>
                 </div>
               </div>
             )}
@@ -527,6 +570,7 @@ const WeeklyFormat: React.FC<{
               </div>
             )}
           </div>
+          </ReorderList>
     </div>
   );
 };

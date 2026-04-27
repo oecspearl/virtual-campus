@@ -6,6 +6,7 @@ import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
 import type { Lesson, LessonProgress, Section } from './types';
 import { LessonLink, getContentMeta, StatusIcon } from './shared';
+import { ReorderList, SortableItem } from './_sortable';
 
 // ============================================================================
 // FORMAT 2: TOPIC (Concept-Organized Modules)
@@ -20,9 +21,13 @@ const TopicsFormat: React.FC<{
   sections: Section[];
   editMode: boolean;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
+  /** Reorder lessons within a section (or the unsectioned bucket when sectionId is null). */
+  onReorderLessons?: (sectionId: string | null, lessonIds: string[]) => void;
+  /** Reorder the sections themselves. Receives the new ordered list of section ids. */
+  onReorderSections?: (sectionIds: string[]) => void;
   lessonProgress: LessonProgress[];
   onLessonClick?: (lessonId: string) => void;
-}> = ({ courseId, lessons, sections, editMode, onAssignSection, lessonProgress, onLessonClick }) => {
+}> = ({ courseId, lessons, sections, editMode, onAssignSection, onReorderLessons, onReorderSections, lessonProgress, onLessonClick }) => {
   // All sections expanded by default (wireframe: "all sections visible on one page")
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -124,6 +129,11 @@ const TopicsFormat: React.FC<{
             </div>
           )}
 
+          <ReorderList
+            ids={sortedSections.map(s => s.id)}
+            disabled={!editMode || !onReorderSections}
+            onReorder={(nextIds) => onReorderSections?.(nextIds)}
+          >
           <div className="space-y-5">
             {sortedSections.map((section, sIdx) => {
               const sLessons = sectionLessons(section.id);
@@ -136,7 +146,13 @@ const TopicsFormat: React.FC<{
               if (activeFilter && filteredLessons.length === 0) return null;
 
               return (
-                <div key={section.id} className={`rounded-lg border overflow-hidden transition-all ${
+                <SortableItem
+                  key={section.id}
+                  id={section.id}
+                  disabled={!editMode || !onReorderSections}
+                  handleLabel={`Drag to reorder ${section.title}`}
+                >
+                <div className={`rounded-lg border overflow-hidden transition-all ${
                   isComplete ? 'border-green-300 bg-green-50/20' : 'border-gray-200'
                 }`}>
                   {/* Module header */}
@@ -215,14 +231,24 @@ const TopicsFormat: React.FC<{
                   {/* Module body */}
                   {!isCollapsed && (
                     <div className="border-t border-gray-100 p-4 space-y-2 bg-gray-50/30">
+                      <ReorderList
+                        ids={filteredLessons.map(l => l.id)}
+                        disabled={!editMode || !onReorderLessons || !!activeFilter}
+                        onReorder={(nextIds) => onReorderLessons?.(section.id, nextIds)}
+                      >
                       {filteredLessons.length > 0 ? filteredLessons.map(lesson => {
                         const progress = progressMap.get(lesson.id);
                         const status = progress?.status || 'not_started';
                         const meta = getContentMeta(lesson.content_type);
 
                         return (
-                          <div
+                          <SortableItem
                             key={lesson.id}
+                            id={lesson.id}
+                            disabled={!editMode || !onReorderLessons || !!activeFilter}
+                            handleLabel={`Drag to reorder ${lesson.title}`}
+                          >
+                          <div
                             className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                               status === 'completed'
                                 ? 'bg-green-50/50 border-green-200'
@@ -275,15 +301,18 @@ const TopicsFormat: React.FC<{
                               </RoleGuard>
                             )}
                           </div>
+                          </SortableItem>
                         );
                       }) : (
                         <p className="text-sm text-gray-400 text-center py-6">
                           {activeFilter ? 'No matching activities in this module' : 'No lessons in this module yet'}
                         </p>
                       )}
+                      </ReorderList>
                     </div>
                   )}
                 </div>
+                </SortableItem>
               );
             })}
 
@@ -295,12 +324,23 @@ const TopicsFormat: React.FC<{
                   <p className="text-xs text-gray-400">Use the dropdown on each lesson to assign it to a module</p>
                 </div>
                 <div className="p-4 space-y-2">
+                  <ReorderList
+                    ids={filterLessons(unsectionedLessons).map(l => l.id)}
+                    disabled={!editMode || !onReorderLessons || !!activeFilter}
+                    onReorder={(nextIds) => onReorderLessons?.(null, nextIds)}
+                  >
                   {filterLessons(unsectionedLessons).map(lesson => {
                     const meta = getContentMeta(lesson.content_type);
                     const progress = progressMap.get(lesson.id);
                     const status = progress?.status || 'not_started';
                     return (
-                      <div key={lesson.id} className={`flex items-center gap-3 p-3 rounded-lg border ${
+                      <SortableItem
+                        key={lesson.id}
+                        id={lesson.id}
+                        disabled={!editMode || !onReorderLessons || !!activeFilter}
+                        handleLabel={`Drag to reorder ${lesson.title}`}
+                      >
+                      <div className={`flex items-center gap-3 p-3 rounded-lg border ${
                         status === 'completed' ? 'bg-green-50/50 border-green-200' : 'bg-white border-gray-200'
                       }`}>
                         <StatusIcon status={status} />
@@ -322,8 +362,10 @@ const TopicsFormat: React.FC<{
                           {status === 'completed' ? 'Review' : status === 'in_progress' ? 'Continue' : 'Open'}
                         </LessonLink>
                       </div>
+                      </SortableItem>
                     );
                   })}
+                  </ReorderList>
                 </div>
               </div>
             )}
@@ -336,6 +378,7 @@ const TopicsFormat: React.FC<{
               </div>
             )}
           </div>
+          </ReorderList>
     </div>
   );
 };

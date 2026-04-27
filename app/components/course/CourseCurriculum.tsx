@@ -23,6 +23,10 @@ interface CourseCurriculumProps {
   onToggleReorderMode?: () => void;
   onReorder?: (lessons: any[]) => void;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
+  /** Reorder lessons within a section/week. sectionId === null = unassigned bucket. */
+  onReorderLessons?: (sectionId: string | null, lessonIds: string[]) => void;
+  /** Reorder the sections (topics or weeks) themselves. */
+  onReorderSections?: (sectionIds: string[]) => void;
   onSectionsChange?: (sections: Section[]) => void;
   onToggleSectionManager?: () => void;
   onStartDateChange?: (date: string) => void;
@@ -53,6 +57,7 @@ function CourseCurriculumInner({
   editMode = false, isReorderMode = false, formatSaving = false,
   showSectionManager = false, courseStartDate,
   onFormatChange, onToggleReorderMode, onReorder, onAssignSection,
+  onReorderLessons, onReorderSections,
   onSectionsChange, onToggleSectionManager, onStartDateChange,
   readOnly = false, onLessonClick,
 }: CourseCurriculumProps) {
@@ -196,6 +201,8 @@ function CourseCurriculumInner({
           onReorder={readOnly ? () => {} : (onReorder || (() => {}))}
           editMode={readOnly ? false : editMode}
           onAssignSection={readOnly ? undefined : onAssignSection}
+          onReorderLessons={readOnly ? undefined : onReorderLessons}
+          onReorderSections={readOnly ? undefined : onReorderSections}
           lessonProgress={lessonProgress}
           courseStartDate={courseStartDate}
           onLessonClick={onLessonClick}

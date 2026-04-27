@@ -271,6 +271,79 @@ export default function CourseDetailPage() {
     }
   };
 
+  /**
+   * Reorder lessons within a section/week (or the unsectioned bucket when
+   * sectionId is null). The Topics/Weekly formats hand us the new id list
+   * after a drag finishes — we update local state immediately for a snappy
+   * UI, then push the new orders to /api/lessons/reorder. The order values
+   * we send are the lesson's index within the bucket; that matches how the
+   * formats already sort by `order`.
+   */
+  const handleReorderLessonsInSection = async (
+    sectionId: string | null,
+    lessonIds: string[],
+  ) => {
+    setLessons(prev => {
+      const indexById = new Map(lessonIds.map((id, idx) => [id, idx]));
+      return prev.map(l => {
+        const inBucket = (l.section_id || null) === sectionId;
+        if (!inBucket) return l;
+        const idx = indexById.get(l.id);
+        return idx === undefined ? l : { ...l, order: idx };
+      });
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await fetch('/api/lessons/reorder', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          courseId,
+          lessonOrders: lessonIds.map((id, order) => ({ lessonId: id, order })),
+        }),
+      });
+    } catch (err) {
+      console.error('Error reordering lessons:', err);
+    }
+  };
+
+  /**
+   * Reorder the sections (topics or weeks) themselves. Same pattern: update
+   * local state immediately, then PUT the new orders to the existing
+   * /api/courses/[id]/sections bulk endpoint.
+   */
+  const handleReorderSections = async (sectionIds: string[]) => {
+    setSections(prev => {
+      const indexById = new Map(sectionIds.map((id, idx) => [id, idx]));
+      return prev.map(s => {
+        const idx = indexById.get(s.id);
+        return idx === undefined ? s : { ...s, order: idx };
+      });
+    });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await fetch(`/api/courses/${courseId}/sections`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          sections: sectionIds.map((id, order) => ({ id, order })),
+        }),
+      });
+    } catch (err) {
+      console.error('Error reordering sections:', err);
+    }
+  };
+
   const handleStartDateChange = async (newDate: string) => {
     setCourse((prev: any) => ({ ...prev, start_date: newDate }));
     try {
@@ -364,6 +437,8 @@ export default function CourseDetailPage() {
       onToggleReorderMode={toggleReorderMode}
       onReorder={handleLessonReorder}
       onAssignSection={handleAssignSection}
+      onReorderLessons={handleReorderLessonsInSection}
+      onReorderSections={handleReorderSections}
       onSectionsChange={setSections}
       onToggleSectionManager={() => setShowSectionManager(!showSectionManager)}
       onStartDateChange={handleStartDateChange}

@@ -420,7 +420,12 @@ export default function CourseDetailPage() {
 
   const progressPct = progress ? progress.percentage : 0;
 
-  // Curriculum component (reused in overview and curriculum tabs)
+  // Curriculum component (reused in overview and curriculum tabs).
+  // readOnly={!isInstructor} forces CourseCurriculum to ignore editMode +
+  // every editing callback (assign-section dropdown, reorder, format
+  // change, section manager, etc.) for students. Without this, the editMode
+  // default of `true` leaked instructor-only controls — including the
+  // section-assignment dropdown — into the student view.
   const curriculumBlock = (
     <CourseCurriculum
       courseId={courseId}
@@ -442,6 +447,7 @@ export default function CourseDetailPage() {
       onSectionsChange={setSections}
       onToggleSectionManager={() => setShowSectionManager(!showSectionManager)}
       onStartDateChange={handleStartDateChange}
+      readOnly={!isInstructor}
     />
   );
 

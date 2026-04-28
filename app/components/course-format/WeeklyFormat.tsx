@@ -174,19 +174,21 @@ const WeeklyFormat: React.FC<{
                 </div>
               </div>
               {onAssignSection && (
-                <button
-                  onClick={() => {
-                    const perSection = Math.ceil(unsectionedLessons.length / sortedSections.length);
-                    unsectionedLessons.forEach((lesson, idx) => {
-                      const sectionIdx = Math.min(Math.floor(idx / perSection), sortedSections.length - 1);
-                      onAssignSection(lesson.id, sortedSections[sectionIdx].id);
-                    });
-                  }}
-                  className="text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 flex-shrink-0"
-                >
-                  <Icon icon="material-symbols:auto-awesome" className="w-3.5 h-3.5" />
-                  Distribute all
-                </button>
+                <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                  <button
+                    onClick={() => {
+                      const perSection = Math.ceil(unsectionedLessons.length / sortedSections.length);
+                      unsectionedLessons.forEach((lesson, idx) => {
+                        const sectionIdx = Math.min(Math.floor(idx / perSection), sortedSections.length - 1);
+                        onAssignSection(lesson.id, sortedSections[sectionIdx].id);
+                      });
+                    }}
+                    className="text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 flex-shrink-0"
+                  >
+                    <Icon icon="material-symbols:auto-awesome" className="w-3.5 h-3.5" />
+                    Distribute all
+                  </button>
+                </RoleGuard>
               )}
             </div>
           )}
@@ -404,14 +406,16 @@ const WeeklyFormat: React.FC<{
                               )}
                             </div>
                             {editMode && onAssignSection && sections.length > 0 && (
-                              <select
-                                value={lesson.section_id || ''}
-                                onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
-                                className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500 max-w-[80px]"
-                              >
-                                <option value="">No week</option>
-                                {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                              </select>
+                              <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                                <select
+                                  value={lesson.section_id || ''}
+                                  onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
+                                  className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500 max-w-[80px]"
+                                >
+                                  <option value="">No week</option>
+                                  {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                                </select>
+                              </RoleGuard>
                             )}
                             <LessonLink
                               courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
@@ -499,19 +503,21 @@ const WeeklyFormat: React.FC<{
                     <p className="text-xs text-gray-400">{unsectionedLessons.length} lesson{unsectionedLessons.length !== 1 ? 's' : ''} not yet assigned to a week</p>
                   </div>
                   {editMode && onAssignSection && sortedSections.length > 0 && (
-                    <button
-                      onClick={() => {
-                        const perSection = Math.ceil(unsectionedLessons.length / sortedSections.length);
-                        unsectionedLessons.forEach((lesson, idx) => {
-                          const sectionIdx = Math.min(Math.floor(idx / perSection), sortedSections.length - 1);
-                          onAssignSection(lesson.id, sortedSections[sectionIdx].id);
-                        });
-                      }}
-                      className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                    >
-                      <Icon icon="material-symbols:auto-awesome" className="w-3.5 h-3.5" />
-                      Distribute across weeks
-                    </button>
+                    <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                      <button
+                        onClick={() => {
+                          const perSection = Math.ceil(unsectionedLessons.length / sortedSections.length);
+                          unsectionedLessons.forEach((lesson, idx) => {
+                            const sectionIdx = Math.min(Math.floor(idx / perSection), sortedSections.length - 1);
+                            onAssignSection(lesson.id, sortedSections[sectionIdx].id);
+                          });
+                        }}
+                        className="text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        <Icon icon="material-symbols:auto-awesome" className="w-3.5 h-3.5" />
+                        Distribute across weeks
+                      </button>
+                    </RoleGuard>
                   )}
                 </div>
                 <div className="p-3 space-y-2">
@@ -535,14 +541,16 @@ const WeeklyFormat: React.FC<{
                         </span>
                         <span className="flex-1 text-sm font-medium text-gray-700 truncate">{lesson.title}</span>
                         {editMode && onAssignSection && sections.length > 0 && (
-                          <select
-                            value=""
-                            onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
-                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500"
-                          >
-                            <option value="">Assign to week...</option>
-                            {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                          </select>
+                          <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                            <select
+                              value=""
+                              onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
+                              className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500"
+                            >
+                              <option value="">Assign to week...</option>
+                              {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                            </select>
+                          </RoleGuard>
                         )}
                       </div>
                       </SortableItem>

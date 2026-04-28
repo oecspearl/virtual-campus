@@ -278,14 +278,16 @@ const TopicsFormat: React.FC<{
                               </div>
                             </div>
                             {editMode && onAssignSection && sections.length > 0 && (
-                              <select
-                                value={lesson.section_id || ''}
-                                onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
-                                className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500 max-w-[80px]"
-                              >
-                                <option value="">No section</option>
-                                {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                              </select>
+                              <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                                <select
+                                  value={lesson.section_id || ''}
+                                  onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
+                                  className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500 max-w-[80px]"
+                                >
+                                  <option value="">No section</option>
+                                  {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                                </select>
+                              </RoleGuard>
                             )}
                             <LessonLink
                               courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick}
@@ -349,14 +351,16 @@ const TopicsFormat: React.FC<{
                         </span>
                         <span className="flex-1 text-sm font-medium text-gray-700 truncate">{lesson.title}</span>
                         {editMode && onAssignSection && sections.length > 0 && (
-                          <select
-                            value=""
-                            onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
-                            className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500"
-                          >
-                            <option value="">Assign to...</option>
-                            {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                          </select>
+                          <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
+                            <select
+                              value=""
+                              onChange={(e) => onAssignSection(lesson.id, e.target.value || null)}
+                              className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500"
+                            >
+                              <option value="">Assign to...</option>
+                              {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                            </select>
+                          </RoleGuard>
                         )}
                         <LessonLink courseId={courseId} lessonId={lesson.id} onLessonClick={onLessonClick} className="text-xs text-blue-600 font-medium">
                           {status === 'completed' ? 'Review' : status === 'in_progress' ? 'Continue' : 'Open'}

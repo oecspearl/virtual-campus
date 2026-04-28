@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
@@ -28,8 +28,27 @@ const TopicsFormat: React.FC<{
   lessonProgress: LessonProgress[];
   onLessonClick?: (lessonId: string) => void;
 }> = ({ courseId, lessons, sections, editMode, onAssignSection, onReorderLessons, onReorderSections, lessonProgress, onLessonClick }) => {
-  // All sections expanded by default (wireframe: "all sections visible on one page")
+  // Section collapse state.
+  //   • Instructor (editMode = true): expanded by default — they're working
+  //     on the curriculum and want to see everything at once.
+  //   • Student (editMode = false): collapsed by default so the page opens
+  //     as a scannable table of contents. They can expand any topic to
+  //     drill in. Reported preference: students were overwhelmed by
+  //     fully-expanded course content on first paint.
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  // We need to wait for `sections` to actually load before deciding which
+  // ones to collapse. Track whether the one-shot initialization has run so
+  // we don't keep stomping the user's manual toggles.
+  const initializedCollapseRef = useRef(false);
+  useEffect(() => {
+    if (initializedCollapseRef.current) return;
+    if (sections.length === 0) return;
+    initializedCollapseRef.current = true;
+    if (!editMode) {
+      setCollapsedSections(new Set(sections.map(s => s.id)));
+    }
+  }, [sections, editMode]);
+
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const progressMap = useMemo(() => {

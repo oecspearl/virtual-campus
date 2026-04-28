@@ -89,12 +89,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 7. Create or find Supabase user + LMS profile (JIT provisioning)
-    const sessionResult = await createOAuthSession(
+    const sessionResult = await createOAuthSession({
       userInfo,
-      state.tenant_id,
-      state.provider_type,
-      config.default_role,
-    );
+      tenantId: state.tenant_id,
+      providerType: state.provider_type,
+      defaultRole: config.default_role,
+      autoProvisionUsers: config.auto_provision_users,
+    });
 
     if (!sessionResult.success || !sessionResult.email) {
       signinUrl.searchParams.set('error', sessionResult.error || 'session_failed');

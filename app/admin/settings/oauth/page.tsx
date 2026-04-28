@@ -286,6 +286,42 @@ export default function OAuthSettingsPage() {
               <h2 className="text-lg font-semibold mb-4">
                 {editingId ? 'Edit Provider' : 'Add OAuth Provider'}
               </h2>
+
+              {/* Setup help — provider-specific guidance */}
+              {!editingId && (
+                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                  <div className="flex items-center gap-2 font-medium mb-2">
+                    <Icon icon="mdi:lightbulb-outline" className="w-4 h-4" />
+                    Before you start
+                  </div>
+                  {form.provider_type === 'azure_ad' && (
+                    <ol className="list-decimal ml-5 space-y-1 text-amber-800">
+                      <li>In <strong>Azure Portal &rarr; Microsoft Entra ID &rarr; App registrations</strong>, click <em>New registration</em>.</li>
+                      <li>Set the redirect URI (Web platform) to the URL shown above.</li>
+                      <li>Copy the <strong>Application (client) ID</strong> &rarr; Client ID below.</li>
+                      <li>In <em>Certificates &amp; secrets</em>, create a new client secret and copy the <strong>Value</strong> &rarr; Client Secret.</li>
+                      <li>Copy the <strong>Directory (tenant) ID</strong> &rarr; Azure AD Tenant ID. Use <code>common</code> to allow any Microsoft account.</li>
+                      <li>Under <em>API permissions</em>, ensure <code>openid</code>, <code>email</code>, <code>profile</code> are granted (default for new apps).</li>
+                    </ol>
+                  )}
+                  {form.provider_type === 'google' && (
+                    <ol className="list-decimal ml-5 space-y-1 text-amber-800">
+                      <li>In <strong>Google Cloud Console &rarr; APIs &amp; Services &rarr; Credentials</strong>, create an <em>OAuth client ID</em> of type <em>Web application</em>.</li>
+                      <li>Add the redirect URI shown above to <em>Authorized redirect URIs</em>.</li>
+                      <li>Configure the OAuth consent screen if prompted (set support email, scopes <code>openid</code>, <code>email</code>, <code>profile</code>).</li>
+                      <li>Copy the <strong>Client ID</strong> and <strong>Client secret</strong> &rarr; below.</li>
+                    </ol>
+                  )}
+                  {form.provider_type === 'generic_oidc' && (
+                    <ol className="list-decimal ml-5 space-y-1 text-amber-800">
+                      <li>Register a new application at your IdP and grab the Client ID + Client Secret.</li>
+                      <li>Set the redirect URI shown above as an allowed callback URL.</li>
+                      <li>Find the IdP&apos;s OpenID Connect discovery document (<code>/.well-known/openid-configuration</code>) and copy the <code>authorization_endpoint</code>, <code>token_endpoint</code>, and <code>userinfo_endpoint</code> URLs into the fields below.</li>
+                    </ol>
+                  )}
+                </div>
+              )}
+
               <form onSubmit={handleSave} className="space-y-4">
                 {/* Provider type */}
                 <div>

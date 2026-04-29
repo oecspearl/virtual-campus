@@ -2,6 +2,27 @@ import { NextResponse } from "next/server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { updateAssessmentInGradebook } from '@/lib/services/gradebook-service';
+
+// Quizzes don't store total points directly — they're the sum of question
+// points. Mirror the calculation used by the legacy /gradebook/quiz-sync
+// endpoint so the gradebook always shows the right total after an edit.
+async function calculateQuizTotalPoints(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tq: any,
+  quizId: string,
+): Promise<number> {
+  const { data: questions, error } = await tq
+    .from('questions')
+    .select('points')
+    .eq('quiz_id', quizId);
+  if (error || !questions) return 0;
+  return questions.reduce(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sum: number, q: any) => sum + Number(q.points ?? 0),
+    0,
+  );
+}
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -150,26 +171,25 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Failed to update quiz - no data returned" }, { status: 500 });
     }
 
-        // Sync with gradebook if quiz is associated with a course
+        // Sync with the gradebook in-process. The previous server-to-server
+        // fetch silently 401'd because it carried no session, so points
+        // and title changes never reached the gradebook — call the service
+        // directly instead.
         if (quiz.course_id) {
           try {
-            const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/courses/${quiz.course_id}/gradebook/quiz-sync`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                assessmentId: id,
-                assessmentType: 'quiz',
-                action: 'updated'
-              })
+            const calculated = await calculateQuizTotalPoints(tq, id);
+            const points = calculated > 0 ? calculated : Number(quiz.points ?? 0) || 100;
+            await updateAssessmentInGradebook(tq, {
+              courseId: quiz.course_id,
+              assessmentId: id,
+              type: 'quiz',
+              title: quiz.title,
+              dueDate: quiz.due_date ?? null,
+              points,
             });
-            
-            if (!syncResponse.ok) {
-              const syncErrorData = await syncResponse.json().catch(() => ({}));
-              console.error('Gradebook sync failed:', syncErrorData);
-            }
           } catch (syncError) {
             console.error('Gradebook sync error:', syncError);
-            // Don't fail the quiz update if sync fails
+            // Don't fail the quiz update if sync fails.
           }
         }
 

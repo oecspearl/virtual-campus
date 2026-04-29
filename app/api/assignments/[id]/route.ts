@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
+import {
+  updateAssessmentInGradebook,
+  removeAssessmentFromGradebook,
+} from "@/lib/services/gradebook-service";
 
 // Helper function to check if user is instructor for a course
 async function checkCourseInstructor(supabase: any, userId: string, courseId: string): Promise<boolean> {
@@ -133,25 +138,34 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Failed to update assignment" }, { status: 500 });
     }
     
-    // Sync with gradebook if assignment is associated with a course
+    // Sync with the gradebook if the assignment is tied to a course.
+    // We call the service directly (in-process) instead of going through
+    // the HTTP /gradebook/quiz-sync endpoint — that endpoint requires an
+    // authenticated request, but a server-to-server fetch carries no
+    // session, so the old fetch silently 401'd and the gradebook never
+    // saw point/title changes. Direct call uses the request's tenant
+    // and the same RLS-bypassed update path.
     const syncCourseId = assignment.course_id || (assignment.lesson_id ? await getCourseIdFromLesson(supabase, assignment.lesson_id) : null);
     if (syncCourseId) {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/courses/${syncCourseId}/gradebook/quiz-sync`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            assessmentId: id,
-            assessmentType: 'assignment',
-            action: 'updated'
-          })
+        const tenantId = getTenantIdFromRequest(request as any);
+        const tq = createTenantQuery(tenantId);
+        await updateAssessmentInGradebook(tq, {
+          courseId: syncCourseId,
+          assessmentId: id,
+          type: 'assignment',
+          title: assignment.title,
+          dueDate: assignment.due_date ?? null,
+          points: Number(assignment.points ?? 0) || 100,
         });
       } catch (syncError) {
         console.error('Gradebook sync error:', syncError);
-        // Don't fail the assignment update if sync fails
+        // Don't fail the assignment update if sync fails — but the error
+        // is now a real exception (not a swallowed 401), so it surfaces
+        // in logs.
       }
     }
-    
+
     return NextResponse.json(assignment);
   } catch (e: any) {
     console.error('Assignment PUT API error:', e);
@@ -198,43 +212,36 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     // Get assignment data before deletion for sync
     const { data: assignmentToDelete } = await supabase
       .from("assignments")
-      .select("lesson_id")
+      .select("lesson_id, course_id")
       .eq("id", id)
       .single();
 
-    // Clean up gradebook items and student grades associated with this assignment
-    // Use service client to bypass RLS
-    const serviceSupabase = createServiceSupabaseClient();
-    const { data: gradeItems } = await serviceSupabase
-      .from("course_grade_items")
-      .select("id")
-      .eq("type", "assignment")
-      .eq("assessment_id", id);
+    // Resolve the course this assignment belongs to (directly or via lesson)
+    // for the gradebook cleanup below.
+    const gradebookCourseId =
+      assignmentToDelete?.course_id ||
+      (assignmentToDelete?.lesson_id
+        ? await getCourseIdFromLesson(supabase, assignmentToDelete.lesson_id)
+        : null);
 
-    if (gradeItems && gradeItems.length > 0) {
-      const gradeItemIds = gradeItems.map(item => item.id);
-
-      // Delete student grades for these grade items first (due to foreign key constraint)
-      const { error: gradesDeleteError } = await serviceSupabase
-        .from("course_grades")
-        .delete()
-        .in("grade_item_id", gradeItemIds);
-
-      if (gradesDeleteError) {
-        console.error('Error deleting student grades for assignment:', gradesDeleteError);
+    if (gradebookCourseId) {
+      try {
+        const tenantId = getTenantIdFromRequest(_request as any);
+        const tq = createTenantQuery(tenantId);
+        const result = await removeAssessmentFromGradebook(tq, {
+          courseId: gradebookCourseId,
+          assessmentId: id,
+          type: 'assignment',
+        });
+        if (result.itemsRemoved > 0) {
+          console.log(
+            `[Assignment DELETE] Cleaned up ${result.itemsRemoved} grade item(s) and ${result.gradesRemoved} grade row(s) for assignment ${id}`,
+          );
+        }
+      } catch (cleanupErr) {
+        console.error('[Assignment DELETE] Gradebook cleanup error:', cleanupErr);
+        // Continue — the assignment delete below should still proceed.
       }
-
-      // Delete the grade items
-      const { error: itemsDeleteError } = await serviceSupabase
-        .from("course_grade_items")
-        .delete()
-        .in("id", gradeItemIds);
-
-      if (itemsDeleteError) {
-        console.error('Error deleting grade items for assignment:', itemsDeleteError);
-      }
-
-      console.log(`Cleaned up ${gradeItemIds.length} grade items for deleted assignment ${id}`);
     }
 
     const { error } = await supabase
@@ -274,33 +281,6 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       } catch (contentError) {
         console.error('Error removing assignment from lesson content:', contentError);
         // Don't fail the assignment deletion if content update fails
-      }
-    }
-    
-    // Sync with gradebook if assignment was associated with a course
-    if (assignmentToDelete?.lesson_id) {
-      try {
-        // Get the course_id from the lesson
-        const { data: lesson } = await supabase
-          .from("lessons")
-          .select("course_id")
-          .eq("id", assignmentToDelete.lesson_id)
-          .single();
-        
-        if (lesson?.course_id) {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/courses/${lesson.course_id}/gradebook/quiz-sync`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              assessmentId: id,
-              assessmentType: 'assignment',
-              action: 'deleted'
-            })
-          });
-        }
-      } catch (syncError) {
-        console.error('Gradebook sync error:', syncError);
-        // Don't fail the assignment deletion if sync fails
       }
     }
     

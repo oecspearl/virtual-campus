@@ -144,13 +144,30 @@ export default function CourseAssessments({
           headers,
           cache: 'no-store',
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          // Surface the failure instead of silently returning. Without
+          // this log a 401/500 looks identical to "feature not deployed"
+          // and the badges just never render.
+          const body = await res.text().catch(() => '');
+          console.warn(
+            `[CourseAssessments] my-assessment-status returned ${res.status}`,
+            body,
+          );
+          return;
+        }
         const data = await res.json();
         if (cancelled) return;
-        setAssignmentStatus(data.assignments || {});
-        setQuizStatus(data.quizzes || {});
+        const aMap = data.assignments || {};
+        const qMap = data.quizzes || {};
+        setAssignmentStatus(aMap);
+        setQuizStatus(qMap);
+        if (Object.keys(aMap).length === 0 && Object.keys(qMap).length === 0) {
+          console.info(
+            '[CourseAssessments] my-assessment-status returned no submissions/attempts for this user yet — badges will only appear once you take a quiz or submit an assignment.',
+          );
+        }
       } catch (err) {
-        console.error('Failed to fetch assessment status:', err);
+        console.error('[CourseAssessments] Failed to fetch assessment status:', err);
       }
     })();
     return () => {
@@ -565,6 +582,12 @@ export default function CourseAssessments({
                         <span className="flex items-center gap-1">
                           <Icon icon="material-symbols:target" className="w-3 h-3" />
                           {quiz.passing_score}%
+                        </span>
+                      )}
+                      {quiz.due_date && (
+                        <span className="flex items-center gap-1">
+                          <Icon icon="material-symbols:calendar-today" className="w-3 h-3" />
+                          {formatDueHint(quiz.due_date)}
                         </span>
                       )}
                     </div>

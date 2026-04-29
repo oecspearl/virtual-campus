@@ -51,6 +51,7 @@ export interface QuizData {
   passing_score: number | null;
   published: boolean;
   curriculum_order?: number | null;
+  due_date?: string | null;
 }
 
 export interface AssignmentData {

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { withTenantAuth } from '@/lib/with-tenant-auth';
+import { hasRole } from '@/lib/rbac';
 import { createQuizWithSideEffects, QuizValidationError } from '@/lib/services/quiz-service';
 
-export const GET = withTenantAuth(async ({ tq, request }) => {
+export const GET = withTenantAuth(async ({ user, tq, request }) => {
   const { searchParams } = new URL(request.url);
   const lessonId = searchParams.get('lesson_id');
   const courseId = searchParams.get('course_id');
@@ -14,7 +15,20 @@ export const GET = withTenantAuth(async ({ tq, request }) => {
   if (courseId) query = query.eq('course_id', courseId);
   if (published !== null) query = query.eq('published', published === 'true');
 
-  query = query.order('created_at', { ascending: false });
+  // Defense in depth: students/parents must never see draft quizzes.
+  const isStaff = hasRole(user.role, [
+    'instructor',
+    'curriculum_designer',
+    'admin',
+    'super_admin',
+  ]);
+  if (!isStaff) {
+    query = query.eq('published', true);
+  }
+
+  query = query
+    .order('curriculum_order', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false });
 
   const { data: quizzes, error } = await query.limit(100);
 

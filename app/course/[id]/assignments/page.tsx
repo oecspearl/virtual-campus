@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -24,6 +24,7 @@ import { Icon } from '@iconify/react';
 import CourseTabBar from '@/app/components/course/CourseTabBar';
 import Breadcrumb from '@/app/components/ui/Breadcrumb';
 import RoleGuard from '@/app/components/RoleGuard';
+import { useSupabase } from '@/lib/supabase-provider';
 
 interface Assessment {
   id: string;
@@ -42,8 +43,16 @@ interface Assessment {
 
 const STAFF_ROLES = ['instructor', 'curriculum_designer', 'admin', 'super_admin'];
 
+// dnd-kit needs each sortable item to have a globally unique id within its
+// SortableContext. Quizzes and assignments live in different tables, so a
+// quiz uuid and an assignment uuid could collide in theory — and even if
+// they don't, we want findIndex by `id` to be unambiguous. Prefix with type.
+const dndId = (item: { type: 'quiz' | 'assignment'; id: string }) =>
+  `${item.type}:${item.id}`;
+
 export default function CourseAssignmentsPage() {
   const { id: courseId } = useParams<{ id: string }>();
+  const { supabase } = useSupabase();
   const [course, setCourse] = useState<{ title: string } | null>(null);
   const [quizzes, setQuizzes] = useState<Assessment[]>([]);
   const [assignments, setAssignments] = useState<Assessment[]>([]);
@@ -52,26 +61,41 @@ export default function CourseAssignmentsPage() {
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderDraft, setReorderDraft] = useState<Assessment[]>([]);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Other course pages explicitly attach the Supabase access token to API
+  // calls (see app/course/[id]/page.tsx). The cookie fallback in
+  // authenticateUser usually works, but the explicit Bearer token avoids
+  // intermittent 401s — particularly for /api/auth/profile, which gates
+  // the staff-only Edit and Delete buttons on this page.
+  const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session ? { Authorization: `Bearer ${session.access_token}` } : {};
+  }, [supabase]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const authHeaders = await getAuthHeaders();
         const [courseRes, quizzesRes, assignmentsRes, profileRes] = await Promise.all([
-          fetch(`/api/courses/${courseId}`, { cache: 'no-store' }),
-          fetch(`/api/quizzes?course_id=${courseId}`, { cache: 'no-store' }),
-          fetch(`/api/assignments?course_id=${courseId}`, { cache: 'no-store' }),
-          fetch('/api/auth/profile', { cache: 'no-store' }),
+          fetch(`/api/courses/${courseId}`, { cache: 'no-store', headers: authHeaders }),
+          fetch(`/api/quizzes?course_id=${courseId}`, {
+            cache: 'no-store',
+            headers: authHeaders,
+          }),
+          fetch(`/api/assignments?course_id=${courseId}`, {
+            cache: 'no-store',
+            headers: authHeaders,
+          }),
+          fetch('/api/auth/profile', { cache: 'no-store', headers: authHeaders }),
         ]);
 
         if (courseRes.ok) setCourse(await courseRes.json());
         if (quizzesRes.ok) {
           const qData = await quizzesRes.json();
-          setQuizzes(
-            (qData.quizzes || []).map((q: any) => ({
-              ...q,
-              published: q.is_published !== false,
-            })),
-          );
+          setQuizzes(qData.quizzes || []);
         }
         if (assignmentsRes.ok) {
           const aData = await assignmentsRes.json();
@@ -85,7 +109,42 @@ export default function CourseAssignmentsPage() {
       }
     };
     fetchData();
-  }, [courseId]);
+  }, [courseId, getAuthHeaders]);
+
+  const handleDelete = async (item: Assessment) => {
+    const label = item.type === 'quiz' ? 'quiz' : 'assignment';
+    const confirmed = window.confirm(
+      `Delete the ${label} "${item.title}"? This will also remove any submissions, attempts, and gradebook entries linked to it. This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(item.id);
+    try {
+      const authHeaders = await getAuthHeaders();
+      const endpoint =
+        item.type === 'quiz'
+          ? `/api/quizzes/${item.id}`
+          : `/api/assignments/${item.id}`;
+      const res = await fetch(endpoint, { method: 'DELETE', headers: authHeaders });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || `Failed to delete ${label}`);
+        return;
+      }
+
+      if (item.type === 'quiz') {
+        setQuizzes((prev) => prev.filter((q) => q.id !== item.id));
+      } else {
+        setAssignments((prev) => prev.filter((a) => a.id !== item.id));
+      }
+    } catch (err) {
+      console.error(`Delete ${label} error:`, err);
+      alert(`Failed to delete ${label}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const isStaff = !!profile?.role && STAFF_ROLES.includes(profile.role);
 
@@ -122,14 +181,8 @@ export default function CourseAssignmentsPage() {
     [visibleAssignments, visibleQuizzes],
   );
 
-  // Reorder mode shows assignments only (quizzes are not draggable here yet).
-  const sortedAssignments = useMemo(
-    () => sortItems(visibleAssignments.map((a) => ({ ...a, type: 'assignment' as const }))),
-    [visibleAssignments],
-  );
-
   const enterReorderMode = () => {
-    setReorderDraft(sortedAssignments);
+    setReorderDraft(allItems);
     setReorderMode(true);
   };
 
@@ -147,8 +200,8 @@ export default function CourseAssignmentsPage() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     setReorderDraft((items) => {
-      const oldIndex = items.findIndex((i) => i.id === active.id);
-      const newIndex = items.findIndex((i) => i.id === over.id);
+      const oldIndex = items.findIndex((i) => dndId(i) === active.id);
+      const newIndex = items.findIndex((i) => dndId(i) === over.id);
       if (oldIndex < 0 || newIndex < 0) return items;
       return arrayMove(items, oldIndex, newIndex);
     });
@@ -157,31 +210,67 @@ export default function CourseAssignmentsPage() {
   const saveOrder = async () => {
     setSavingOrder(true);
     try {
-      const orders = reorderDraft.map((item, index) => ({ id: item.id, order: index + 1 }));
-      const res = await fetch(`/api/courses/${courseId}/assignments/reorder`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orders }),
+      // Quizzes and assignments share a single ordering on this page even
+      // though they live in separate tables. We assign sequential orders
+      // across the full draft list (1, 2, 3, ...) and then split by type
+      // before sending to each resource's reorder endpoint. The shared
+      // sequence makes the on-screen order match what's persisted.
+      const assignmentOrders: { id: string; order: number }[] = [];
+      const quizOrders: { id: string; order: number }[] = [];
+      reorderDraft.forEach((item, index) => {
+        const entry = { id: item.id, order: index + 1 };
+        if (item.type === 'assignment') assignmentOrders.push(entry);
+        else quizOrders.push(entry);
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to save assignment order');
+      const authHeaders = await getAuthHeaders();
+      const calls: Promise<Response>[] = [];
+      if (assignmentOrders.length > 0) {
+        calls.push(
+          fetch(`/api/courses/${courseId}/assignments/reorder`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...authHeaders },
+            body: JSON.stringify({ orders: assignmentOrders }),
+          }),
+        );
+      }
+      if (quizOrders.length > 0) {
+        calls.push(
+          fetch(`/api/courses/${courseId}/quizzes/reorder`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...authHeaders },
+            body: JSON.stringify({ orders: quizOrders }),
+          }),
+        );
+      }
+
+      const responses = await Promise.all(calls);
+      const failed = responses.find((r) => !r.ok);
+      if (failed) {
+        const err = await failed.json().catch(() => ({}));
+        alert(err.error || 'Failed to save order');
         return;
       }
 
-      // Reflect new order locally so we don't need to re-fetch.
-      const orderMap = new Map(orders.map((o) => [o.id, o.order]));
+      // Reflect new orders locally so we don't need to re-fetch.
+      const aMap = new Map(assignmentOrders.map((o) => [o.id, o.order]));
+      const qMap = new Map(quizOrders.map((o) => [o.id, o.order]));
       setAssignments((prev) =>
         prev.map((a) => ({
           ...a,
-          curriculum_order: orderMap.get(a.id) ?? a.curriculum_order ?? null,
+          curriculum_order: aMap.get(a.id) ?? a.curriculum_order ?? null,
+        })),
+      );
+      setQuizzes((prev) =>
+        prev.map((q) => ({
+          ...q,
+          curriculum_order: qMap.get(q.id) ?? q.curriculum_order ?? null,
         })),
       );
       exitReorderMode();
     } catch (err) {
       console.error('Save order error:', err);
-      alert('Failed to save assignment order');
+      alert('Failed to save order');
     } finally {
       setSavingOrder(false);
     }
@@ -229,12 +318,12 @@ export default function CourseAssignmentsPage() {
                 <>
                   <button
                     onClick={enterReorderMode}
-                    disabled={sortedAssignments.length < 2}
+                    disabled={allItems.length < 2}
                     className="px-3 py-1.5 text-xs border border-gray-200 text-slate-600 hover:bg-gray-50 rounded-md transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
                     title={
-                      sortedAssignments.length < 2
-                        ? 'Need at least two assignments to reorder'
-                        : 'Reorder assignments'
+                      allItems.length < 2
+                        ? 'Need at least two items to reorder'
+                        : 'Reorder assignments and quizzes'
                     }
                   >
                     <Icon icon="material-symbols:reorder" className="w-3.5 h-3.5" />
@@ -260,7 +349,8 @@ export default function CourseAssignmentsPage() {
 
         {reorderMode && (
           <p className="text-xs text-slate-500 mb-3">
-            Drag rows to reorder assignments. Quizzes are hidden in reorder mode.
+            Drag rows to reorder. The new order applies to both assignments and quizzes
+            in this course.
           </p>
         )}
 
@@ -283,16 +373,16 @@ export default function CourseAssignmentsPage() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={reorderDraft.map((i) => i.id)}
+              items={reorderDraft.map(dndId)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-2">
                 {reorderDraft.map((item) => (
-                  <SortableAssignmentRow key={item.id} item={item} />
+                  <SortableRow key={`${item.type}-${item.id}`} item={item} />
                 ))}
                 {reorderDraft.length === 0 && (
                   <div className="bg-white rounded-lg border border-gray-200/80 p-8 text-center text-sm text-slate-400">
-                    No assignments to reorder.
+                    Nothing to reorder.
                   </div>
                 )}
               </div>
@@ -307,7 +397,13 @@ export default function CourseAssignmentsPage() {
         ) : (
           <div className="space-y-2">
             {allItems.map((item) => (
-              <AssessmentRow key={`${item.type}-${item.id}`} item={item} isStaff={isStaff} />
+              <AssessmentRow
+                key={`${item.type}-${item.id}`}
+                item={item}
+                isStaff={isStaff}
+                onDelete={handleDelete}
+                isDeleting={deletingId === item.id}
+              />
             ))}
           </div>
         )}
@@ -318,7 +414,17 @@ export default function CourseAssignmentsPage() {
 
 // ─── Row components ─────────────────────────────────────────────────────────
 
-function AssessmentRow({ item, isStaff }: { item: Assessment; isStaff: boolean }) {
+function AssessmentRow({
+  item,
+  isStaff,
+  onDelete,
+  isDeleting,
+}: {
+  item: Assessment;
+  isStaff: boolean;
+  onDelete: (item: Assessment) => void;
+  isDeleting: boolean;
+}) {
   const href =
     item.type === 'quiz' ? `/quiz/${item.id}/attempt` : `/assignment/${item.id}`;
   const editHref =
@@ -330,30 +436,67 @@ function AssessmentRow({ item, isStaff }: { item: Assessment; isStaff: boolean }
         <Link href={href} className="flex-1 min-w-0">
           <RowMeta item={item} />
         </Link>
-        {isStaff && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isStaff && (
+            <>
+              <Link
+                href={editHref}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                title={`Edit ${item.type}`}
+                aria-label={`Edit ${item.type}`}
+              >
+                <Icon icon="material-symbols:edit-outline" className="w-3.5 h-3.5" />
+                Edit
+              </Link>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(item);
+                }}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 hover:border-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={`Delete ${item.type}`}
+                aria-label={`Delete ${item.type}`}
+              >
+                {isDeleting ? (
+                  <Icon
+                    icon="material-symbols:hourglass-empty"
+                    className="w-3.5 h-3.5 animate-spin"
+                  />
+                ) : (
+                  <Icon icon="material-symbols:delete-outline" className="w-3.5 h-3.5" />
+                )}
+                Delete
+              </button>
+            </>
+          )}
           <Link
-            href={editHref}
-            onClick={(e) => e.stopPropagation()}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
-            title={`Edit ${item.type}`}
-            aria-label={`Edit ${item.type}`}
+            href={href}
+            aria-hidden="true"
+            tabIndex={-1}
+            className="text-slate-300 group-hover:text-slate-500 ml-1"
           >
-            <Icon icon="material-symbols:edit-outline" className="w-4 h-4" />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
           </Link>
-        )}
-        <Link href={href} aria-hidden="true" tabIndex={-1} className="text-slate-300 group-hover:text-slate-500">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
+        </div>
       </div>
     </div>
   );
 }
 
-function SortableAssignmentRow({ item }: { item: Assessment }) {
+function SortableRow({ item }: { item: Assessment }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: item.id });
+    useSortable({ id: dndId(item as { type: 'quiz' | 'assignment'; id: string }) });
 
   const style = {
     transform: CSS.Transform.toString(transform),

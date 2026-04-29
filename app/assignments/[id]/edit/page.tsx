@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import DateTimePicker from "@/app/components/ui/DateTimePicker";
 import RubricBuilder, { type RubricCriterion } from "@/app/components/assignment/RubricBuilder";
 import Button from "@/app/components/ui/Button";
@@ -53,7 +53,16 @@ interface CourseGroup {
 export default function EditAssignmentPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const assignmentId = params.id;
+
+  // Same-origin guard: only accept absolute paths starting with "/" and
+  // reject protocol-relative "//evil" or full URLs to prevent open-redirect.
+  const rawReturnTo = searchParams.get('returnTo');
+  const returnTo =
+    rawReturnTo && rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//')
+      ? rawReturnTo
+      : null;
 
   const [assignment, setAssignment] = React.useState<Assignment | null>(null);
   const [title, setTitle] = React.useState("");
@@ -212,7 +221,18 @@ export default function EditAssignmentPage() {
       }
       
       alert("Assignment updated successfully!");
-      router.push("/assignments");
+      // Prefer an explicit returnTo (e.g. course Assessments tab).
+      // Otherwise fall back to the assignment's source course, then the
+      // generic /assignments list.
+      if (returnTo) {
+        router.push(returnTo);
+      } else if (assignment?.course_id) {
+        router.push(`/course/${assignment.course_id}?tab=assessments`);
+      } else if (selectedCourse) {
+        router.push(`/course/${selectedCourse}?tab=assessments`);
+      } else {
+        router.push("/assignments");
+      }
     } catch (error) {
       console.error('Error updating assignment:', error);
       alert("Failed to update assignment. Please try again.");

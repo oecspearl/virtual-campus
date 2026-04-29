@@ -111,6 +111,11 @@ export default function CourseAssessments({
   const [savingOrder, setSavingOrder] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Edit pages honour ?returnTo= to bring the user back to this tab after
+  // save, instead of dumping them on the generic /quizzes or /assignments
+  // list page.
+  const editReturnTo = encodeURIComponent(`/course/${courseId}?tab=assessments`);
+
   // Per-student status maps: each key is an assignment_id / quiz_id pointing
   // at the current user's most recent / best attempt. Used to badge each
   // row ("Submitted", "Graded · 85/100", "In progress", etc.). Staff don't
@@ -580,7 +585,7 @@ export default function CourseAssessments({
                           Results
                         </Link>
                         <Link
-                          href={`/quizzes/${quiz.id}/edit`}
+                          href={`/quizzes/${quiz.id}/edit?returnTo=${editReturnTo}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:border-slate-300 transition-colors"
                           title="Edit quiz"
                         >
@@ -675,7 +680,7 @@ export default function CourseAssessments({
                           Grade
                         </Link>
                         <Link
-                          href={`/assignments/${assignment.id}/edit`}
+                          href={`/assignments/${assignment.id}/edit?returnTo=${editReturnTo}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:border-slate-300 transition-colors"
                           title="Edit assignment"
                         >

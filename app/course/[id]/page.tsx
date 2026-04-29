@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
@@ -43,6 +43,7 @@ export default function CourseDetailPage() {
   const { supabase } = useSupabase();
   const params = useParams<{ id: string }>();
   const courseId = params.id;
+  const searchParams = useSearchParams();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [course, setCourse] = React.useState<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,7 +54,22 @@ export default function CourseDetailPage() {
   const [enrolling, setEnrolling] = React.useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = React.useState<'not_enrolled' | 'enrolled' | 'checking'>('checking');
   const [enrolledSectionName, setEnrolledSectionName] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState('overview');
+  // Initial tab honors ?tab= so other surfaces (e.g. quiz/assignment edit
+  // pages after save) can deep-link back into a specific tab. Anything not
+  // in the whitelist falls through to the default overview view.
+  const [activeTab, setActiveTab] = React.useState(() => {
+    const t = searchParams.get('tab');
+    const valid = [
+      'overview',
+      'curriculum',
+      'sections',
+      'assessments',
+      'discussions',
+      'grades',
+      'files',
+    ];
+    return t && valid.includes(t) ? t : 'overview';
+  });
   const [isReorderMode, setIsReorderMode] = React.useState(false);
   // Default to true on first render (server + client first paint must match,
   // otherwise React throws the minified hydration error #418). We read the

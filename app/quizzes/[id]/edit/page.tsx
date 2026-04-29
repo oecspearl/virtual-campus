@@ -1,15 +1,27 @@
 "use client";
 
 import React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import QuizBuilder from "@/app/components/quiz/QuizBuilder";
 import { useSupabase } from "@/lib/supabase-provider";
 import RoleGuard from "@/app/components/RoleGuard";
 import Breadcrumb from "@/app/components/ui/Breadcrumb";
 
+// Only allow same-origin paths in returnTo, to prevent open-redirect.
+// We accept things like "/course/abc?tab=assessments" but reject
+// "https://evil.example/" or protocol-relative "//evil.example/".
+function safeReturnTo(value: string | null): string | null {
+  if (!value) return null;
+  if (!value.startsWith('/')) return null;
+  if (value.startsWith('//')) return null;
+  return value;
+}
+
 export default function EditQuizPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = safeReturnTo(searchParams.get('returnTo'));
   const { supabase } = useSupabase();
   const [quiz, setQuiz] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
@@ -130,11 +142,24 @@ export default function EditQuizPage() {
             ]}
             className="mb-6"
           />
-          <QuizBuilder 
+          <QuizBuilder
             quizId={params.id}
             initialData={quiz}
             mode="edit"
-            onSave={() => router.push('/quizzes')}
+            onSave={() => {
+              // Prefer an explicit returnTo (e.g. course Assessments tab).
+              // Otherwise fall back to the quiz's source course, then the
+              // generic /quizzes list.
+              if (returnTo) {
+                router.push(returnTo);
+                return;
+              }
+              if (quiz?.course_id) {
+                router.push(`/course/${quiz.course_id}?tab=assessments`);
+                return;
+              }
+              router.push('/quizzes');
+            }}
           />
         </div>
       </div>

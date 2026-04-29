@@ -401,6 +401,7 @@ export default function CourseAssignmentsPage() {
                 key={`${item.type}-${item.id}`}
                 item={item}
                 isStaff={isStaff}
+                courseId={courseId}
                 onDelete={handleDelete}
                 isDeleting={deletingId === item.id}
               />
@@ -417,18 +418,25 @@ export default function CourseAssignmentsPage() {
 function AssessmentRow({
   item,
   isStaff,
+  courseId,
   onDelete,
   isDeleting,
 }: {
   item: Assessment;
   isStaff: boolean;
+  courseId: string;
   onDelete: (item: Assessment) => void;
   isDeleting: boolean;
 }) {
   const href =
     item.type === 'quiz' ? `/quiz/${item.id}/attempt` : `/assignment/${item.id}`;
+  const returnTo = encodeURIComponent(
+    `/course/${courseId}/assignments`,
+  );
   const editHref =
-    item.type === 'quiz' ? `/quizzes/${item.id}/edit` : `/assignments/${item.id}/edit`;
+    item.type === 'quiz'
+      ? `/quizzes/${item.id}/edit?returnTo=${returnTo}`
+      : `/assignments/${item.id}/edit?returnTo=${returnTo}`;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200/80 px-5 py-4 hover:bg-gray-50 transition-colors group">

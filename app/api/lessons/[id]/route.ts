@@ -113,7 +113,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     return NextResponse.json(lesson);
   } catch (e: any) {
-    console.error('Lesson GET API error:', e);
+    console.error('Lesson GET API error', {
+      message: e?.message,
+      stack: e?.stack,
+      name: e?.name,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

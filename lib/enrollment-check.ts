@@ -53,14 +53,45 @@ export async function requireCourseAccess(
   }
 
   const supabase = createServiceSupabaseClient();
-  const { data: course, error } = await supabase
-    .from('courses')
-    .select('id, is_public')
-    .eq('id', courseId)
-    .single();
 
-  if (error || !course) {
+  // Two-step lookup so the gate keeps working before migration 041 runs:
+  //   1. fetch the course (exists check)
+  //   2. fetch is_public separately — if the column doesn't exist yet, the
+  //      query errors and we treat the course as not-public (the safe default).
+  const { data: course, error: courseError } = await supabase
+    .from('courses')
+    .select('id')
+    .eq('id', courseId)
+    .maybeSingle();
+
+  if (courseError) {
+    console.error('requireCourseAccess: course existence lookup failed', {
+      courseId,
+      error: courseError.message,
+    });
+    return { allowed: false, status: 500, reason: 'Course access check failed' };
+  }
+  if (!course) {
     return { allowed: false, status: 404, reason: 'Course not found' };
+  }
+
+  let isPublic = false;
+  const { data: publicRow, error: publicError } = await supabase
+    .from('courses')
+    .select('is_public')
+    .eq('id', courseId)
+    .maybeSingle();
+
+  if (publicError) {
+    // Most likely "column courses.is_public does not exist" because
+    // migration 041 hasn't been applied. Continue with isPublic=false so
+    // the route still works for staff + enrolled students.
+    console.warn('requireCourseAccess: is_public column unavailable, treating course as not-public', {
+      courseId,
+      error: publicError.message,
+    });
+  } else if (publicRow) {
+    isPublic = (publicRow as { is_public?: boolean }).is_public === true;
   }
 
   // Writes never use is_public — must be an authenticated enrolled student.
@@ -75,7 +106,7 @@ export async function requireCourseAccess(
   }
 
   // Reads: public course is open to everyone, including guests.
-  if (course.is_public) {
+  if (isPublic) {
     return { allowed: true, status: 200, isPublicAccess: true };
   }
 
@@ -119,14 +150,20 @@ export async function getEnrolledCourseIds(userId: string): Promise<string[]> {
  * Returns the set of course IDs marked is_public within a tenant.
  * Used together with getEnrolledCourseIds to broaden student-visible
  * search/list results to "enrolled OR public."
+ *
+ * Returns [] silently when migration 041 hasn't run yet (column missing).
  */
 export async function getPublicCourseIds(tenantId: string): Promise<string[]> {
   const supabase = createServiceSupabaseClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('courses')
     .select('id')
     .eq('tenant_id', tenantId)
     .eq('is_public', true);
+  if (error) {
+    console.warn('getPublicCourseIds: is_public column unavailable, returning empty list', error.message);
+    return [];
+  }
   return (data || []).map((c: any) => c.id);
 }
 

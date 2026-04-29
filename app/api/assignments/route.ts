@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { withTenantAuth } from '@/lib/with-tenant-auth';
+import { hasRole } from '@/lib/rbac';
 import {
   createAssignmentWithSideEffects,
   AssignmentValidationError,
 } from '@/lib/services/assignment-service';
 
-export const GET = withTenantAuth(async ({ tq, request }) => {
+export const GET = withTenantAuth(async ({ user, tq, request }) => {
   const { searchParams } = new URL(request.url);
   const lessonId = searchParams.get('lesson_id');
   const courseId = searchParams.get('course_id');
@@ -15,6 +16,19 @@ export const GET = withTenantAuth(async ({ tq, request }) => {
 
   if (lessonId) query = query.eq('lesson_id', lessonId);
   if (published !== null) query = query.eq('published', published === 'true');
+
+  // Defense in depth: students/parents must never see draft assignments,
+  // regardless of which surface called this endpoint. The course assignments
+  // list also filters in the UI, but the API is the source of truth.
+  const isStaff = hasRole(user.role, [
+    'instructor',
+    'curriculum_designer',
+    'admin',
+    'super_admin',
+  ]);
+  if (!isStaff) {
+    query = query.eq('published', true);
+  }
 
   // For course_id filter: also include assignments linked via lesson_id
   if (courseId) {
@@ -33,6 +47,7 @@ export const GET = withTenantAuth(async ({ tq, request }) => {
   }
 
   const { data: assignments, error } = await query
+    .order('curriculum_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(200);
 

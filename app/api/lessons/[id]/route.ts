@@ -304,6 +304,19 @@ export const DELETE = withTenantAuth(
 
       if (error) {
         console.error('Lesson delete error:', error);
+        // 23503 = foreign_key_violation. Surface a useful message so the
+        // admin knows a related table is blocking; migration 042 should
+        // have set the FKs to CASCADE / SET NULL but new child tables
+        // could regress this.
+        if ((error as { code?: string }).code === '23503') {
+          return NextResponse.json(
+            {
+              error:
+                'This lesson has related data (resources, submissions, or attempts) that must be removed first, or the database constraint is misconfigured. Apply migration 042-lesson-delete-cascade.sql.',
+            },
+            { status: 409 },
+          );
+        }
         return NextResponse.json({ error: 'Failed to delete lesson' }, { status: 500 });
       }
 

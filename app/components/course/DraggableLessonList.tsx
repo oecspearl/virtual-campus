@@ -24,6 +24,7 @@ import { Icon } from '@iconify/react';
 import Link from 'next/link';
 import RoleGuard from '@/app/components/RoleGuard';
 import { useSupabase } from '@/lib/supabase-provider';
+import LessonAdminControls from './LessonAdminControls';
 
 interface Lesson {
   id: string;
@@ -42,6 +43,7 @@ interface DraggableLessonListProps {
   isReorderMode: boolean;
   onToggleReorderMode: () => void;
   editMode?: boolean;
+  onLessonDeleted?: (lessonId: string) => void;
 }
 
 interface SortableLessonItemProps {
@@ -50,6 +52,7 @@ interface SortableLessonItemProps {
   courseId: string;
   isReorderMode: boolean;
   editMode?: boolean;
+  onLessonDeleted?: (lessonId: string) => void;
 }
 
 const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
@@ -58,6 +61,7 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
   courseId,
   isReorderMode,
   editMode = true,
+  onLessonDeleted,
 }) => {
   const {
     attributes,
@@ -153,15 +157,12 @@ const SortableLessonItem: React.FC<SortableLessonItemProps> = ({
             <span className="sm:hidden">Start</span>
           </Link>
           {editMode && (
-            <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
-              <Link
-                href={`/lessons/${lesson.id}/edit`}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Edit Lesson"
-              >
-                <Icon icon="material-symbols:edit" className="w-4 h-4 sm:w-5 sm:h-5" />
-              </Link>
-            </RoleGuard>
+            <LessonAdminControls
+              lessonId={lesson.id}
+              lessonTitle={lesson.title}
+              onDeleted={onLessonDeleted}
+              size="md"
+            />
           )}
         </div>
       </div>
@@ -176,6 +177,7 @@ const DraggableLessonList: React.FC<DraggableLessonListProps> = ({
   isReorderMode,
   onToggleReorderMode,
   editMode = true,
+  onLessonDeleted,
 }) => {
   const { supabase } = useSupabase();
   const [isReordering, setIsReordering] = useState(false);
@@ -302,6 +304,7 @@ const DraggableLessonList: React.FC<DraggableLessonListProps> = ({
                   courseId={courseId}
                   isReorderMode={isReorderMode}
                   editMode={editMode}
+                  onLessonDeleted={onLessonDeleted}
                 />
               ))}
             </div>

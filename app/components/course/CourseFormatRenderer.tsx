@@ -21,6 +21,8 @@ interface CourseFormatRendererProps {
   onReorderLessons?: (sectionId: string | null, lessonIds: string[]) => void;
   /** Reorder the sections (topics or weeks) themselves. */
   onReorderSections?: (sectionIds: string[]) => void;
+  /** Called after a lesson is deleted from the admin controls. */
+  onLessonDeleted?: (lessonId: string) => void;
   lessonProgress?: LessonProgress[];
   courseStartDate?: string | null;
   /** When provided, lesson clicks call this instead of navigating to /course/[id]/lesson/[lessonId]. Used by shared courses. */
@@ -39,6 +41,7 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
   onAssignSection,
   onReorderLessons,
   onReorderSections,
+  onLessonDeleted,
   lessonProgress = [],
   courseStartDate,
   onLessonClick,
@@ -54,6 +57,7 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           onAssignSection={onAssignSection}
           onReorderLessons={onReorderLessons}
           onReorderSections={onReorderSections}
+          onLessonDeleted={onLessonDeleted}
           lessonProgress={lessonProgress}
           onLessonClick={onLessonClick}
         />
@@ -68,6 +72,7 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           onAssignSection={onAssignSection}
           onReorderLessons={onReorderLessons}
           onReorderSections={onReorderSections}
+          onLessonDeleted={onLessonDeleted}
           lessonProgress={lessonProgress}
           courseStartDate={courseStartDate}
           onLessonClick={onLessonClick}
@@ -95,6 +100,7 @@ const CourseFormatRenderer: React.FC<CourseFormatRendererProps> = ({
           onToggleReorderMode={onToggleReorderMode}
           onReorder={onReorder}
           onAssignSection={onAssignSection}
+          onLessonDeleted={onLessonDeleted}
           lessonProgress={lessonProgress}
           onLessonClick={onLessonClick}
         />

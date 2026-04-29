@@ -30,6 +30,8 @@ interface CourseCurriculumProps {
   onSectionsChange?: (sections: Section[]) => void;
   onToggleSectionManager?: () => void;
   onStartDateChange?: (date: string) => void;
+  /** Called after a lesson is deleted via the admin controls — caller drops it from local state. */
+  onLessonDeleted?: (lessonId: string) => void;
   readOnly?: boolean;
   onLessonClick?: (lessonId: string) => void;
 }
@@ -59,6 +61,7 @@ function CourseCurriculumInner({
   onFormatChange, onToggleReorderMode, onReorder, onAssignSection,
   onReorderLessons, onReorderSections,
   onSectionsChange, onToggleSectionManager, onStartDateChange,
+  onLessonDeleted,
   readOnly = false, onLessonClick,
 }: CourseCurriculumProps) {
   const completedCount = lessonProgress.filter(lp => lp.status === 'completed').length;
@@ -203,6 +206,7 @@ function CourseCurriculumInner({
           onAssignSection={readOnly ? undefined : onAssignSection}
           onReorderLessons={readOnly ? undefined : onReorderLessons}
           onReorderSections={readOnly ? undefined : onReorderSections}
+          onLessonDeleted={readOnly ? undefined : onLessonDeleted}
           lessonProgress={lessonProgress}
           courseStartDate={courseStartDate}
           onLessonClick={onLessonClick}

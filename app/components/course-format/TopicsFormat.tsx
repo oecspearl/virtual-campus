@@ -7,6 +7,7 @@ import RoleGuard from '@/app/components/RoleGuard';
 import type { Lesson, LessonProgress, Section } from './types';
 import { LessonLink, getContentMeta, StatusIcon } from './shared';
 import { ReorderList, SortableItem } from './_sortable';
+import LessonAdminControls from '@/app/components/course/LessonAdminControls';
 
 // ============================================================================
 // FORMAT 2: TOPIC (Concept-Organized Modules)
@@ -25,9 +26,11 @@ const TopicsFormat: React.FC<{
   onReorderLessons?: (sectionId: string | null, lessonIds: string[]) => void;
   /** Reorder the sections themselves. Receives the new ordered list of section ids. */
   onReorderSections?: (sectionIds: string[]) => void;
+  /** Called after a lesson is deleted via the admin controls. */
+  onLessonDeleted?: (lessonId: string) => void;
   lessonProgress: LessonProgress[];
   onLessonClick?: (lessonId: string) => void;
-}> = ({ courseId, lessons, sections, editMode, onAssignSection, onReorderLessons, onReorderSections, lessonProgress, onLessonClick }) => {
+}> = ({ courseId, lessons, sections, editMode, onAssignSection, onReorderLessons, onReorderSections, onLessonDeleted, lessonProgress, onLessonClick }) => {
   // Section collapse state.
   //   • Instructor (editMode = true): expanded by default — they're working
   //     on the curriculum and want to see everything at once.
@@ -315,11 +318,12 @@ const TopicsFormat: React.FC<{
                               {status === 'completed' ? 'Review' : status === 'in_progress' ? 'Continue' : 'Start'}
                             </LessonLink>
                             {editMode && (
-                              <RoleGuard roles={["instructor", "curriculum_designer", "admin", "super_admin"]}>
-                                <Link href={`/lessons/${lesson.id}/edit`} className="p-1 text-gray-400 hover:text-gray-600">
-                                  <Icon icon="material-symbols:edit" className="w-4 h-4" />
-                                </Link>
-                              </RoleGuard>
+                              <LessonAdminControls
+                                lessonId={lesson.id}
+                                lessonTitle={lesson.title}
+                                onDeleted={onLessonDeleted}
+                                size="sm"
+                              />
                             )}
                           </div>
                           </SortableItem>

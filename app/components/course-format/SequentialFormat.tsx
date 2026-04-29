@@ -20,8 +20,9 @@ const SequentialFormat: React.FC<{
   onReorder: (lessons: Lesson[]) => void;
   onLessonClick?: (lessonId: string) => void;
   onAssignSection?: (lessonId: string, sectionId: string | null) => void;
+  onLessonDeleted?: (lessonId: string) => void;
   lessonProgress: LessonProgress[];
-}> = ({ courseId, lessons, sections, editMode, isReorderMode, onToggleReorderMode, onReorder, onAssignSection, lessonProgress, onLessonClick }) => {
+}> = ({ courseId, lessons, sections, editMode, isReorderMode, onToggleReorderMode, onReorder, onAssignSection, onLessonDeleted, lessonProgress, onLessonClick }) => {
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => [...lessons].sort((a, b) => a.order - b.order), [lessons]);
@@ -123,6 +124,7 @@ const SequentialFormat: React.FC<{
         isReorderMode={isReorderMode}
         onToggleReorderMode={onToggleReorderMode}
         editMode={editMode}
+        onLessonDeleted={onLessonDeleted}
       />
     );
   }

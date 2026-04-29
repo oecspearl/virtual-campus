@@ -288,6 +288,16 @@ export default function CourseDetailPage() {
   };
 
   /**
+   * Drop a deleted lesson from local state. The DELETE request itself happens
+   * in <LessonAdminControls/> — this just keeps the curriculum view in sync
+   * without a refetch.
+   */
+  const handleLessonDeleted = (lessonId: string) => {
+    setLessons(prev => prev.filter(l => l.id !== lessonId));
+    setLessonProgress(prev => prev.filter(p => p.lesson_id !== lessonId));
+  };
+
+  /**
    * Reorder lessons within a section/week (or the unsectioned bucket when
    * sectionId is null). The Topics/Weekly formats hand us the new id list
    * after a drag finishes — we update local state immediately for a snappy
@@ -463,6 +473,7 @@ export default function CourseDetailPage() {
       onSectionsChange={setSections}
       onToggleSectionManager={() => setShowSectionManager(!showSectionManager)}
       onStartDateChange={handleStartDateChange}
+      onLessonDeleted={handleLessonDeleted}
       readOnly={!isInstructor}
     />
   );

@@ -50,6 +50,7 @@ export interface QuizData {
   time_limit: number | null;
   passing_score: number | null;
   published: boolean;
+  curriculum_order?: number | null;
 }
 
 export interface AssignmentData {
@@ -60,6 +61,7 @@ export interface AssignmentData {
   max_score: number | null;
   published: boolean;
   points?: number;
+  curriculum_order?: number | null;
 }
 
 export interface DiscussionData {

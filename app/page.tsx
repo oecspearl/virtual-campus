@@ -831,7 +831,7 @@ export default function Home() {
                 Close
               </button>
               <Link
-                href={`/courses/${selectedCourse.id}`}
+                href={`/courses/${selectedCourse.id}/preview`}
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1 px-6 py-3 text-white font-semibold rounded-lg transition-all duration-200 text-center hover:brightness-90"
                 style={{

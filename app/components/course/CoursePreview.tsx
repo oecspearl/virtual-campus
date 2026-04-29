@@ -12,12 +12,17 @@ interface CoursePreviewProps {
   courseId: string;
   onEnroll?: () => void;
   onClose?: () => void;
+  // When true, hide the enroll button and "View Full Course" link.
+  // Used by the public /courses/[id]/preview surface where visitors can
+  // browse curriculum but cannot self-enrol or jump into the full course.
+  previewOnly?: boolean;
 }
 
 export default function CoursePreview({
   courseId,
   onEnroll,
   onClose,
+  previewOnly = false,
 }: CoursePreviewProps) {
   const [course, setCourse] = useState<any>(null);
   const [lessons, setLessons] = useState<any[]>([]);
@@ -244,21 +249,44 @@ export default function CoursePreview({
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
-          <Button
-            onClick={handleEnroll}
-            disabled={enrolling}
-            className="flex-1"
-          >
-            {enrolling ? "Enrolling..." : "Enroll in Course"}
-          </Button>
-          <Link
-            href={`/course/${courseId}`}
-            className="px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            View Full Course
-          </Link>
-        </div>
+        {previewOnly ? (
+          <div className="pt-4 border-t border-gray-200 space-y-4">
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Icon icon="material-symbols:info" className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-amber-900 mb-1">Self-Enrollment Not Available</h4>
+                  <p className="text-amber-800 text-sm leading-relaxed">
+                    This is a read-only preview. To participate in this course, please contact your administrator or course coordinator and they will be able to add you.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <Icon icon="material-symbols:arrow-back" className="w-4 h-4" />
+              Back to home
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+            <Button
+              onClick={handleEnroll}
+              disabled={enrolling}
+              className="flex-1"
+            >
+              {enrolling ? "Enrolling..." : "Enroll in Course"}
+            </Button>
+            <Link
+              href={`/course/${courseId}`}
+              className="px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              View Full Course
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

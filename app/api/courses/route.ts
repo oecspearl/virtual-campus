@@ -96,13 +96,17 @@ export async function GET(request: Request) {
       const enrolledIds = enrolledCourses?.map((e: any) => e.classes?.course_id).filter(Boolean) || [];
 
       if (enrolledIds.length > 0) {
-        // Single query: published OR enrolled
+        // Single query: published OR enrolled (is_public is implicitly
+        // covered since public courses must also be published to appear).
         query = tq.from('courses').select('*')
           .or(`published.eq.true,id.in.(${enrolledIds.join(',')})`);
       } else {
         query = tq.from('courses').select('*').eq('published', true);
       }
     } else {
+      // Guest / parent — show only published courses; the per-course content
+      // gates (requireCourseAccess) decide what can be opened beyond the
+      // catalog card, with is_public allowing read into a course's content.
       query = query.eq('published', true);
     }
 

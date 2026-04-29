@@ -2,15 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { sanitizeHtml } from '@/lib/sanitize-server';
+import { requireCourseAccess } from '@/lib/enrollment-check';
 
 // GET - Fetch resource links for a course or lesson
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await authenticateUser(request);
-    if (!authResult.success) {
-      return createAuthResponse(authResult.error!, authResult.status!);
-    }
-
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
     const { searchParams } = new URL(request.url);
@@ -21,22 +17,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'courseId or lessonId is required' }, { status: 400 });
     }
 
-    // Build query
+    // Resolve the parent course id so requireCourseAccess can decide:
+    // - lessonId → look up the lesson's course_id
+    // - courseId → use it directly
+    let parentCourseId: string | null = courseId;
+    if (!parentCourseId && lessonId) {
+      const { data: lesson } = await tq
+        .from('lessons')
+        .select('course_id')
+        .eq('id', lessonId)
+        .single();
+      parentCourseId = lesson?.course_id ?? null;
+    }
+
+    if (!parentCourseId) {
+      return NextResponse.json({ error: 'Lesson not found' }, { status: 404 });
+    }
+
+    // Authentication is optional here — public courses serve guests too.
+    const authResult = await authenticateUser(request);
+    const user = authResult.success
+      ? { id: authResult.user.id, role: authResult.userProfile!.role }
+      : null;
+
+    const access = await requireCourseAccess(user, parentCourseId);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: access.status });
+    }
+
     let query = tq
       .from('resource_links')
       .select('*')
       .order('order', { ascending: true });
 
     if (courseId && !lessonId) {
-      // Course-level links only
       query = query.eq('course_id', courseId).is('lesson_id', null);
     } else if (lessonId) {
-      // Lesson-level links (may also have course_id)
       query = query.eq('lesson_id', lessonId);
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
     return NextResponse.json({ links: data || [] });

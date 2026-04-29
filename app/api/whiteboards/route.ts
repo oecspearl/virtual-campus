@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser } from '@/lib/api-auth';
+import { requireCourseAccess } from '@/lib/enrollment-check';
 
 // GET /api/whiteboards — List whiteboards for the current user
 export async function GET(request: NextRequest) {
@@ -33,11 +34,21 @@ export async function GET(request: NextRequest) {
       case 'archived':
         query = query.eq('archived', true);
         break;
-      case 'course':
-        if (courseId) {
-          query = query.eq('course_id', courseId).eq('archived', false);
+      case 'course': {
+        if (!courseId) {
+          return NextResponse.json({ error: 'course_id is required for course filter' }, { status: 400 });
         }
+        // Listing course-scoped boards requires enrollment (or staff / public course).
+        const access = await requireCourseAccess(
+          { id: userProfile.id, role: userProfile.role },
+          courseId,
+        );
+        if (!access.allowed) {
+          return NextResponse.json({ error: access.reason }, { status: access.status });
+        }
+        query = query.eq('course_id', courseId).eq('archived', false);
         break;
+      }
       default:
         // 'mine' or no filter — show user's non-archived boards
         query = query.eq('created_by', userProfile.id).eq('archived', false);

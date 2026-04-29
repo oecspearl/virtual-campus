@@ -21,6 +21,7 @@ export default function EditCoursePage() {
   const [syllabus, setSyllabus] = React.useState('');
   const [thumbnail, setThumbnail] = React.useState('');
   const [published, setPublished] = React.useState(false);
+  const [isPublic, setIsPublic] = React.useState(false);
   const [courseFormat, setCourseFormat] = React.useState<CourseFormat>('lessons');
   const [saving, setSaving] = React.useState(false);
 
@@ -103,6 +104,7 @@ export default function EditCoursePage() {
       setSyllabus(cData.syllabus||'');
       setThumbnail(cData.thumbnail||'');
       setPublished(Boolean(cData.published));
+      setIsPublic(Boolean(cData.is_public));
       setCourseFormat(cData.course_format || 'lessons');
     } catch (error) {
       console.error('Error loading course:', error);
@@ -156,12 +158,13 @@ export default function EditCoursePage() {
           description,
           syllabus,
           published,
+          is_public: isPublic,
           thumbnail,
           course_format: courseFormat,
           grade_level: course.grade_level,
           subject_area: course.subject_area,
           difficulty: course.difficulty
-        }) 
+        })
       });
       
       console.log('Response status:', response.status);
@@ -320,7 +323,26 @@ export default function EditCoursePage() {
               <input id="pub" type="checkbox" checked={published} onChange={(e)=>setPublished(e.target.checked)} />
               <label htmlFor="pub" className="text-xs text-gray-700"><span>Published</span></label>
             </div>
-            
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <input
+                  id="is_public"
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                />
+                <label htmlFor="is_public" className="text-xs font-medium text-amber-900">
+                  <span>Public course (anyone can view)</span>
+                </label>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-snug">
+                Makes lessons and materials readable by anyone, including unauthenticated visitors.
+                Submissions, quiz attempts, and discussion posts still require enrollment.
+              </p>
+            </div>
+
+
             <div className="flex gap-4">
               <Button onClick={save} disabled={saving}>
                 <span>{saving? 'Saving…':'Save Course'}</span>

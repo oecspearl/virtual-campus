@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
+import { requireCourseAccess } from "@/lib/enrollment-check";
 
 // GET /api/discussions/[id] - Get a specific discussion with replies
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -25,6 +26,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (discussionError) {
       console.error('Error fetching discussion:', discussionError);
       return NextResponse.json({ error: "Discussion not found" }, { status: 404 });
+    }
+
+    // Enrollment / public-course gate. course_discussions has a course_id;
+    // students can only read threads for courses they're enrolled in (or
+    // for is_public courses).
+    if (discussion?.course_id) {
+      const authResult = await authenticateUser(request as any);
+      const user = authResult.success ? { id: authResult.user.id, role: authResult.userProfile!.role } : null;
+      const access = await requireCourseAccess(user, discussion.course_id);
+      if (!access.allowed) {
+        return NextResponse.json({ error: access.reason }, { status: access.status });
+      }
     }
 
     // Get replies with author info and nested structure

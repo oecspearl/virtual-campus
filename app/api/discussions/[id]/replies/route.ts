@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { notifyDiscussionReply } from "@/lib/notifications";
+import { requireCourseAccess } from "@/lib/enrollment-check";
 
 // POST /api/discussions/[id]/replies - Create a new reply
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -47,6 +48,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     if (discussion.is_locked) {
       return NextResponse.json({ error: "This discussion is locked" }, { status: 403 });
+    }
+
+    // Posting a reply is a write — must be enrolled regardless of is_public.
+    const access = await requireCourseAccess(
+      { id: user.id, role: authResult.userProfile!.role },
+      discussion.course_id,
+      { requireWrite: true },
+    );
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason }, { status: access.status });
     }
 
     // If this is a solution, mark other solutions as not solutions

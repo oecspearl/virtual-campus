@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser } from "@/lib/api-auth";
+import { getEnrolledCourseIds, getPublicCourseIds } from "@/lib/enrollment-check";
+import { getTenantIdFromRequest } from "@/lib/tenant-query";
+import { hasRole } from "@/lib/rbac";
+
+const STAFF_ROLES = ['instructor', 'curriculum_designer', 'admin', 'tenant_admin', 'super_admin'] as const;
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,11 +17,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { user } = authResult;
+    const { user, userProfile } = authResult;
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";
     const type = searchParams.get("type") || "all"; // all, courses, lessons, assignments, discussions
     const limit = parseInt(searchParams.get("limit") || "20");
+
+    // Students/parents can only see search results from courses they're
+    // enrolled in plus courses marked is_public. Staff see everything in
+    // their tenant.
+    const isStaff = hasRole(userProfile!.role, STAFF_ROLES);
+    const tenantId = getTenantIdFromRequest(request);
+
+    let visibleCourseIds: string[] | null = null; // null = no filter (staff)
+    if (!isStaff) {
+      const [enrolled, publicIds] = await Promise.all([
+        getEnrolledCourseIds(user.id),
+        getPublicCourseIds(tenantId),
+      ]);
+      visibleCourseIds = Array.from(new Set([...enrolled, ...publicIds]));
+    }
 
     if (!query || query.trim().length < 2) {
       return NextResponse.json({
@@ -45,15 +65,26 @@ export async function GET(request: NextRequest) {
       discussions: [],
     };
 
+    // Short-circuit: a non-staff user with no enrolled and no public courses
+    // can't see any course-scoped results, so return empty without hitting the DB.
+    if (visibleCourseIds !== null && visibleCourseIds.length === 0) {
+      return NextResponse.json({ results, total: 0, query });
+    }
+
     // Search courses
     if (type === "all" || type === "courses") {
-      const { data: courses, error: coursesError } = await supabase
+      let coursesQuery = supabase
         .from("courses")
         .select("id, title, description, thumbnail, published, difficulty, grade_level, subject_area")
         .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
         .eq("published", true)
         .limit(limit);
 
+      if (visibleCourseIds !== null) {
+        coursesQuery = coursesQuery.in("id", visibleCourseIds);
+      }
+
+      const { data: courses, error: coursesError } = await coursesQuery;
       if (!coursesError && courses) {
         results.courses = courses;
       }
@@ -61,12 +92,18 @@ export async function GET(request: NextRequest) {
 
     // Search lessons
     if (type === "all" || type === "lessons") {
-      const { data: lessons, error: lessonsError } = await supabase
+      let lessonsQuery = supabase
         .from("lessons")
         .select("id, title, description, course_id, order, published")
         .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
         .eq("published", true)
         .limit(limit);
+
+      if (visibleCourseIds !== null) {
+        lessonsQuery = lessonsQuery.in("course_id", visibleCourseIds);
+      }
+
+      const { data: lessons, error: lessonsError } = await lessonsQuery;
 
       if (!lessonsError && lessons) {
         // Get course info for each lesson
@@ -94,11 +131,17 @@ export async function GET(request: NextRequest) {
 
     // Search assignments
     if (type === "all" || type === "assignments") {
-      const { data: assignments, error: assignmentsError } = await supabase
+      let assignmentsQuery = supabase
         .from("assignments")
         .select("id, title, description, due_date, course_id, created_at")
         .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
         .limit(limit);
+
+      if (visibleCourseIds !== null) {
+        assignmentsQuery = assignmentsQuery.in("course_id", visibleCourseIds);
+      }
+
+      const { data: assignments, error: assignmentsError } = await assignmentsQuery;
 
       if (!assignmentsError && assignments) {
         // Get course info for each assignment
@@ -126,11 +169,17 @@ export async function GET(request: NextRequest) {
 
     // Search discussions
     if (type === "all" || type === "discussions") {
-      const { data: discussions, error: discussionsError } = await supabase
+      let discussionsQuery = supabase
         .from("discussions")
         .select("id, title, content, course_id, lesson_id, created_at, author_id")
         .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
         .limit(limit);
+
+      if (visibleCourseIds !== null) {
+        discussionsQuery = discussionsQuery.in("course_id", visibleCourseIds);
+      }
+
+      const { data: discussions, error: discussionsError } = await discussionsQuery;
 
       if (!discussionsError && discussions) {
         // Get course/lesson info and author info

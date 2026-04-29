@@ -1,4 +1,134 @@
 import { createServiceSupabaseClient } from './supabase-server';
+import { hasRole } from './rbac';
+
+/**
+ * Roles that bypass enrollment checks for course content access.
+ * Tenant-scoping is still enforced by the caller's tenant query.
+ */
+const STAFF_ROLES = [
+  'instructor',
+  'curriculum_designer',
+  'admin',
+  'tenant_admin',
+  'super_admin',
+] as const;
+
+export type CourseAccessUser = { id: string; role: string } | null;
+
+export interface CourseAccessResult {
+  allowed: boolean;
+  status: number;            // suggested HTTP status when !allowed
+  reason?: string;           // human-readable reason when !allowed
+  isPublicAccess?: boolean;  // true when access was granted via is_public
+  isStaff?: boolean;         // true when access was granted via staff role
+  isEnrolled?: boolean;      // true when access was granted via enrollment
+  crossTenant?: boolean;     // true when enrollment is via cross_tenant_enrollments
+}
+
+/**
+ * Gate course content behind enrollment, with two opt-outs:
+ *   - staff (instructor/admin/etc.) always pass
+ *   - public courses (courses.is_public = true) allow read for everyone,
+ *     including unauthenticated visitors
+ *
+ * Pass `requireWrite: true` for surfaces that mutate course state
+ * (submissions, quiz attempts, posting in discussions). Writes ignore
+ * is_public — they always require an active enrollment.
+ *
+ * Returns a structured result; callers inspect .allowed and use
+ * .status / .reason to build their NextResponse.json error.
+ */
+export async function requireCourseAccess(
+  user: CourseAccessUser,
+  courseId: string,
+  opts: { requireWrite?: boolean } = {},
+): Promise<CourseAccessResult> {
+  if (!courseId) {
+    return { allowed: false, status: 400, reason: 'Course id is required' };
+  }
+
+  // Staff bypass — read or write.
+  if (user && hasRole(user.role, STAFF_ROLES)) {
+    return { allowed: true, status: 200, isStaff: true };
+  }
+
+  const supabase = createServiceSupabaseClient();
+  const { data: course, error } = await supabase
+    .from('courses')
+    .select('id, is_public')
+    .eq('id', courseId)
+    .single();
+
+  if (error || !course) {
+    return { allowed: false, status: 404, reason: 'Course not found' };
+  }
+
+  // Writes never use is_public — must be an authenticated enrolled student.
+  if (opts.requireWrite) {
+    if (!user) {
+      return { allowed: false, status: 401, reason: 'Authentication required' };
+    }
+    const { enrolled, crossTenant } = await checkStudentEnrollment(user.id, courseId);
+    return enrolled
+      ? { allowed: true, status: 200, isEnrolled: true, crossTenant }
+      : { allowed: false, status: 403, reason: 'You are not enrolled in this course' };
+  }
+
+  // Reads: public course is open to everyone, including guests.
+  if (course.is_public) {
+    return { allowed: true, status: 200, isPublicAccess: true };
+  }
+
+  // Reads on a non-public course: must be enrolled.
+  if (!user) {
+    return { allowed: false, status: 401, reason: 'Authentication required' };
+  }
+  const { enrolled, crossTenant } = await checkStudentEnrollment(user.id, courseId);
+  return enrolled
+    ? { allowed: true, status: 200, isEnrolled: true, crossTenant }
+    : { allowed: false, status: 403, reason: 'You are not enrolled in this course' };
+}
+
+/**
+ * Returns the set of course IDs the user is currently enrolled in
+ * (regular + cross-tenant). Used by surfaces that need to filter a list
+ * of items down to courses the student can see — e.g. search results.
+ */
+export async function getEnrolledCourseIds(userId: string): Promise<string[]> {
+  const supabase = createServiceSupabaseClient();
+  const [regular, cross] = await Promise.all([
+    supabase
+      .from('enrollments')
+      .select('course_id')
+      .eq('student_id', userId)
+      .eq('status', 'active'),
+    supabase
+      .from('cross_tenant_enrollments')
+      .select('source_course_id')
+      .eq('student_id', userId)
+      .eq('status', 'active'),
+  ]);
+
+  const ids = new Set<string>();
+  (regular.data || []).forEach((r: any) => r.course_id && ids.add(r.course_id));
+  (cross.data || []).forEach((r: any) => r.source_course_id && ids.add(r.source_course_id));
+  return Array.from(ids);
+}
+
+/**
+ * Returns the set of course IDs marked is_public within a tenant.
+ * Used together with getEnrolledCourseIds to broaden student-visible
+ * search/list results to "enrolled OR public."
+ */
+export async function getPublicCourseIds(tenantId: string): Promise<string[]> {
+  const supabase = createServiceSupabaseClient();
+  const { data } = await supabase
+    .from('courses')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('is_public', true);
+  return (data || []).map((c: any) => c.id);
+}
 
 /**
  * Checks if a student is enrolled in a course, either via regular enrollment

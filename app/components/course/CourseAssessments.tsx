@@ -46,6 +46,43 @@ type ReorderItem =
 
 const dndId = (item: ReorderItem) => `${item.kind}:${item.id}`;
 
+// ─── Per-student status types ───────────────────────────────────────────────
+// Returned by /api/courses/[id]/my-assessment-status. Keep in sync with
+// the API route's response shape.
+
+type AssignmentStatusRow = {
+  status: 'draft' | 'submitted' | 'graded';
+  grade: number | null;
+  submitted_at: string | null;
+  late: boolean;
+};
+
+type QuizStatusRow = {
+  status: 'in_progress' | 'submitted' | 'graded';
+  score: number | null;
+  max_score: number | null;
+  percentage: number | null;
+  attempt_number: number;
+  submitted_at: string | null;
+};
+
+// Format a due date as a human hint like "Due in 3 days" / "Due today" /
+// "Overdue · Mar 5". Falls back to a plain date for distant due dates.
+function formatDueHint(due: string | null | undefined): string {
+  if (!due) return '';
+  const d = new Date(due);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const dayMs = 1000 * 60 * 60 * 24;
+  const diffDays = Math.round((d.getTime() - now.getTime()) / dayMs);
+  const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (diffDays < 0) return `Overdue · ${dateStr}`;
+  if (diffDays === 0) return 'Due today';
+  if (diffDays === 1) return 'Due tomorrow';
+  if (diffDays <= 7) return `Due in ${diffDays} days`;
+  return `Due ${dateStr}`;
+}
+
 export default function CourseAssessments({
   courseId,
   quizzes: quizzesProp,
@@ -74,12 +111,47 @@ export default function CourseAssessments({
   const [savingOrder, setSavingOrder] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Per-student status maps: each key is an assignment_id / quiz_id pointing
+  // at the current user's most recent / best attempt. Used to badge each
+  // row ("Submitted", "Graded · 85/100", "In progress", etc.). Staff don't
+  // need this — they have Grade/Results buttons.
+  const [assignmentStatus, setAssignmentStatus] = useState<
+    Record<string, AssignmentStatusRow>
+  >({});
+  const [quizStatus, setQuizStatus] = useState<Record<string, QuizStatusRow>>({});
+
   const getAuthHeaders = useCallback(async (): Promise<HeadersInit> => {
     const {
       data: { session },
     } = await supabase.auth.getSession();
     return session ? { Authorization: `Bearer ${session.access_token}` } : {};
   }, [supabase]);
+
+  // Fetch the current user's per-assessment status. We only need this for
+  // students; staff have Grade/Results pages and don't need self-status.
+  useEffect(() => {
+    if (isStaff) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/courses/${courseId}/my-assessment-status`, {
+          headers,
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setAssignmentStatus(data.assignments || {});
+        setQuizStatus(data.quizzes || {});
+      } catch (err) {
+        console.error('Failed to fetch assessment status:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, isStaff, getAuthHeaders]);
 
   const visibleAssignments = useMemo(
     () => assignments.filter((a) => a.published || (isStaff && !readOnly)),
@@ -461,7 +533,7 @@ export default function CourseAssessments({
                     <Icon icon="material-symbols:quiz" className="w-4 h-4 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-medium text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
                         Quiz
                       </span>
@@ -469,6 +541,9 @@ export default function CourseAssessments({
                         <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                           Draft
                         </span>
+                      )}
+                      {!isStaff && quizStatus[quiz.id] && (
+                        <QuizStatusBadge status={quizStatus[quiz.id]} />
                       )}
                       <div className="font-medium text-sm text-gray-900 truncate">
                         {quiz.title}
@@ -550,7 +625,7 @@ export default function CourseAssessments({
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-medium text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
                         Assignment
                       </span>
@@ -558,6 +633,12 @@ export default function CourseAssessments({
                         <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                           Draft
                         </span>
+                      )}
+                      {!isStaff && (
+                        <AssignmentStatusBadge
+                          status={assignmentStatus[assignment.id]}
+                          dueDate={assignment.due_date}
+                        />
                       )}
                       <div className="font-medium text-sm text-gray-900 truncate">
                         {assignment.title}
@@ -567,7 +648,7 @@ export default function CourseAssessments({
                       {assignment.due_date && (
                         <span className="flex items-center gap-1">
                           <Icon icon="material-symbols:calendar-today" className="w-3 h-3" />
-                          {new Date(assignment.due_date).toLocaleDateString()}
+                          {formatDueHint(assignment.due_date)}
                         </span>
                       )}
                       {assignment.points && (
@@ -749,5 +830,86 @@ function SortableAssessmentRow({ item }: { item: ReorderItem }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Per-student status badges ──────────────────────────────────────────────
+
+function AssignmentStatusBadge({
+  status,
+  dueDate,
+}: {
+  status: AssignmentStatusRow | undefined;
+  dueDate: string | null | undefined;
+}) {
+  // No submission yet: surface "Overdue" if past due, otherwise nothing —
+  // the "Due in N days" hint below the title already tells them about
+  // upcoming work.
+  if (!status) {
+    if (dueDate) {
+      const due = new Date(dueDate);
+      if (!Number.isNaN(due.getTime()) && due.getTime() < Date.now()) {
+        return (
+          <span className="text-xs font-medium text-red-700 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+            Overdue
+          </span>
+        );
+      }
+    }
+    return null;
+  }
+
+  if (status.status === 'graded') {
+    const grade = status.grade;
+    return (
+      <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+        Graded{grade != null ? ` · ${grade} pts` : ''}
+        {status.late && ' · Late'}
+      </span>
+    );
+  }
+
+  if (status.status === 'submitted') {
+    return (
+      <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+        Submitted{status.late && ' · Late'}
+      </span>
+    );
+  }
+
+  // status === 'draft'
+  return (
+    <span className="text-xs font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+      Draft saved
+    </span>
+  );
+}
+
+function QuizStatusBadge({ status }: { status: QuizStatusRow }) {
+  if (status.status === 'in_progress') {
+    return (
+      <span className="text-xs font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+        In progress
+      </span>
+    );
+  }
+
+  // submitted / graded — show score where available
+  const pieces: string[] = [];
+  if (status.percentage != null) {
+    pieces.push(`${Math.round(status.percentage)}%`);
+  } else if (status.score != null && status.max_score != null) {
+    pieces.push(`${status.score}/${status.max_score}`);
+  }
+  if (status.attempt_number > 1) {
+    pieces.push(`Attempt ${status.attempt_number}`);
+  }
+  const detail = pieces.length ? ` · ${pieces.join(' · ')}` : '';
+  const label = status.status === 'graded' ? 'Graded' : 'Submitted';
+  return (
+    <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+      {label}
+      {detail}
+    </span>
   );
 }

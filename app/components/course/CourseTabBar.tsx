@@ -21,7 +21,10 @@ export default function CourseTabBar({
     { key: 'overview', label: 'Overview' },
     { key: 'curriculum', label: 'Curriculum' },
     ...(isInstructor ? [{ key: 'sections', label: 'Sections' }] : []),
-    ...(isInstructor ? [{ key: 'assessments', label: 'Assessments' }] : []),
+    // Assessments is now visible to students too — they see published
+    // quizzes and assignments only, with no instructor controls. The
+    // CourseAssessments component handles role-based gating internally.
+    { key: 'assessments', label: 'Assessments' },
     { key: 'discussions', label: 'Discussions', count: discussionCount },
     { key: 'grades', label: 'Grades' },
     ...(isInstructor ? [{ key: 'files', label: 'Files' }] : []),

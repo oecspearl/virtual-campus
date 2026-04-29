@@ -86,14 +86,22 @@ export default function CourseAssessments({
     [assignments, isStaff, readOnly],
   );
 
+  // Defense in depth: the API already filters drafts for non-staff, but
+  // mirror the same rule here so a stale prop or future caller can't leak
+  // unpublished quizzes to students.
+  const visibleQuizzes = useMemo(
+    () => quizzes.filter((q) => q.published || (isStaff && !readOnly)),
+    [quizzes, isStaff, readOnly],
+  );
+
   const sortedQuizzes = useMemo(() => {
-    return [...quizzes].sort((a, b) => {
+    return [...visibleQuizzes].sort((a, b) => {
       const ao = a.curriculum_order ?? Number.POSITIVE_INFINITY;
       const bo = b.curriculum_order ?? Number.POSITIVE_INFINITY;
       if (ao !== bo) return ao - bo;
       return a.title.localeCompare(b.title);
     });
-  }, [quizzes]);
+  }, [visibleQuizzes]);
 
   const sortedAssignments = useMemo(() => {
     return [...visibleAssignments].sort((a, b) => {
@@ -116,9 +124,9 @@ export default function CourseAssessments({
     [sortedQuizzes, sortedAssignments],
   );
 
-  const totalCount = quizzes.length + assignments.length + discussions.length;
+  const totalCount = visibleQuizzes.length + visibleAssignments.length + discussions.length;
   const hasAssessments =
-    quizzes.length > 0 || visibleAssignments.length > 0 || discussions.length > 0;
+    visibleQuizzes.length > 0 || visibleAssignments.length > 0 || discussions.length > 0;
 
   const enterReorderMode = () => {
     setReorderDraft(reorderable);
@@ -241,66 +249,75 @@ export default function CourseAssessments({
   if (!hasAssessments && readOnly) return null;
 
   if (!hasAssessments && !readOnly) {
+    // Empty state: staff see "Create Quiz/Assignment" buttons; students
+    // see a friendly placeholder so the tab doesn't render as a blank card.
     return (
-      <RoleGuard roles={[...STAFF_ROLES]}>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-          <div
-            className={`px-4 sm:px-5 py-3 border-b border-gray-100 ${collapsible ? 'cursor-pointer select-none' : ''}`}
-            onClick={collapsible ? () => setIsOpen(!isOpen) : undefined}
-          >
-            <div className="flex items-center justify-between">
-              <h2
-                className="text-base sm:text-lg font-display text-gray-900 border-l-[3px] pl-3"
-                style={{ borderColor: 'var(--theme-accent, #F59E0B)' }}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div
+          className={`px-4 sm:px-5 py-3 border-b border-gray-100 ${collapsible ? 'cursor-pointer select-none' : ''}`}
+          onClick={collapsible ? () => setIsOpen(!isOpen) : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <h2
+              className="text-base sm:text-lg font-display text-gray-900 border-l-[3px] pl-3"
+              style={{ borderColor: 'var(--theme-accent, #F59E0B)' }}
+            >
+              Course Assessments
+            </h2>
+            {collapsible && (
+              <svg
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                Course Assessments
-              </h2>
-              {collapsible && (
-                <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            )}
+          </div>
+        </div>
+        {(!collapsible || isOpen) && (
+          <div className="p-3 sm:p-4">
+            <div className="text-center py-6">
+              <Icon
+                icon="material-symbols:assignment"
+                className="w-10 h-10 text-gray-300 mx-auto mb-2"
+              />
+              {isStaff ? (
+                <>
+                  <p className="text-sm text-gray-600 mb-3">No course assessments yet</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Link
+                      href={`/quizzes/create?course_id=${courseId}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <Icon icon="material-symbols:quiz" className="w-4 h-4" />
+                      Create Quiz
+                    </Link>
+                    <Link
+                      href={`/assignments/create?course_id=${courseId}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <Icon icon="material-symbols:edit-document" className="w-4 h-4" />
+                      Create Assignment
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Your instructor hasn&apos;t published any assessments for this course yet.
+                  Check back soon.
+                </p>
               )}
             </div>
           </div>
-          {(!collapsible || isOpen) && (
-            <div className="p-3 sm:p-4">
-              <div className="text-center py-4">
-                <Icon
-                  icon="material-symbols:assignment"
-                  className="w-10 h-10 text-gray-300 mx-auto mb-2"
-                />
-                <p className="text-sm text-gray-600 mb-3">No course assessments yet</p>
-                <div className="flex items-center justify-center gap-2">
-                  <Link
-                    href={`/quizzes/create?course_id=${courseId}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <Icon icon="material-symbols:quiz" className="w-4 h-4" />
-                    Create Quiz
-                  </Link>
-                  <Link
-                    href={`/assignments/create?course_id=${courseId}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <Icon icon="material-symbols:edit-document" className="w-4 h-4" />
-                    Create Assignment
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </RoleGuard>
+        )}
+      </div>
     );
   }
 

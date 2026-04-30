@@ -267,7 +267,91 @@ export default function CourseDetailPage() {
     }
   };
 
+  /**
+   * Build the canonical flat lesson order: walk sections in section.order,
+   * within each section walk lessons in lesson.order, then unsectioned at the
+   * end. Optionally override one section's lesson list (used by the reorder
+   * handler so we can splice in the new bucket order without writing to state
+   * first). Returns Map<lessonId, globalOrder>.
+   *
+   * The point of doing this on every reorder is that lessons.order ends up
+   * globally unique across the course — so the lesson player's prev/next
+   * navigation, which sorts all lessons by `order`, follows the same sequence
+   * the instructor sees on the curriculum page.
+   */
+  const computeGlobalLessonOrders = (
+    allLessons: any[],
+    allSections: Section[],
+    overrideBucket?: { sectionId: string | null; orderedLessonIds: string[] },
+  ): Map<string, number> => {
+    const sortedSections = [...allSections].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    const lessonsBySection = new Map<string | null, any[]>();
+    for (const lesson of allLessons) {
+      const key = lesson.section_id || null;
+      const arr = lessonsBySection.get(key) ?? [];
+      arr.push(lesson);
+      lessonsBySection.set(key, arr);
+    }
+    for (const arr of lessonsBySection.values()) {
+      arr.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }
+
+    if (overrideBucket) {
+      const lessonById = new Map(allLessons.map(l => [l.id, l]));
+      const reordered = overrideBucket.orderedLessonIds
+        .map(id => lessonById.get(id))
+        .filter((l): l is any => Boolean(l));
+      lessonsBySection.set(overrideBucket.sectionId, reordered);
+    }
+
+    const flat: any[] = [];
+    for (const s of sortedSections) {
+      flat.push(...(lessonsBySection.get(s.id) ?? []));
+    }
+    flat.push(...(lessonsBySection.get(null) ?? []));
+
+    const orders = new Map<string, number>();
+    flat.forEach((l, idx) => orders.set(l.id, idx));
+    return orders;
+  };
+
+  const persistLessonOrders = async (orders: Map<string, number>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const lessonOrders = Array.from(orders.entries()).map(([lessonId, order]) => ({ lessonId, order }));
+    await fetch('/api/lessons/reorder', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ courseId, lessonOrders }),
+    });
+  };
+
   const handleAssignSection = async (lessonId: string, sectionId: string | null) => {
+    // Move the lesson into the destination bucket and append it at the end —
+    // then recompute global lesson orders so the curriculum stays in sync.
+    const movedLessons = lessons.map(l => l.id === lessonId ? { ...l, section_id: sectionId } : l);
+    const destBucketIds = movedLessons
+      .filter(l => (l.section_id || null) === sectionId && l.id !== lessonId)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map(l => l.id);
+    destBucketIds.push(lessonId);
+
+    const newOrders = computeGlobalLessonOrders(movedLessons, sections, {
+      sectionId,
+      orderedLessonIds: destBucketIds,
+    });
+
+    setLessons(prev => prev.map(l => {
+      const order = newOrders.get(l.id);
+      return l.id === lessonId
+        ? { ...l, section_id: sectionId, order: order ?? l.order }
+        : order === undefined ? l : { ...l, order };
+    }));
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -279,9 +363,8 @@ export default function CourseDetailPage() {
         },
         body: JSON.stringify({ section_id: sectionId }),
       });
-      if (res.ok) {
-        setLessons(prev => prev.map(l => l.id === lessonId ? { ...l, section_id: sectionId } : l));
-      }
+      if (!res.ok) return;
+      await persistLessonOrders(newOrders);
     } catch (err) {
       console.error('Error assigning section:', err);
     }
@@ -300,62 +383,56 @@ export default function CourseDetailPage() {
   /**
    * Reorder lessons within a section/week (or the unsectioned bucket when
    * sectionId is null). The Topics/Weekly formats hand us the new id list
-   * after a drag finishes — we update local state immediately for a snappy
-   * UI, then push the new orders to /api/lessons/reorder. The order values
-   * we send are the lesson's index within the bucket; that matches how the
-   * formats already sort by `order`.
+   * after a drag finishes. We splice the new bucket order into the full
+   * curriculum sequence and assign each lesson its global flat index — that
+   * way `lessons.order` stays globally unique across the course, which is
+   * what the lesson player's prev/next navigation depends on.
    */
   const handleReorderLessonsInSection = async (
     sectionId: string | null,
     lessonIds: string[],
   ) => {
-    setLessons(prev => {
-      const indexById = new Map(lessonIds.map((id, idx) => [id, idx]));
-      return prev.map(l => {
-        const inBucket = (l.section_id || null) === sectionId;
-        if (!inBucket) return l;
-        const idx = indexById.get(l.id);
-        return idx === undefined ? l : { ...l, order: idx };
-      });
+    const newOrders = computeGlobalLessonOrders(lessons, sections, {
+      sectionId,
+      orderedLessonIds: lessonIds,
     });
 
+    setLessons(prev => prev.map(l => {
+      const order = newOrders.get(l.id);
+      return order === undefined ? l : { ...l, order };
+    }));
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await fetch('/api/lessons/reorder', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          courseId,
-          lessonOrders: lessonIds.map((id, order) => ({ lessonId: id, order })),
-        }),
-      });
+      await persistLessonOrders(newOrders);
     } catch (err) {
       console.error('Error reordering lessons:', err);
     }
   };
 
   /**
-   * Reorder the sections (topics or weeks) themselves. Same pattern: update
-   * local state immediately, then PUT the new orders to the existing
-   * /api/courses/[id]/sections bulk endpoint.
+   * Reorder the sections (topics or weeks) themselves. Reordering sections
+   * also moves entire lesson groups around in the flat curriculum sequence,
+   * so we have to recompute lesson global orders too — otherwise the lesson
+   * player's prev/next would still walk the old section order.
    */
   const handleReorderSections = async (sectionIds: string[]) => {
-    setSections(prev => {
-      const indexById = new Map(sectionIds.map((id, idx) => [id, idx]));
-      return prev.map(s => {
-        const idx = indexById.get(s.id);
-        return idx === undefined ? s : { ...s, order: idx };
-      });
+    const sectionOrderById = new Map(sectionIds.map((id, idx) => [id, idx] as const));
+    const updatedSections = sections.map(s => {
+      const order = sectionOrderById.get(s.id);
+      return order === undefined ? s : { ...s, order };
     });
+    setSections(updatedSections);
+
+    const newLessonOrders = computeGlobalLessonOrders(lessons, updatedSections);
+    setLessons(prev => prev.map(l => {
+      const order = newLessonOrders.get(l.id);
+      return order === undefined ? l : { ...l, order };
+    }));
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      await fetch(`/api/courses/${courseId}/sections`, {
+      const sectionsCall = fetch(`/api/courses/${courseId}/sections`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -365,6 +442,7 @@ export default function CourseDetailPage() {
           sections: sectionIds.map((id, order) => ({ id, order })),
         }),
       });
+      await Promise.all([sectionsCall, persistLessonOrders(newLessonOrders)]);
     } catch (err) {
       console.error('Error reordering sections:', err);
     }

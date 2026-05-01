@@ -66,14 +66,20 @@ export default function LessonViewerPage() {
 
   // Load all lesson data — fire all independent fetches in parallel
   React.useEffect(()=>{ (async ()=>{
-    // Fetch lesson, profile, course, AI tutor, SCORM, and course lessons all at once
-    const [lRes, profRes, courseRes, aiTutorRes, scormRes, courseLessonsRes] = await Promise.allSettled([
+    // Fetch lesson, profile, course, AI tutor, SCORM, course lessons, and
+    // course sections all at once. Sections are needed so the prev/next
+    // navigation and sidebar progress list follow the curriculum's
+    // section-aware sequence rather than a flat sort by `lessons.order`,
+    // which would jumble lessons across sections (older courses still have
+    // section-relative orders in the database).
+    const [lRes, profRes, courseRes, aiTutorRes, scormRes, courseLessonsRes, sectionsRes] = await Promise.allSettled([
       fetch(`/api/lessons/${lessonId}`),
       fetch('/api/auth/profile'),
       fetch(`/api/courses/${courseId}`),
       fetch('/api/ai/tutor/preferences'),
       fetch(`/api/scorm/package/${lessonId}`),
       fetch(`/api/lessons?course_id=${courseId}`),
+      fetch(`/api/courses/${courseId}/sections`),
     ]);
 
     // Process lesson
@@ -121,11 +127,34 @@ export default function LessonViewerPage() {
       setScormPackage(scormData.scormPackage);
     }
 
-    // Process course lessons list
+    // Process course lessons list — sort section-aware to match the
+    // curriculum tab's display order. Walk sections in section.order, lessons
+    // within each by lesson.order, then unsectioned at the end. We do this
+    // here (not just at the API) because existing courses may have stale
+    // section-relative `order` values from before the curriculum reorder
+    // wrote globally-unique orders, and a flat sort would jumble them.
     if (courseLessonsRes.status === 'fulfilled' && courseLessonsRes.value.ok) {
       const data = await courseLessonsRes.value.json();
-      const lessons = Array.isArray(data.lessons) ? data.lessons : [];
-      const sortedLessons = lessons.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      const lessons: any[] = Array.isArray(data.lessons) ? data.lessons : [];
+
+      let sectionsList: any[] = [];
+      if (sectionsRes.status === 'fulfilled' && sectionsRes.value.ok) {
+        const secData = await sectionsRes.value.json();
+        sectionsList = Array.isArray(secData.sections) ? secData.sections : [];
+      }
+
+      const sortedSections = [...sectionsList].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const byOrder = (a: any, b: any) => (a.order ?? 0) - (b.order ?? 0);
+      const sortedLessons: any[] = [];
+      for (const sec of sortedSections) {
+        sortedLessons.push(...lessons.filter(l => l.section_id === sec.id).sort(byOrder));
+      }
+      sortedLessons.push(...lessons.filter(l => !l.section_id).sort(byOrder));
+      // Anything whose section_id no longer matches a known section (orphaned)
+      // gets appended at the end in lesson-order rather than dropped.
+      const placedIds = new Set(sortedLessons.map(l => l.id));
+      sortedLessons.push(...lessons.filter(l => !placedIds.has(l.id)).sort(byOrder));
+
       setCourseLessons(sortedLessons);
     }
 

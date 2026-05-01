@@ -15,18 +15,30 @@ export type UploadResult = {
 // to bypass Vercel's 4.5MB body size limit.
 const DIRECT_UPLOAD_THRESHOLD = 4 * 1024 * 1024; // 4MB
 
-export default function FileUpload({ onUploaded, maxSizeMB = 50, className = "" }: { onUploaded: (res: UploadResult) => void; maxSizeMB?: number; className?: string }) {
+export default function FileUpload({
+  onUploaded,
+  maxSizeMB = 50,
+  videoMaxSizeMB = 100,
+  className = "",
+}: {
+  onUploaded: (res: UploadResult) => void;
+  maxSizeMB?: number;
+  /** Cap for video uploads. Defaults higher than maxSizeMB so instructors can upload better-quality videos without bumping the cap for other content types. */
+  videoMaxSizeMB?: number;
+  className?: string;
+}) {
   const [dragOver, setDragOver] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const maxBytes = maxSizeMB * 1024 * 1024;
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
-    if (file.size > maxBytes) {
-      alert(`File too large. Max ${maxSizeMB}MB`);
+    const isVideo = (file.type || "").startsWith("video/");
+    const capMB = isVideo ? videoMaxSizeMB : maxSizeMB;
+    if (file.size > capMB * 1024 * 1024) {
+      alert(`File too large. Max ${capMB}MB${isVideo ? "" : ` (videos up to ${videoMaxSizeMB}MB)`}`);
       return;
     }
     setUploading(true);
@@ -126,7 +138,7 @@ export default function FileUpload({ onUploaded, maxSizeMB = 50, className = "" 
 
   const label = uploading
     ? progress > 0 ? `Uploading… ${progress}%` : "Uploading…"
-    : `Choose or drop a file (max ${maxSizeMB}MB)`;
+    : `Choose or drop a file (max ${maxSizeMB}MB, videos up to ${videoMaxSizeMB}MB)`;
 
   return (
     <div

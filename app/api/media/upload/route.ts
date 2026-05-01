@@ -16,10 +16,15 @@ export const POST = withTenantAuth(async ({ user, request }) => {
   }
   console.log('[Media Upload] File received:', { name: file.name, size: file.size, type: file.type });
 
-  // File size limit (50MB)
-  const maxBytes = 50 * 1024 * 1024;
+  // File size limit: 100MB for video, 50MB for everything else. Videos run
+  // larger so instructors can upload better-quality lecture recordings; the
+  // direct-to-Supabase signed-URL path already allows 200MB, so this proxy
+  // limit only matters for the rare small-video direct POST.
+  const isVideo = (file.type || "").startsWith("video/");
+  const maxBytes = (isVideo ? 100 : 50) * 1024 * 1024;
   if (file.size > maxBytes) {
-    return NextResponse.json({ error: "File too large. Maximum size is 50MB." }, { status: 413 });
+    const limitLabel = isVideo ? "100MB" : "50MB";
+    return NextResponse.json({ error: `File too large. Maximum size is ${limitLabel}.` }, { status: 413 });
   }
 
   // MIME type validation — only allow known safe content types.

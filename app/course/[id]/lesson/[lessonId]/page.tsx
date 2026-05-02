@@ -249,6 +249,33 @@ export default function LessonViewerPage() {
     }
   };
 
+  // In path mode, replace the course's lesson list with the path's items
+  // (only accepted items, in path order). Everything below — sidebar,
+  // prev/next, progress — derives from `effectiveLessons` so it switches
+  // contexts cleanly. Lesson rows from path items carry the original
+  // course_id so prev/next URLs target the correct underlying course.
+  //
+  // IMPORTANT: this useMemo must live ABOVE the early returns below; React
+  // requires hooks to be called in the same order on every render.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const effectiveLessons: any[] = React.useMemo(() => {
+    if (inPathMode && pathDetail?.items) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sortedItems = [...(pathDetail.items as any[])]
+        .filter((it) => it.lesson_id && it.accepted !== false)
+        .sort((a, b) => a.position - b.position);
+      return sortedItems.map((it) => ({
+        id: it.lesson_id,
+        title: it.lesson_title_snapshot,
+        course_id: it.course_id,
+        published: true,
+        section_id: null,
+        order: it.position,
+      }));
+    }
+    return courseLessons;
+  }, [courseLessons, inPathMode, pathDetail]);
+
   if (!lesson) {
     return (
       <div className="min-h-screen bg-gray-50/50 flex items-center justify-center">
@@ -285,30 +312,6 @@ export default function LessonViewerPage() {
       </div>
     );
   }
-
-  // In path mode, replace the course's lesson list with the path's items
-  // (only accepted items, in path order). Everything below — sidebar,
-  // prev/next, progress — derives from `effectiveLessons` so it switches
-  // contexts cleanly. Lesson rows from path items carry the original
-  // course_id so prev/next URLs target the correct underlying course.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const effectiveLessons: any[] = React.useMemo(() => {
-    if (inPathMode && pathDetail?.items) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sortedItems = [...(pathDetail.items as any[])]
-        .filter((it) => it.lesson_id && it.accepted !== false)
-        .sort((a, b) => a.position - b.position);
-      return sortedItems.map((it) => ({
-        id: it.lesson_id,
-        title: it.lesson_title_snapshot,
-        course_id: it.course_id,
-        published: true,
-        section_id: null,
-        order: it.position,
-      }));
-    }
-    return courseLessons;
-  }, [courseLessons, inPathMode, pathDetail]);
 
   const idx = effectiveLessons.findIndex((l)=> l.id === lessonId);
   const prevId = idx>0 ? effectiveLessons[idx-1]?.id : null;

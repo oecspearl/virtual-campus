@@ -10,11 +10,12 @@ import type { CourseAssemblyRequest } from './types';
 // The format is YYYY-MM-DD-vN. The N suffix lets us bump multiple times in a
 // single day if needed.
 
-// v5 (Phase 8.3): top-level optional arrays now default to [] in the Zod
-// schema so an occasional missed field (e.g., inferredObjectives) no longer
-// 503s. Core invariants (courseTitle, courseDescription, generatedSequence)
-// remain required.
-export const PROMPT_VERSION = '2026-05-02-v5';
+// v6 (Phase 8.4): switched Anthropic structured output from assistant-message
+// prefill to tool_use with a forced tool. Sonnet 4.6 (and newer Claude
+// models) reject prefill — the conversation must end with a user message.
+// Tool input_schema is generated from the Zod schema via z.toJSONSchema(),
+// so Anthropic enforces the shape at decode time.
+export const PROMPT_VERSION = '2026-05-02-v6';
 
 export const SYSTEM_PROMPT = `You are an instructional design assistant. Your task is to assemble a coherent personalised course from a set of lessons selected by a learner, given their stated learning goal. Treat the output as a complete course-grade artefact, not just a sequence — the learner will study from it directly.
 

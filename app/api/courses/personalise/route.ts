@@ -18,10 +18,11 @@ import {
   fetchPersonalisedCoursesForLearner,
 } from '@/lib/personalised-courses/repository';
 
-// AI generation can take 30–45s end-to-end; default Vercel function timeout
-// (300s) is plenty, but the AI route convention in this repo sets maxDuration
-// explicitly. Keep it generous to allow the fallback ladder to complete.
-export const maxDuration = 90;
+// Phase 8 generates full course-grade narrative (title, description,
+// per-lesson outcomes + instructions) on top of the sequence, which roughly
+// triples output tokens vs Phase 4. Typical end-to-end is now 30–60s; large
+// (20–30 lesson) selections can hit 90s. Cap at 120s to leave headroom.
+export const maxDuration = 120;
 
 const personaliseRequestSchema = z.object({
   learnerGoal: z.string().trim().min(10).max(500),
@@ -204,6 +205,8 @@ export const POST = withTenantAuth(async ({ user, tq, tenantId, request }) => {
     id: persisted.id,
     status: 'draft',
     learnerGoal,
+    courseTitle: result.response.courseTitle,
+    courseDescription: result.response.courseDescription,
     generatedSequence: result.response.generatedSequence,
     recommendedAdditions: result.response.recommendedAdditions,
     flaggedGaps: result.response.flaggedGaps,

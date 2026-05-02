@@ -233,6 +233,8 @@ export async function persistDraft(
       learner_id: input.learnerId,
       learner_goal: input.learnerGoal,
       status: 'draft',
+      course_title: input.llmResponse.courseTitle,
+      course_description: input.llmResponse.courseDescription,
       generated_syllabus: input.llmResponse.generatedSyllabus,
       inferred_objectives: input.llmResponse.inferredObjectives,
       flagged_gaps: input.llmResponse.flaggedGaps,
@@ -263,6 +265,8 @@ export async function persistDraft(
     position: item.position,
     item_type: 'selected' as const,
     rationale: item.rationale,
+    path_outcomes: item.pathOutcomes,
+    path_instructions: item.pathInstructions,
     insert_after_position: null,
     accepted: true,
   }));
@@ -273,6 +277,8 @@ export async function persistDraft(
     position: 0, // overridden on accept (see /approve handler)
     item_type: 'recommended' as const,
     rationale: rec.reason,
+    path_outcomes: rec.pathOutcomes,
+    path_instructions: rec.pathInstructions,
     insert_after_position: rec.insertAfterPosition,
     accepted: null, // pending learner review
   }));
@@ -468,6 +474,10 @@ export interface PersonalisedCourseDetail {
   id: string;
   learner_id: string;
   learner_goal: string;
+  /** LLM-generated course title (Phase 8+). Null on legacy paths. */
+  course_title: string | null;
+  /** LLM-generated course description (Phase 8+). Null on legacy paths. */
+  course_description: string | null;
   status: 'draft' | 'active' | 'archived';
   generated_syllabus: string | null;
   inferred_objectives: string[];
@@ -487,6 +497,10 @@ export interface PersonalisedCourseDetail {
     position: number;
     item_type: 'selected' | 'recommended';
     rationale: string | null;
+    /** LLM-generated per-lesson learning outcomes for the path (Phase 8+). */
+    path_outcomes: string[];
+    /** LLM-generated per-lesson framing for the path (Phase 8+). */
+    path_instructions: string | null;
     insert_after_position: number | null;
     accepted: boolean | null;
   }>;
@@ -504,7 +518,7 @@ export async function fetchPersonalisedCourseDetail(
   const { data: course } = await tq
     .from('personalised_courses')
     .select(
-      'id, learner_id, learner_goal, status, generated_syllabus, inferred_objectives, flagged_gaps, flagged_conflicts, llm_provider, llm_model, created_at, approved_at',
+      'id, learner_id, learner_goal, course_title, course_description, status, generated_syllabus, inferred_objectives, flagged_gaps, flagged_conflicts, llm_provider, llm_model, created_at, approved_at',
     )
     .eq('id', id)
     .maybeSingle();
@@ -514,7 +528,7 @@ export async function fetchPersonalisedCourseDetail(
   const { data: items } = await tq
     .from('personalised_course_lessons')
     .select(
-      'id, lesson_id, lesson_title_snapshot, position, item_type, rationale, insert_after_position, accepted, lesson:lessons(course_id)',
+      'id, lesson_id, lesson_title_snapshot, position, item_type, rationale, path_outcomes, path_instructions, insert_after_position, accepted, lesson:lessons(course_id)',
     )
     .eq('personalised_course_id', id)
     .order('position', { ascending: true });

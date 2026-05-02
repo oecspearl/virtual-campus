@@ -145,8 +145,9 @@ export default function BuildPersonalisedCoursePage() {
         </div>
         <h1 className="text-lg font-medium text-gray-900">Assembling your personalised course…</h1>
         <p className="mt-2 text-sm text-gray-500">
-          This usually takes 10–30 seconds. We&apos;re sequencing your lessons,
-          identifying gaps, and writing your syllabus.
+          This can take up to a minute. We&apos;re writing your course title and
+          description, sequencing the lessons, drafting per-lesson outcomes and
+          instructions, identifying gaps, and writing the syllabus.
         </p>
       </div>
     );

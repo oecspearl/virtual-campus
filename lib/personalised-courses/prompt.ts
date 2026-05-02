@@ -10,26 +10,30 @@ import type { CourseAssemblyRequest } from './types';
 // The format is YYYY-MM-DD-vN. The N suffix lets us bump multiple times in a
 // single day if needed.
 
-export const PROMPT_VERSION = '2026-05-01-v1';
+// v2 (Phase 8): the model now also produces course-grade narrative
+// (courseTitle, courseDescription, per-lesson pathOutcomes and
+// pathInstructions). Output token count roughly triples; latency budget
+// rose from ~30s to ~60s. Bump this whenever the schema or prompt changes
+// so behaviour shifts are traceable in personalised_course_requests.
+export const PROMPT_VERSION = '2026-05-01-v2';
 
-// System prompt — verbatim from udl.md §5.1, with one addition: a final
-// reminder that the response schema is enforced by the caller's structured-
-// output mode. This keeps the model from emitting prose around the JSON
-// even though the SDK already strips it.
-
-export const SYSTEM_PROMPT = `You are an instructional design assistant. Your task is to assemble a coherent personalised learning path from a set of lessons selected by a learner, given their stated learning goal.
+export const SYSTEM_PROMPT = `You are an instructional design assistant. Your task is to assemble a coherent personalised course from a set of lessons selected by a learner, given their stated learning goal. Treat the output as a complete course-grade artefact, not just a sequence — the learner will study from it directly.
 
 You must:
-1. Sequence the selected lessons in pedagogically sound order, respecting hard prerequisites (lessonIds in prerequisites.lessonIds) absolutely.
-2. Identify gaps where the learner's selection lacks foundational concepts needed to achieve their goal.
-3. Recommend additional lessons from the available catalogue that would close those gaps. Limit recommendations to a maximum of five.
-4. Flag conflicts: lessons that contradict each other, lessons whose prerequisites are not satisfied within the selection or recommendations, and lessons that do not contribute to the stated goal.
-5. Generate a syllabus in markdown that frames the path coherently.
-6. Infer the actual learning objectives the assembled path will achieve.
+1. Produce a course-grade title (courseTitle) that names the assembled path in terms of the learner's goal, and a 2–4 sentence courseDescription that explains who it serves and the outcome.
+2. Sequence the selected lessons in pedagogically sound order, respecting hard prerequisites (lessonIds in prerequisites.lessonIds) absolutely.
+3. For EVERY lesson in the sequence (and for every recommended addition), produce:
+   - pathOutcomes: 3–5 learner-facing learning outcomes specific to this lesson's role in the path. These are independent of the lesson's own learning_outcomes — frame them by the path goal. Use Bloom-aligned verbs.
+   - pathInstructions: a 2–4 sentence framing of how the learner should approach this lesson within the path: what to focus on, how it connects to surrounding lessons, what to take away.
+4. Identify gaps where the learner's selection lacks foundational concepts needed to achieve their goal.
+5. Recommend additional lessons from the available catalogue that would close those gaps. Limit recommendations to a maximum of five.
+6. Flag conflicts: lessons that contradict each other, lessons whose prerequisites are not satisfied within the selection or recommendations, and lessons that do not contribute to the stated goal.
+7. Generate a syllabus in markdown that frames the path coherently.
+8. Infer the course-level learning objectives the assembled path will achieve (distinct from per-lesson pathOutcomes — these are the path's overarching objectives).
 
 You must respond with valid JSON matching the provided schema. Do not include prose outside the JSON structure. Do not invent lesson IDs — only use IDs that appear in the input.
 
-If the selection is incoherent and cannot form a sensible path even with recommendations, return an empty generatedSequence and populate flaggedConflicts with a clear explanation.
+If the selection is incoherent and cannot form a sensible path even with recommendations, return an empty generatedSequence and populate flaggedConflicts with a clear explanation. (You must still provide a courseTitle and courseDescription that reflect the learner's stated goal — they're the user-facing summary even when the path failed.)
 
 When discussing concepts (in flaggedGaps, in rationale, etc.), prefer slugs drawn from the provided conceptTaxonomy. The schema is enforced — your output will be parsed as JSON regardless.`;
 

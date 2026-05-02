@@ -80,15 +80,25 @@ export interface SequenceItem {
   lessonId: string;
   position: number;
   rationale: string;
+  /** 3–5 path-specific learning outcomes for this lesson. */
+  pathOutcomes: string[];
+  /** 2–4 sentence framing of how the learner should approach this lesson. */
+  pathInstructions: string;
 }
 
 export interface RecommendedAddition {
   lessonId: string;
   reason: string;
   insertAfterPosition: number;
+  pathOutcomes: string[];
+  pathInstructions: string;
 }
 
 export interface CourseAssemblyResponse {
+  /** Course-grade title for the path, framed by the learner goal. */
+  courseTitle: string;
+  /** 2–4 sentence description of the path. */
+  courseDescription: string;
   generatedSequence: SequenceItem[];
   recommendedAdditions: RecommendedAddition[];
   flaggedGaps: string[];

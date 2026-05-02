@@ -21,7 +21,11 @@ const sampleRequest: CourseAssemblyRequest = {
 };
 
 // A response that satisfies the Zod schema. All required fields populated.
+// courseTitle / courseDescription length minimums are enforced by the schema.
 const validResponse: CourseAssemblyResponse = {
+  courseTitle: 'A focused learning path',
+  courseDescription:
+    'A short description of the path that meets the schema minimum length.',
   generatedSequence: [],
   recommendedAdditions: [],
   flaggedGaps: [],

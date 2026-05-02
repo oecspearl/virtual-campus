@@ -18,6 +18,16 @@ export const sequenceItemSchema = z.object({
     .string()
     .min(1)
     .describe('Brief justification for placing this lesson at this position.'),
+  pathOutcomes: z
+    .array(z.string())
+    .describe(
+      '3–5 learner-facing outcomes the learner should achieve from THIS lesson, framed by the path goal. Bloom-aligned verbs preferred. Independent of the lesson\'s own (course-context-agnostic) learning_outcomes.',
+    ),
+  pathInstructions: z
+    .string()
+    .describe(
+      'A 2–4 sentence framing of how the learner should approach this lesson within the path: what to focus on, how it connects to surrounding lessons, what to take away.',
+    ),
 });
 
 export const recommendedAdditionSchema = z.object({
@@ -35,9 +45,31 @@ export const recommendedAdditionSchema = z.object({
     .describe(
       'Position in generatedSequence to insert after. Use -1 to insert at the very start.',
     ),
+  pathOutcomes: z
+    .array(z.string())
+    .describe(
+      'Same as sequence items: 3–5 outcomes for THIS lesson, framed by the path goal. Populated even on recommendations so they integrate seamlessly if the learner accepts.',
+    ),
+  pathInstructions: z
+    .string()
+    .describe('Same as sequence items: 2–4 sentence framing for this lesson.'),
 });
 
 export const courseAssemblySchema = z.object({
+  courseTitle: z
+    .string()
+    .min(3)
+    .max(200)
+    .describe(
+      'A short, descriptive title for the assembled path, framed by the learner\'s goal. Used as the course name. 3–200 chars.',
+    ),
+  courseDescription: z
+    .string()
+    .min(20)
+    .max(1000)
+    .describe(
+      'A 2–4 sentence description of the path: what the learner will do, who it serves, the outcome. 20–1000 chars.',
+    ),
   generatedSequence: z
     .array(sequenceItemSchema)
     .describe(
@@ -65,7 +97,7 @@ export const courseAssemblySchema = z.object({
   inferredObjectives: z
     .array(z.string())
     .describe(
-      'The actual learning objectives the assembled path will achieve. Bloom-aligned verbs preferred.',
+      'Course-level learning objectives the assembled path will achieve. Bloom-aligned verbs preferred. Distinct from per-lesson pathOutcomes.',
     ),
 });
 

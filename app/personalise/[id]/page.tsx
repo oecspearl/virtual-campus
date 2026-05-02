@@ -15,6 +15,8 @@ interface Item {
   position: number;
   item_type: 'selected' | 'recommended';
   rationale: string | null;
+  path_outcomes: string[];
+  path_instructions: string | null;
   insert_after_position: number | null;
   accepted: boolean | null;
 }
@@ -22,6 +24,8 @@ interface Item {
 interface CourseDetail {
   id: string;
   learner_goal: string;
+  course_title: string | null;
+  course_description: string | null;
   status: 'draft' | 'active' | 'archived';
   generated_syllabus: string | null;
   inferred_objectives: string[];
@@ -133,10 +137,18 @@ export default function PersonalisedCourseDetailPage() {
         <Link href="/personalise" className="text-sm text-indigo-600 hover:underline">
           ← Back to my paths
         </Link>
+        {course.status === 'draft' && (
+          <p className="mt-2 text-xs uppercase tracking-wide text-amber-700">Draft — review and approve below</p>
+        )}
         <h1 className="mt-2 text-2xl font-medium text-gray-900">
-          {course.status === 'draft' ? 'Review your path' : 'Your path'}
+          {course.course_title ?? course.learner_goal}
         </h1>
-        <p className="text-sm text-gray-500 mt-1">{course.learner_goal}</p>
+        {course.course_description && (
+          <p className="text-sm text-gray-700 mt-2 leading-relaxed">{course.course_description}</p>
+        )}
+        <p className="text-xs text-gray-500 mt-3">
+          <span className="font-medium">Your goal:</span> {course.learner_goal}
+        </p>
       </div>
 
       {/* Conflicts — surfaced first because they may block approval */}
@@ -160,7 +172,7 @@ export default function PersonalisedCourseDetailPage() {
             See the conflicts above.
           </div>
         ) : (
-          <ol className="space-y-2">
+          <ol className="space-y-3">
             {selected.map((item, idx) => {
               const studyHref =
                 item.lesson_id && item.course_id
@@ -172,31 +184,53 @@ export default function PersonalisedCourseDetailPage() {
                 </p>
               );
               return (
-                <li key={item.id} className="rounded-lg border bg-white p-3 hover:border-indigo-300 transition-colors">
+                <li key={item.id} className="rounded-lg border bg-white p-4 hover:border-indigo-300 transition-colors">
                   <div className="flex gap-3">
                     <span className="text-xs font-medium text-gray-400 mt-0.5">{idx + 1}.</span>
-                    <div className="flex-1 min-w-0">
-                      {studyHref ? (
-                        <Link href={studyHref} className="group block">
-                          {titleNode}
-                        </Link>
-                      ) : (
-                        titleNode
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          {studyHref ? (
+                            <Link href={studyHref} className="group block">
+                              {titleNode}
+                            </Link>
+                          ) : (
+                            titleNode
+                          )}
+                          {item.rationale && (
+                            <p className="text-xs text-gray-500 mt-1 italic">{item.rationale}</p>
+                          )}
+                        </div>
+                        {studyHref && course.status === 'active' && (
+                          <Link href={studyHref} className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 mt-0.5">
+                            Study →
+                          </Link>
+                        )}
+                      </div>
+
+                      {item.path_instructions && (
+                        <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-700 leading-relaxed">
+                          {item.path_instructions}
+                        </div>
                       )}
-                      {item.rationale && (
-                        <p className="text-xs text-gray-600 mt-1 italic">{item.rationale}</p>
+
+                      {item.path_outcomes.length > 0 && (
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-gray-500 font-medium mb-1">
+                            What you&apos;ll learn
+                          </p>
+                          <ul className="list-disc list-inside text-xs text-gray-700 space-y-0.5">
+                            {item.path_outcomes.map((o, i) => <li key={i}>{o}</li>)}
+                          </ul>
+                        </div>
                       )}
+
                       {item.lesson_id === null && (
-                        <p className="text-xs text-amber-700 mt-1">
+                        <p className="text-xs text-amber-700">
                           This lesson has been deleted since the path was generated.
                         </p>
                       )}
                     </div>
-                    {studyHref && course.status === 'active' && (
-                      <Link href={studyHref} className="self-start text-xs text-indigo-600 hover:text-indigo-800">
-                        Study →
-                      </Link>
-                    )}
                   </div>
                 </li>
               );
@@ -222,6 +256,16 @@ export default function PersonalisedCourseDetailPage() {
                   <p className="text-sm font-medium text-gray-900">{item.lesson_title_snapshot}</p>
                   {item.rationale && (
                     <p className="text-xs text-gray-600 mt-1">{item.rationale}</p>
+                  )}
+                  {item.path_instructions && (
+                    <div className="mt-2 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-700 leading-relaxed">
+                      {item.path_instructions}
+                    </div>
+                  )}
+                  {item.path_outcomes.length > 0 && (
+                    <ul className="mt-2 list-disc list-inside text-xs text-gray-700 space-y-0.5">
+                      {item.path_outcomes.map((o, i) => <li key={i}>{o}</li>)}
+                    </ul>
                   )}
                   <div className="mt-2 flex gap-2">
                     <button

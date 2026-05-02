@@ -197,7 +197,6 @@ export const POST = withTenantAuth(async ({ user, tq, tenantId, request }) => {
       latencyMs,
       promptTokens: result.promptTokens,
       completionTokens: result.completionTokens,
-      fallbackUsed: result.fallbackUsed,
     },
   );
 

@@ -223,7 +223,6 @@ export async function persistDraft(
     latencyMs: number;
     promptTokens?: number;
     completionTokens?: number;
-    fallbackUsed: boolean;
   },
 ): Promise<{ id: string }> {
   // 1. Parent row
@@ -300,7 +299,7 @@ export async function persistDraft(
     latency_ms: metrics.latencyMs,
     prompt_tokens: metrics.promptTokens ?? null,
     completion_tokens: metrics.completionTokens ?? null,
-    outcome: metrics.fallbackUsed ? 'fallback_success' : 'success',
+    outcome: 'success',
   });
 
   return { id: personalisedCourseId };

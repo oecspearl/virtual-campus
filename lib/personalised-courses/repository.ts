@@ -1,4 +1,5 @@
 import type { TenantQuery } from '@/lib/tenant-query';
+import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import type { LessonRow, LessonConceptRow } from './lesson-mapper';
 import type { CourseAssemblyResponse, LessonForLlm } from './types';
 import type { Provider } from './llm-service';
@@ -398,6 +399,46 @@ export async function fetchDraft(
   return (data as DraftRow | null) ?? null;
 }
 
+// ── Cross-cutting access check ─────────────────────────────────────────────
+
+/**
+ * True when `lessonId` appears in an APPROVED personalised course owned by
+ * `userId` AND the learner accepted that item. Used by requireCourseAccess()
+ * in lib/enrollment-check.ts to grant lesson-read access without enrolling
+ * the student in the parent course.
+ *
+ * Predicate: status='active' AND learner_id=userId AND lesson_id=lessonId
+ *            AND accepted=true.
+ *
+ *   * accepted=true covers selected items (always true at insert) and
+ *     accepted recommendations (flipped on approve).
+ *   * accepted=false covers rejected recommendations — no access.
+ *   * accepted=null only happens on draft rows; status filter excludes them.
+ *
+ * Uses the raw service client because this helper is called from outside
+ * any tenant context (the lesson API is tenant-scoped to the LESSON's
+ * tenant, but the personalised path lives in the LEARNER's tenant — the
+ * two are the same in single-tenant mode but defending here would require
+ * threading tenantId through requireCourseAccess, which isn't worth it
+ * for a single boolean check).
+ */
+export async function hasActivePathAccessToLesson(
+  userId: string,
+  lessonId: string,
+): Promise<boolean> {
+  if (!userId || !lessonId) return false;
+  const supabase = createServiceSupabaseClient();
+  const { data } = await supabase
+    .from('personalised_course_lessons')
+    .select('id, personalised_courses!inner(learner_id, status)')
+    .eq('lesson_id', lessonId)
+    .eq('accepted', true)
+    .eq('personalised_courses.learner_id', userId)
+    .eq('personalised_courses.status', 'active')
+    .limit(1);
+  return !!(data && data.length > 0);
+}
+
 // ── Reads for the UI ───────────────────────────────────────────────────────
 
 export interface PersonalisedCourseSummary {
@@ -439,6 +480,9 @@ export interface PersonalisedCourseDetail {
   items: Array<{
     id: string;
     lesson_id: string | null;
+    /** Parent course_id of the lesson, surfaced from a join. Null when the
+     *  lesson has been deleted (lesson_id is also null in that case). */
+    course_id: string | null;
     lesson_title_snapshot: string;
     position: number;
     item_type: 'selected' | 'recommended';
@@ -470,13 +514,26 @@ export async function fetchPersonalisedCourseDetail(
   const { data: items } = await tq
     .from('personalised_course_lessons')
     .select(
-      'id, lesson_id, lesson_title_snapshot, position, item_type, rationale, insert_after_position, accepted',
+      'id, lesson_id, lesson_title_snapshot, position, item_type, rationale, insert_after_position, accepted, lesson:lessons(course_id)',
     )
     .eq('personalised_course_id', id)
     .order('position', { ascending: true });
+
+  // Flatten the joined lesson.course_id onto each item. The relation can
+  // come back as an object (single FK) or null (lesson was deleted).
+  type RawItem = Omit<PersonalisedCourseDetail['items'][number], 'course_id'> & {
+    lesson?: { course_id: string | null } | null;
+  };
+  const flattened: PersonalisedCourseDetail['items'] = ((items ?? []) as RawItem[]).map(
+    ({ lesson, ...rest }) => ({
+      ...rest,
+      course_id: lesson?.course_id ?? null,
+    }),
+  );
+
   return {
     ...(course as Omit<PersonalisedCourseDetail, 'items'>),
-    items: (items ?? []) as PersonalisedCourseDetail['items'],
+    items: flattened,
   };
 }
 

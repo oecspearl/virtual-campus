@@ -10,6 +10,7 @@ import Button from '@/app/components/ui/Button';
 interface Item {
   id: string;
   lesson_id: string | null;
+  course_id: string | null;
   lesson_title_snapshot: string;
   position: number;
   item_type: 'selected' | 'recommended';
@@ -160,24 +161,46 @@ export default function PersonalisedCourseDetailPage() {
           </div>
         ) : (
           <ol className="space-y-2">
-            {selected.map((item, idx) => (
-              <li key={item.id} className="rounded-lg border bg-white p-3">
-                <div className="flex gap-3">
-                  <span className="text-xs font-medium text-gray-400 mt-0.5">{idx + 1}.</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{item.lesson_title_snapshot}</p>
-                    {item.rationale && (
-                      <p className="text-xs text-gray-600 mt-1 italic">{item.rationale}</p>
-                    )}
-                    {item.lesson_id === null && (
-                      <p className="text-xs text-amber-700 mt-1">
-                        This lesson has been deleted since the path was generated.
-                      </p>
+            {selected.map((item, idx) => {
+              const studyHref =
+                item.lesson_id && item.course_id
+                  ? `/course/${item.course_id}/lesson/${item.lesson_id}`
+                  : null;
+              const titleNode = (
+                <p className="text-sm font-medium text-gray-900 group-hover:text-indigo-700">
+                  {item.lesson_title_snapshot}
+                </p>
+              );
+              return (
+                <li key={item.id} className="rounded-lg border bg-white p-3 hover:border-indigo-300 transition-colors">
+                  <div className="flex gap-3">
+                    <span className="text-xs font-medium text-gray-400 mt-0.5">{idx + 1}.</span>
+                    <div className="flex-1 min-w-0">
+                      {studyHref ? (
+                        <Link href={studyHref} className="group block">
+                          {titleNode}
+                        </Link>
+                      ) : (
+                        titleNode
+                      )}
+                      {item.rationale && (
+                        <p className="text-xs text-gray-600 mt-1 italic">{item.rationale}</p>
+                      )}
+                      {item.lesson_id === null && (
+                        <p className="text-xs text-amber-700 mt-1">
+                          This lesson has been deleted since the path was generated.
+                        </p>
+                      )}
+                    </div>
+                    {studyHref && course.status === 'active' && (
+                      <Link href={studyHref} className="self-start text-xs text-indigo-600 hover:text-indigo-800">
+                        Study →
+                      </Link>
                     )}
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>

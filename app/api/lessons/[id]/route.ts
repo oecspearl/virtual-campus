@@ -101,11 +101,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'This lesson is not yet published' }, { status: 403 });
     }
 
-    // Enrollment / public-course gate: a student or unauthenticated visitor
-    // can only read this lesson if (a) the parent course is is_public, or
-    // (b) they are actively enrolled. Staff are exempted by the helper.
+    // Enrollment / public-course / personalised-path gate: a student can
+    // read this lesson if (a) the parent course is is_public, (b) they are
+    // actively enrolled, or (c) the lesson is part of one of their approved
+    // personalised paths. Staff are exempted by the helper.
     if (lesson?.course_id) {
-      const access = await requireCourseAccess(user, lesson.course_id);
+      const access = await requireCourseAccess(user, lesson.course_id, {
+        lessonId: lesson.id,
+      });
       if (!access.allowed) {
         return NextResponse.json({ error: access.reason }, { status: access.status });
       }

@@ -1,5 +1,6 @@
 import { createServiceSupabaseClient } from './supabase-server';
 import { hasRole } from './rbac';
+import { hasActivePathAccessToLesson } from './personalised-courses/repository';
 
 /**
  * Roles that bypass enrollment checks for course content access.
@@ -17,12 +18,13 @@ export type CourseAccessUser = { id: string; role: string } | null;
 
 export interface CourseAccessResult {
   allowed: boolean;
-  status: number;            // suggested HTTP status when !allowed
-  reason?: string;           // human-readable reason when !allowed
-  isPublicAccess?: boolean;  // true when access was granted via is_public
-  isStaff?: boolean;         // true when access was granted via staff role
-  isEnrolled?: boolean;      // true when access was granted via enrollment
-  crossTenant?: boolean;     // true when enrollment is via cross_tenant_enrollments
+  status: number;              // suggested HTTP status when !allowed
+  reason?: string;             // human-readable reason when !allowed
+  isPublicAccess?: boolean;    // true when access was granted via is_public
+  isStaff?: boolean;           // true when access was granted via staff role
+  isEnrolled?: boolean;        // true when access was granted via enrollment
+  crossTenant?: boolean;       // true when enrollment is via cross_tenant_enrollments
+  isPersonalisedPath?: boolean; // true when access was granted via an active personalised path
 }
 
 /**
@@ -41,7 +43,22 @@ export interface CourseAccessResult {
 export async function requireCourseAccess(
   user: CourseAccessUser,
   courseId: string,
-  opts: { requireWrite?: boolean } = {},
+  opts: {
+    requireWrite?: boolean;
+    /**
+     * When supplied AND the request is a read AND the caller is a student,
+     * we additionally check whether the lesson is part of one of the
+     * student's APPROVED personalised paths. If so, access is granted with
+     * `isPersonalisedPath: true` even though they aren't enrolled in the
+     * parent course. Writes still require enrollment regardless.
+     *
+     * Pass this from any read endpoint that serves a single lesson's
+     * content — primarily /api/lessons/[id]. Endpoints that mutate (post
+     * to discussions, submit assignments, save quiz attempts) should NOT
+     * pass it, so personalised-path students get read-only access.
+     */
+    lessonId?: string;
+  } = {},
 ): Promise<CourseAccessResult> {
   if (!courseId) {
     return { allowed: false, status: 400, reason: 'Course id is required' };
@@ -110,14 +127,25 @@ export async function requireCourseAccess(
     return { allowed: true, status: 200, isPublicAccess: true };
   }
 
-  // Reads on a non-public course: must be enrolled.
+  // Reads on a non-public course: must be enrolled OR have personalised-path access.
   if (!user) {
     return { allowed: false, status: 401, reason: 'Authentication required' };
   }
   const { enrolled, crossTenant } = await checkStudentEnrollment(user.id, courseId);
-  return enrolled
-    ? { allowed: true, status: 200, isEnrolled: true, crossTenant }
-    : { allowed: false, status: 403, reason: 'You are not enrolled in this course' };
+  if (enrolled) {
+    return { allowed: true, status: 200, isEnrolled: true, crossTenant };
+  }
+  // Personalised-path read access: only checked when the caller passed a
+  // lessonId, so we know which specific lesson to look up. Skipping this
+  // for callers that only have a courseId is intentional — a path grants
+  // access to specific lessons, not to whole courses.
+  if (opts.lessonId) {
+    const viaPath = await hasActivePathAccessToLesson(user.id, opts.lessonId);
+    if (viaPath) {
+      return { allowed: true, status: 200, isPersonalisedPath: true };
+    }
+  }
+  return { allowed: false, status: 403, reason: 'You are not enrolled in this course' };
 }
 
 /**

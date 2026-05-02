@@ -28,9 +28,16 @@ import { SYSTEM_PROMPT, buildUserMessage, PROMPT_VERSION } from './prompt';
 // ── Defaults ────────────────────────────────────────────────────────────────
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
-const DEFAULT_TIMEOUT_MS = 45_000;
+// Sonnet 4.6 with tool_use producing the full course-grade narrative
+// (multi-paragraph description + per-lesson outcomes/instructions + syllabus)
+// commonly runs 40–80s for 5–10 lesson selections. 100s is safely under the
+// route's maxDuration=120s and well above typical generation time.
+const DEFAULT_TIMEOUT_MS = 100_000;
 const DEFAULT_TEMPERATURE = 0.3;
-const DEFAULT_MAX_TOKENS = 8_192;
+// Conservative ceiling — typical output is 5–10k tokens; 16k leaves headroom
+// for larger (20–30 lesson) selections without exceeding Sonnet 4.6's 64k
+// output cap. Override via LLM_MAX_TOKENS env var if needed.
+const DEFAULT_MAX_TOKENS = 16_384;
 
 // Tool name Claude will be forced to call. The model sees this name + the
 // description below + the input_schema; that's the entire structured-output

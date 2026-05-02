@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import LessonViewer from '@/app/components/lesson/LessonViewer';
 import VideoPlayer from '@/app/components/media/VideoPlayer';
 import VideoNotesPanel from '@/app/components/media/VideoNotesPanel';
@@ -25,6 +25,31 @@ import { sanitizeHtml } from '@/lib/sanitize';
 export default function LessonViewerPage() {
   const { id: courseId, lessonId } = useParams<{ id: string; lessonId: string }>();
   const router = useRouter();
+
+  // Path-context mode (Phase 9b): when ?path=<personalisedCourseId> is present,
+  // we replace the course-context chrome (breadcrumb, lesson sidebar, prev/next,
+  // course-complete prompt) with path-aware equivalents while leaving all
+  // content rendering (SCORM, RichText, Video, LessonViewer dispatch) entirely
+  // unchanged. The lesson rows themselves still belong to their original
+  // course; the path is purely a presentation layer over them.
+  const searchParams = useSearchParams();
+  const pathId = searchParams?.get('path') ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [pathDetail, setPathDetail] = React.useState<any>(null);
+  const inPathMode = !!pathId && !!pathDetail;
+  const pathTitle: string | null = inPathMode
+    ? (pathDetail.course_title ?? pathDetail.learner_goal ?? 'Personalised path')
+    : null;
+  // Build a lesson URL that preserves path mode when in path mode.
+  const lessonHref = React.useCallback(
+    (id: string, courseIdOverride?: string) => {
+      const cid = courseIdOverride ?? courseId;
+      return inPathMode
+        ? `/course/${cid}/lesson/${id}?path=${pathId}`
+        : `/course/${cid}/lesson/${id}`;
+    },
+    [courseId, inPathMode, pathId],
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [lesson, setLesson] = React.useState<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,6 +88,29 @@ export default function LessonViewerPage() {
       return next;
     });
   };
+
+  // Path-context fetch: when ?path is present, pull the path's items so we
+  // can replace the lesson sidebar and prev/next with path-ordered ones.
+  React.useEffect(() => {
+    if (!pathId) { setPathDetail(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/courses/personalise/${pathId}`);
+        if (cancelled) return;
+        if (res.ok) {
+          setPathDetail(await res.json());
+        } else {
+          // Path not found / not owned / feature disabled — silently fall back
+          // to course-context chrome rather than blocking the page.
+          setPathDetail(null);
+        }
+      } catch {
+        setPathDetail(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pathId]);
 
   // Load all lesson data — fire all independent fetches in parallel
   React.useEffect(()=>{ (async ()=>{
@@ -238,13 +286,41 @@ export default function LessonViewerPage() {
     );
   }
 
-  const idx = courseLessons.findIndex((l)=> l.id === lessonId);
-  const prevId = idx>0 ? courseLessons[idx-1]?.id : null;
-  const nextId = idx>=0 && idx < courseLessons.length-1 ? courseLessons[idx+1]?.id : null;
-  const nextLesson = nextId ? courseLessons[idx+1] : null;
-  const completedCount = courseLessons.filter((l) => lessonProgressMap[l.id]).length;
-  const progress = courseLessons.length > 0 ? Math.round((completedCount / courseLessons.length) * 100) : 0;
-  const isCourseComplete = completedCount === courseLessons.length && courseLessons.length > 0;
+  // In path mode, replace the course's lesson list with the path's items
+  // (only accepted items, in path order). Everything below — sidebar,
+  // prev/next, progress — derives from `effectiveLessons` so it switches
+  // contexts cleanly. Lesson rows from path items carry the original
+  // course_id so prev/next URLs target the correct underlying course.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const effectiveLessons: any[] = React.useMemo(() => {
+    if (inPathMode && pathDetail?.items) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sortedItems = [...(pathDetail.items as any[])]
+        .filter((it) => it.lesson_id && it.accepted !== false)
+        .sort((a, b) => a.position - b.position);
+      return sortedItems.map((it) => ({
+        id: it.lesson_id,
+        title: it.lesson_title_snapshot,
+        course_id: it.course_id,
+        published: true,
+        section_id: null,
+        order: it.position,
+      }));
+    }
+    return courseLessons;
+  }, [courseLessons, inPathMode, pathDetail]);
+
+  const idx = effectiveLessons.findIndex((l)=> l.id === lessonId);
+  const prevId = idx>0 ? effectiveLessons[idx-1]?.id : null;
+  const nextId = idx>=0 && idx < effectiveLessons.length-1 ? effectiveLessons[idx+1]?.id : null;
+  const nextLesson = nextId ? effectiveLessons[idx+1] : null;
+  // Carry the per-lesson course_id when in path mode so prev/next links
+  // point at the correct underlying course (which may differ from courseId).
+  const prevCourseId: string | undefined = idx>0 ? effectiveLessons[idx-1]?.course_id : undefined;
+  const nextCourseId: string | undefined = idx>=0 && idx < effectiveLessons.length-1 ? effectiveLessons[idx+1]?.course_id : undefined;
+  const completedCount = effectiveLessons.filter((l) => lessonProgressMap[l.id]).length;
+  const progress = effectiveLessons.length > 0 ? Math.round((completedCount / effectiveLessons.length) * 100) : 0;
+  const isCourseComplete = completedCount === effectiveLessons.length && effectiveLessons.length > 0;
 
   // Next lesson prompt component — rendered in all layout branches
   const NextLessonPrompt = showNextLessonPrompt && isCompleted ? (
@@ -258,15 +334,15 @@ export default function LessonViewerPage() {
                 <Icon icon="mdi:trophy" className="w-7 h-7 text-green-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">Course Complete!</p>
-                <p className="text-xs text-gray-500">You&apos;ve finished all {courseLessons.length} lessons</p>
+                <p className="text-sm font-semibold text-gray-900">{inPathMode ? 'Path Complete!' : 'Course Complete!'}</p>
+                <p className="text-xs text-gray-500">You&apos;ve finished all {effectiveLessons.length} lessons</p>
               </div>
               <Link
-                href={`/course/${courseId}`}
+                href={inPathMode ? `/personalise/${pathId}` : `/course/${courseId}`}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex-shrink-0"
                 style={{ backgroundColor: 'var(--theme-primary)' }}
               >
-                View Course
+                {inPathMode ? 'View Path' : 'View Course'}
               </Link>
               <button
                 onClick={() => setShowNextLessonPrompt(false)}
@@ -287,10 +363,10 @@ export default function LessonViewerPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-green-600 font-medium">Lesson Complete</p>
                 <p className="text-sm font-semibold text-gray-900 truncate">Up next: {nextLesson.title}</p>
-                <p className="text-xs text-gray-400">{completedCount}/{courseLessons.length} lessons done</p>
+                <p className="text-xs text-gray-400">{completedCount}/{effectiveLessons.length} lessons done</p>
               </div>
               <Link
-                href={`/course/${courseId}/lesson/${nextId}`}
+                href={lessonHref(nextId, nextCourseId)}
                 className="px-5 py-2.5 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90 flex items-center gap-2 flex-shrink-0"
                 style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary))' }}
               >
@@ -376,10 +452,10 @@ export default function LessonViewerPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             </button>
             {/* Prev/Next */}
-            <button onClick={() => prevId && router.push(`/course/${courseId}/lesson/${prevId}`)} disabled={!prevId} className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors">
+            <button onClick={() => prevId && router.push(lessonHref(prevId, prevCourseId))} disabled={!prevId} className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <button onClick={() => nextId && router.push(`/course/${courseId}/lesson/${nextId}`)} disabled={!nextId} className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors">
+            <button onClick={() => nextId && router.push(lessonHref(nextId, nextCourseId))} disabled={!nextId} className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
             {isCompleted ? (
@@ -666,7 +742,7 @@ export default function LessonViewerPage() {
           </Link>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => prevId && router.push(`/course/${courseId}/lesson/${prevId}`)}
+              onClick={() => prevId && router.push(lessonHref(prevId, prevCourseId))}
               disabled={!prevId}
               className="p-1.5 text-gray-400 hover:text-gray-700 disabled:text-gray-200 disabled:cursor-not-allowed transition-colors"
             >
@@ -675,7 +751,7 @@ export default function LessonViewerPage() {
               </svg>
             </button>
             <button
-              onClick={() => nextId && router.push(`/course/${courseId}/lesson/${nextId}`)}
+              onClick={() => nextId && router.push(lessonHref(nextId, nextCourseId))}
               disabled={!nextId}
               className="p-1.5 text-gray-400 hover:text-gray-700 disabled:text-gray-200 disabled:cursor-not-allowed transition-colors"
             >
@@ -740,7 +816,7 @@ export default function LessonViewerPage() {
           isCompleting={isCompleting}
           isInstructor={!!isInstructorRole}
           onMarkComplete={markComplete}
-          onNavigate={(id) => router.push(`/course/${courseId}/lesson/${id}`)}
+          onNavigate={(id) => router.push(lessonHref(id, effectiveLessons.find(l => l.id === id)?.course_id))}
           onContentUpdate={() => {
             fetch(`/api/lessons/${lessonId}`, { cache: 'no-store' })
               .then(res => res.json())
@@ -795,14 +871,22 @@ export default function LessonViewerPage() {
       </div>
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumb */}
+        {/* Breadcrumb — path-aware in path mode */}
         <Breadcrumb
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'Courses', href: '/courses' },
-            { label: course?.title || 'Course', href: `/course/${courseId}` },
-            { label: lesson?.title || 'Lesson' },
-          ]}
+          items={
+            inPathMode
+              ? [
+                  { label: 'My Paths', href: '/personalise' },
+                  { label: pathTitle ?? 'Personalised path', href: `/personalise/${pathId}` },
+                  { label: lesson?.title || 'Lesson' },
+                ]
+              : [
+                  { label: 'Home', href: '/' },
+                  { label: 'Courses', href: '/courses' },
+                  { label: course?.title || 'Course', href: `/course/${courseId}` },
+                  { label: lesson?.title || 'Lesson' },
+                ]
+          }
           className="mb-6"
         />
 
@@ -1085,7 +1169,7 @@ export default function LessonViewerPage() {
                 <div className="flex items-center justify-between gap-3">
                   {/* Previous Lesson */}
                   <button
-                    onClick={() => prevId && router.push(`/course/${courseId}/lesson/${prevId}`)}
+                    onClick={() => prevId && router.push(lessonHref(prevId, prevCourseId))}
                     disabled={!prevId}
                     className="flex items-center text-sm text-slate-500 hover:text-slate-800 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
                   >
@@ -1130,7 +1214,7 @@ export default function LessonViewerPage() {
 
                   {/* Next Lesson */}
                   <button
-                    onClick={() => nextId && router.push(`/course/${courseId}/lesson/${nextId}`)}
+                    onClick={() => nextId && router.push(lessonHref(nextId, nextCourseId))}
                     disabled={!nextId}
                     className="flex items-center text-sm text-slate-500 hover:text-slate-800 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors"
                   >
@@ -1169,7 +1253,7 @@ export default function LessonViewerPage() {
                             ? 'bg-slate-50 border-l-2 border-slate-700'
                             : 'hover:bg-gray-50 border-l-2 border-transparent'
                         }`}
-                        onClick={() => router.push(`/course/${courseId}/lesson/${l.id}`)}
+                        onClick={() => router.push(lessonHref(l.id, l.course_id))}
                       >
                         <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-3 ${
                           isCurrent

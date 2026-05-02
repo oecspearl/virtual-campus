@@ -195,11 +195,14 @@ function buildSequence(
 }
 
 function studyHrefFor(item: Item, pathId: string): string | null {
-  // Routes to the path-context lesson viewer (Phase 9) so the learner stays
-  // inside their own course's chrome rather than landing on the source
-  // course's lesson page. The viewer at this URL still renders the same
-  // lesson content via /api/lessons/[id], gated by the Phase 7 access bypass.
-  return item.lesson_id ? `/personalise/${pathId}/lesson/${item.lesson_id}` : null;
+  // Routes to the existing course-context lesson viewer (single source of
+  // truth for SCORM / RichText / Video / mixed-content rendering) but in
+  // path mode (?path=<pathId>). The lesson viewer reads the param and
+  // swaps in path-aware breadcrumb, sidebar, prev/next while keeping all
+  // content rendering identical to the rest of the app.
+  return item.lesson_id && item.course_id
+    ? `/course/${item.course_id}/lesson/${item.lesson_id}?path=${pathId}`
+    : null;
 }
 
 // ----------------------------------------------------------------------------

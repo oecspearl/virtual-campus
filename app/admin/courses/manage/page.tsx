@@ -229,7 +229,7 @@ export default function ManageCoursesPage() {
 
   function handleTableAction(action: any) {
     switch (action.type) {
-      case 'edit': router.push(`/admin/courses/manage/${action.course.id}/edit`); break;
+      case 'edit': router.push(`/courses/${action.course.id}/edit`); break;
       case 'togglePublish': handleTogglePublish(action.courseId, action.published); break;
       case 'toggleFeatured': handleToggleFeatured(action.courseId, action.featured); break;
       case 'clone': handleCloneCourse(action.courseId, action.title); break;

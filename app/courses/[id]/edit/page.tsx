@@ -20,7 +20,13 @@ export default function EditCoursePage() {
   const [description, setDescription] = React.useState('');
   const [syllabus, setSyllabus] = React.useState('');
   const [thumbnail, setThumbnail] = React.useState('');
+  const [subjectArea, setSubjectArea] = React.useState('');
+  const [gradeLevel, setGradeLevel] = React.useState('');
+  const [difficulty, setDifficulty] = React.useState('beginner');
+  const [modality, setModality] = React.useState('self_paced');
+  const [estimatedDuration, setEstimatedDuration] = React.useState('');
   const [published, setPublished] = React.useState(false);
+  const [featured, setFeatured] = React.useState(false);
   const [isPublic, setIsPublic] = React.useState(false);
   const [allowLessonPersonalisation, setAllowLessonPersonalisation] = React.useState(false);
   const [courseFormat, setCourseFormat] = React.useState<CourseFormat>('lessons');
@@ -40,7 +46,6 @@ export default function EditCoursePage() {
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
   const [primaryCategoryId, setPrimaryCategoryId] = React.useState<string | null>(null);
 
-  // Load all categories
   const loadCategories = React.useCallback(async () => {
     try {
       const res = await fetch('/api/categories?flat=true&includeInactive=false');
@@ -53,7 +58,6 @@ export default function EditCoursePage() {
     }
   }, []);
 
-  // Load course categories
   const loadCourseCategories = React.useCallback(async () => {
     try {
       const res = await fetch(`/api/courses/${courseId}/categories`);
@@ -73,38 +77,41 @@ export default function EditCoursePage() {
 
   const load = React.useCallback(async () => {
     try {
-      // Get the current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session) {
         console.error('No session found for loading course:', sessionError);
         alert('You must be logged in to load the course.');
         return;
       }
 
-      const cRes = await fetch(`/api/courses/${courseId}`, { 
+      const cRes = await fetch(`/api/courses/${courseId}`, {
         cache: 'no-store',
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
-      
+
       if (!cRes.ok) {
-        console.error('Failed to load course:', cRes.status, cRes.statusText);
         const errorData = await cRes.json().catch(() => ({}));
-        console.error('Error data:', errorData);
+        console.error('Failed to load course:', cRes.status, errorData);
         alert(`Failed to load course: ${errorData.error || `HTTP ${cRes.status}: ${cRes.statusText}`}`);
         return;
       }
-      
+
       const cData = await cRes.json();
-      console.log('Course loaded successfully:', cData);
       setCourse(cData);
-      setTitle(cData.title||'');
-      setDescription(cData.description||'');
-      setSyllabus(cData.syllabus||'');
-      setThumbnail(cData.thumbnail||'');
+      setTitle(cData.title || '');
+      setDescription(cData.description || '');
+      setSyllabus(cData.syllabus || '');
+      setThumbnail(cData.thumbnail || '');
+      setSubjectArea(cData.subject_area || '');
+      setGradeLevel(cData.grade_level || '');
+      setDifficulty(cData.difficulty || 'beginner');
+      setModality(cData.modality || 'self_paced');
+      setEstimatedDuration(cData.estimated_duration || '');
       setPublished(Boolean(cData.published));
+      setFeatured(Boolean(cData.featured));
       setIsPublic(Boolean(cData.is_public));
       setAllowLessonPersonalisation(Boolean(cData.allow_lesson_personalisation));
       setCourseFormat(cData.course_format || 'lessons');
@@ -123,7 +130,6 @@ export default function EditCoursePage() {
   const toggleCategory = (categoryId: string) => {
     setSelectedCategories(prev => {
       if (prev.includes(categoryId)) {
-        // Removing category - also clear primary if it was this one
         if (primaryCategoryId === categoryId) {
           setPrimaryCategoryId(null);
         }
@@ -136,12 +142,9 @@ export default function EditCoursePage() {
 
   const save = async () => {
     setSaving(true);
-    console.log('Saving course with ID:', courseId);
-    console.log('Course object:', course);
     try {
-      // Get the current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session) {
         console.error('No session found:', sessionError);
         alert('You must be logged in to save the course.');
@@ -149,49 +152,42 @@ export default function EditCoursePage() {
         return;
       }
 
-      const response = await fetch(`/api/courses/${courseId}`, { 
-        method: 'PUT', 
-        headers: { 
+      const response = await fetch(`/api/courses/${courseId}`, {
+        method: 'PUT',
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
-        }, 
+        },
         body: JSON.stringify({
           title,
           description,
           syllabus,
+          thumbnail,
+          subject_area: subjectArea,
+          grade_level: gradeLevel,
+          difficulty,
+          modality,
+          estimated_duration: estimatedDuration,
+          course_format: courseFormat,
           published,
+          featured,
           is_public: isPublic,
           allow_lesson_personalisation: allowLessonPersonalisation,
-          thumbnail,
-          course_format: courseFormat,
-          grade_level: course.grade_level,
-          subject_area: course.subject_area,
-          difficulty: course.difficulty
         })
       });
-      
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-      console.log('Response statusText:', response.statusText);
-      
+
       if (!response.ok) {
         let errorData;
         try {
           errorData = await response.json();
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
+        } catch {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
         }
         console.error('Save failed:', errorData);
-        console.error('Response status:', response.status);
-        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
         alert(`Failed to save course: ${errorData.error || `HTTP ${response.status}: ${response.statusText}`}`);
         return;
       }
-      
-      console.log('Save successful!');
 
-      // Save category assignments
       if (selectedCategories.length > 0 || primaryCategoryId) {
         const catRes = await fetch(`/api/courses/${courseId}/categories`, {
           method: 'PUT',
@@ -210,7 +206,6 @@ export default function EditCoursePage() {
         }
       }
 
-      // Show success message
       alert('Course saved successfully!');
 
       await load();
@@ -218,11 +213,10 @@ export default function EditCoursePage() {
     } catch (error) {
       console.error('Save error:', error);
       alert('Failed to save course. Please try again.');
-    } finally { 
-      setSaving(false); 
+    } finally {
+      setSaving(false);
     }
   };
-
 
   if (!course) return null;
 
@@ -246,19 +240,19 @@ export default function EditCoursePage() {
               <label className="text-xs text-gray-600"><span>Title</span></label>
               <input value={title} onChange={(e)=>setTitle(e.target.value)} className="mt-1 w-full rounded-md border bg-white p-2 text-sm text-gray-700" />
             </div>
-            
+
             <div>
               <label className="text-xs text-gray-600"><span>Description</span></label>
               <textarea value={description} onChange={(e)=>setDescription(e.target.value)} className="mt-1 w-full rounded-md border bg-white p-2 text-sm text-gray-700" rows={4} />
             </div>
-            
+
             <div>
               <label className="text-xs text-gray-600"><span>Course Thumbnail</span></label>
               {thumbnail && (
                 <div className="mt-2 mb-4">
-                  <img 
-                    src={thumbnail} 
-                    alt="Course thumbnail" 
+                  <img
+                    src={thumbnail}
+                    alt="Course thumbnail"
                     className="h-48 w-full rounded-lg object-cover border"
                   />
                 </div>
@@ -270,8 +264,61 @@ export default function EditCoursePage() {
                 </p>
               </div>
             </div>
-            
-            {/* Categories */}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-600"><span>Subject Area</span></label>
+                <input
+                  value={subjectArea}
+                  onChange={(e) => setSubjectArea(e.target.value)}
+                  placeholder="e.g., Mathematics, Science"
+                  className="mt-1 w-full rounded-md border bg-white p-2 text-sm text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600"><span>Grade Level</span></label>
+                <input
+                  value={gradeLevel}
+                  onChange={(e) => setGradeLevel(e.target.value)}
+                  placeholder="e.g., Grade 9-12, University"
+                  className="mt-1 w-full rounded-md border bg-white p-2 text-sm text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600"><span>Difficulty</span></label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="mt-1 w-full rounded-md border bg-white p-2 text-sm text-gray-700"
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-600"><span>Modality</span></label>
+                <select
+                  value={modality}
+                  onChange={(e) => setModality(e.target.value)}
+                  className="mt-1 w-full rounded-md border bg-white p-2 text-sm text-gray-700"
+                >
+                  <option value="self_paced">Self-paced</option>
+                  <option value="blended">Blended</option>
+                  <option value="instructor_led">Instructor-led</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-600"><span>Estimated Duration</span></label>
+                <input
+                  value={estimatedDuration}
+                  onChange={(e) => setEstimatedDuration(e.target.value)}
+                  placeholder="e.g., 4 weeks, 20 hours"
+                  className="mt-1 w-full rounded-md border bg-white p-2 text-sm text-gray-700"
+                />
+              </div>
+            </div>
+
             {categories.length > 0 && (
               <div>
                 <label className="text-xs text-gray-600"><span>Categories</span></label>
@@ -321,10 +368,17 @@ export default function EditCoursePage() {
               <label className="text-xs text-gray-600"><span>Syllabus</span></label>
               <div className="mt-1"><TextEditor value={syllabus} onChange={setSyllabus} /></div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <input id="pub" type="checkbox" checked={published} onChange={(e)=>setPublished(e.target.checked)} />
               <label htmlFor="pub" className="text-xs text-gray-700"><span>Published</span></label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input id="featured" type="checkbox" checked={featured} onChange={(e)=>setFeatured(e.target.checked)} />
+              <label htmlFor="featured" className="text-xs text-gray-700">
+                <span>Featured (Homepage)</span>
+              </label>
             </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
@@ -364,10 +418,9 @@ export default function EditCoursePage() {
               </p>
             </div>
 
-
             <div className="flex gap-4">
               <Button onClick={save} disabled={saving}>
-                <span>{saving? 'Saving…':'Save Course'}</span>
+                <span>{saving ? 'Saving…' : 'Save Course'}</span>
               </Button>
               <Button variant="outline" onClick={() => window.history.back()}>
                 <span>Cancel</span>

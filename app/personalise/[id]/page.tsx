@@ -13,14 +13,97 @@ import Button from '@/app/components/ui/Button';
 // insert-before/after columns); without GFM those render as raw pipes.
 const markdownPlugins = [remarkGfm];
 
+// The LLM occasionally collapses an entire markdown table onto a single
+// line — header row, `|---|` separator, and all data rows concatenated
+// with no newlines. GFM cannot parse that as a table, so it renders as
+// raw pipe text. We detect single-line tables by spotting the separator
+// pattern alongside other content on the same line, then split rows by
+// counting pipes (each row has cellCount + 1 pipes).
+function normalizeSyllabusMarkdown(md: string): string {
+  return md
+    .split('\n')
+    .flatMap((line) => splitInlineTable(line))
+    .join('\n');
+}
+
+function splitInlineTable(line: string): string[] {
+  const sepMatch = line.match(/\|(?:\s*:?-+:?\s*\|)+/);
+  if (!sepMatch) return [line];
+  const sep = sepMatch[0];
+  const sepStart = line.indexOf(sep);
+  const sepEnd = sepStart + sep.length;
+  const before = line.slice(0, sepStart).trim();
+  const after = line.slice(sepEnd).trim();
+  // If the separator stands alone on its line, no fix needed.
+  if (!before && !after) return [line];
+
+  const cellCount = (sep.match(/\|/g)?.length ?? 1) - 1;
+  const pipesPerRow = cellCount + 1;
+
+  const dataRows: string[] = [];
+  let pipeCount = 0;
+  let start = 0;
+  for (let i = 0; i < after.length; i++) {
+    if (after[i] === '|') {
+      pipeCount++;
+      if (pipeCount === pipesPerRow) {
+        const row = after.slice(start, i + 1).trim();
+        if (row) dataRows.push(row);
+        start = i + 1;
+        pipeCount = 0;
+      }
+    }
+  }
+  const trailing = after.slice(start).trim();
+  if (trailing) dataRows.push(trailing);
+
+  return [before, sep, ...dataRows].filter(Boolean);
+}
+
 const markdownComponents = {
   table: ({ children }: { children?: React.ReactNode }) => (
-    <div className="overflow-x-auto">
-      <table>{children}</table>
+    <div className="not-prose overflow-x-auto my-4 rounded-md border border-gray-200">
+      <table className="w-full text-sm border-collapse">{children}</table>
     </div>
+  ),
+  thead: ({ children }: { children?: React.ReactNode }) => (
+    <thead className="bg-gray-50 border-b border-gray-200">{children}</thead>
+  ),
+  tbody: ({ children }: { children?: React.ReactNode }) => (
+    <tbody>{children}</tbody>
+  ),
+  tr: ({ children }: { children?: React.ReactNode }) => (
+    <tr className="border-b border-gray-100 last:border-b-0 even:bg-gray-50/40">
+      {children}
+    </tr>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 border-r border-gray-200 last:border-r-0 align-top">
+      {children}
+    </th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="px-3 py-2 text-sm text-gray-700 border-r border-gray-100 last:border-r-0 align-top leading-relaxed">
+      {children}
+    </td>
   ),
   hr: () => <hr className="my-5 border-gray-200" />,
 };
+
+// Prose modifiers we apply to the wrapping div around ReactMarkdown. These
+// override the default `prose-sm` settings that otherwise produce loose
+// margins, faint bullets, and undersized headings.
+const proseClass =
+  'prose prose-sm max-w-none text-gray-700 leading-relaxed ' +
+  'prose-headings:text-gray-900 prose-headings:font-semibold ' +
+  'prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-2 ' +
+  'prose-h3:text-base prose-h3:mt-5 prose-h3:mb-2 ' +
+  'prose-h4:text-sm prose-h4:mt-4 prose-h4:mb-1.5 ' +
+  'prose-p:my-2 prose-p:leading-relaxed ' +
+  'prose-strong:text-gray-900 ' +
+  'prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-li:leading-relaxed ' +
+  'prose-hr:border-gray-200 prose-hr:my-5 ' +
+  'marker:text-gray-400';
 
 interface Item {
   id: string;
@@ -267,12 +350,12 @@ export default function PersonalisedCourseDetailPage() {
             </summary>
             <div className="border-t border-gray-100 px-5 py-5 space-y-6">
               {course.course_description && (
-                <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
+                <div className={proseClass}>
                   <ReactMarkdown
                     remarkPlugins={markdownPlugins}
                     components={markdownComponents}
                   >
-                    {course.course_description}
+                    {normalizeSyllabusMarkdown(course.course_description)}
                   </ReactMarkdown>
                 </div>
               )}
@@ -291,12 +374,12 @@ export default function PersonalisedCourseDetailPage() {
                   <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
                     Syllabus
                   </p>
-                  <div className="prose prose-sm max-w-none text-gray-700">
+                  <div className={proseClass}>
                     <ReactMarkdown
                       remarkPlugins={markdownPlugins}
                       components={markdownComponents}
                     >
-                      {course.generated_syllabus}
+                      {normalizeSyllabusMarkdown(course.generated_syllabus)}
                     </ReactMarkdown>
                   </div>
                 </div>

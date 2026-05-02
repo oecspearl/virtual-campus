@@ -194,10 +194,12 @@ function buildSequence(
   return out;
 }
 
-function studyHrefFor(item: Item): string | null {
-  return item.lesson_id && item.course_id
-    ? `/course/${item.course_id}/lesson/${item.lesson_id}`
-    : null;
+function studyHrefFor(item: Item, pathId: string): string | null {
+  // Routes to the path-context lesson viewer (Phase 9) so the learner stays
+  // inside their own course's chrome rather than landing on the source
+  // course's lesson page. The viewer at this URL still renders the same
+  // lesson content via /api/lessons/[id], gated by the Phase 7 access bypass.
+  return item.lesson_id ? `/personalise/${pathId}/lesson/${item.lesson_id}` : null;
 }
 
 // ----------------------------------------------------------------------------
@@ -258,11 +260,11 @@ export default function PersonalisedCourseDetailPage() {
 
   const firstStudyHref = React.useMemo(() => {
     for (const entry of sequence) {
-      const href = studyHrefFor(entry.item);
+      const href = studyHrefFor(entry.item, id);
       if (href) return href;
     }
     return null;
-  }, [sequence]);
+  }, [sequence, id]);
 
   const recsTotal = React.useMemo(
     () => (course ? course.items.filter((i) => i.item_type === 'recommended').length : 0),
@@ -612,6 +614,7 @@ function PathTab({
                     displayIndex={entry.displayIndex}
                     status={course.status}
                     connectorBelow={connectorBelow}
+                    pathId={course.id}
                   />
                 ) : (
                   <RecommendedLessonCard
@@ -621,6 +624,7 @@ function PathTab({
                     connectorBelow={connectorBelow}
                     onAccept={() => setDecisions((p) => ({ ...p, [entry.item.id]: 'accepted' }))}
                     onReject={() => setDecisions((p) => ({ ...p, [entry.item.id]: 'rejected' }))}
+                    pathId={course.id}
                   />
                 )}
               </li>
@@ -858,13 +862,15 @@ function SelectedLessonCard({
   displayIndex,
   status,
   connectorBelow,
+  pathId,
 }: {
   item: Item;
   displayIndex: number;
   status: CourseDetail['status'];
   connectorBelow: boolean;
+  pathId: string;
 }) {
-  const studyHref = studyHrefFor(item);
+  const studyHref = studyHrefFor(item, pathId);
   const isLinked = status === 'active' && !!studyHref;
 
   const inner = (
@@ -930,6 +936,7 @@ function RecommendedLessonCard({
   connectorBelow,
   onAccept,
   onReject,
+  pathId,
 }: {
   item: Item;
   status: CourseDetail['status'];
@@ -937,9 +944,10 @@ function RecommendedLessonCard({
   connectorBelow: boolean;
   onAccept: () => void;
   onReject: () => void;
+  pathId: string;
 }) {
   const isDraft = status === 'draft';
-  const studyHref = studyHrefFor(item);
+  const studyHref = studyHrefFor(item, pathId);
   const isLinked = !isDraft && !!studyHref;
 
   const inner = (

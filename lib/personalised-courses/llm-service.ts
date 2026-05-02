@@ -147,6 +147,14 @@ export class LLMService {
 
     const validation = courseAssemblySchema.safeParse(parsed);
     if (!validation.success) {
+      // Log a truncated sample of the raw JSON so we can see WHAT the model
+      // produced when it fails validation. The route's catch handler logs
+      // the wrapped error message; this gives us the missing other half.
+      console.error('Personalisation: schema validation failed', {
+        model: this.model,
+        rawJsonSample:
+          raw.rawJson.length > 2000 ? `${raw.rawJson.slice(0, 2000)}…[truncated]` : raw.rawJson,
+      });
       throw new LLMUnavailableError(
         `OpenAI response did not match the expected schema: ${validation.error.message}`,
       );

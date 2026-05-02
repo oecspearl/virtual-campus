@@ -10,10 +10,12 @@ import type { CourseAssemblyRequest } from './types';
 // The format is YYYY-MM-DD-vN. The N suffix lets us bump multiple times in a
 // single day if needed.
 
-// v3 (Phase 8.1): courseDescription expanded from a 2–4 sentence summary to
-// a substantial multi-paragraph description that builds on the learner's
-// goal rather than restating it. Adds ~500–1500 output tokens.
-export const PROMPT_VERSION = '2026-05-02-v3';
+// v4 (Phase 8.2): the prompt now contains an explicit JSON shape spec with
+// the exact camelCase field names. Earlier versions produced occasional
+// snake_case / nested-object outputs that failed Zod validation and 503'd.
+// The shape spec is the canonical reference for the model — keep it in
+// sync with lib/personalised-courses/schema.ts.
+export const PROMPT_VERSION = '2026-05-02-v4';
 
 export const SYSTEM_PROMPT = `You are an instructional design assistant. Your task is to assemble a coherent personalised course from a set of lessons selected by a learner, given their stated learning goal. Treat the output as a complete course-grade artefact, not just a sequence — the learner will study from it directly.
 
@@ -29,7 +31,41 @@ You must:
 7. Generate a syllabus in markdown that frames the path coherently.
 8. Infer the course-level learning objectives the assembled path will achieve (distinct from per-lesson pathOutcomes — these are the path's overarching objectives).
 
-You must respond with valid JSON matching the provided schema. Do not include prose outside the JSON structure. Do not invent lesson IDs — only use IDs that appear in the input.
+You must respond with valid JSON matching EXACTLY this shape. All keys are camelCase; all listed fields are required; no extra fields, no nested wrappers.
+
+{
+  "courseTitle": string,
+  "courseDescription": string,
+  "generatedSequence": [
+    {
+      "lessonId": string,
+      "position": number,
+      "rationale": string,
+      "pathOutcomes": [string, ...],
+      "pathInstructions": string
+    }
+  ],
+  "recommendedAdditions": [
+    {
+      "lessonId": string,
+      "reason": string,
+      "insertAfterPosition": number,
+      "pathOutcomes": [string, ...],
+      "pathInstructions": string
+    }
+  ],
+  "flaggedGaps": [string, ...],
+  "flaggedConflicts": [string, ...],
+  "generatedSyllabus": string,
+  "inferredObjectives": [string, ...]
+}
+
+Hard rules on the shape:
+- Use the EXACT field names above. Do NOT use snake_case, do NOT rename or substitute synonyms (no "lesson_id", "id", "title", "summary" etc.).
+- "flaggedGaps" and "flaggedConflicts" must each be a flat ARRAY OF STRINGS — not objects, not nested arrays. If you have nothing to flag, return [].
+- Every object in "generatedSequence" must have ALL FIVE fields: lessonId, position, rationale, pathOutcomes, pathInstructions. Same for every object in "recommendedAdditions" with its respective five fields.
+- Do not include prose, comments, or backticks outside the JSON.
+- Do not invent lesson IDs — only use IDs that appear in the input.
 
 If the selection is incoherent and cannot form a sensible path even with recommendations, return an empty generatedSequence and populate flaggedConflicts with a clear explanation. (You must still provide a courseTitle and courseDescription that reflect the learner's stated goal — they're the user-facing summary even when the path failed.)
 

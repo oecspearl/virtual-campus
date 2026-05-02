@@ -4,8 +4,23 @@ import React from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useSupabase } from '@/lib/supabase-provider';
 import Button from '@/app/components/ui/Button';
+
+// GFM enables tables, strikethrough, task lists, and autolinks. The LLM-
+// produced syllabus often emits tables (e.g. "Recommended Additions" with
+// insert-before/after columns); without GFM those render as raw pipes.
+const markdownPlugins = [remarkGfm];
+
+const markdownComponents = {
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="overflow-x-auto">
+      <table>{children}</table>
+    </div>
+  ),
+  hr: () => <hr className="my-5 border-gray-200" />,
+};
 
 interface Item {
   id: string;
@@ -253,7 +268,12 @@ export default function PersonalisedCourseDetailPage() {
             <div className="border-t border-gray-100 px-5 py-5 space-y-6">
               {course.course_description && (
                 <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                  <ReactMarkdown>{course.course_description}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={markdownPlugins}
+                    components={markdownComponents}
+                  >
+                    {course.course_description}
+                  </ReactMarkdown>
                 </div>
               )}
               {course.inferred_objectives.length > 0 && (
@@ -272,7 +292,12 @@ export default function PersonalisedCourseDetailPage() {
                     Syllabus
                   </p>
                   <div className="prose prose-sm max-w-none text-gray-700">
-                    <ReactMarkdown>{course.generated_syllabus}</ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={markdownPlugins}
+                      components={markdownComponents}
+                    >
+                      {course.generated_syllabus}
+                    </ReactMarkdown>
                   </div>
                 </div>
               )}

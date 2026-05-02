@@ -127,15 +127,15 @@ export const POST = withTenantAuth(async ({ user, tq, tenantId, request }) => {
   } catch (err) {
     if (err instanceof LLMUnavailableError) {
       // Log the underlying cause so 503s are diagnosable in Vercel logs —
-      // OPENAI_API_KEY missing, invalid key, model-access denied, OpenAI
-      // overload, etc. Without this the route silently 503s.
+      // ANTHROPIC_API_KEY missing, invalid key, model-access denied,
+      // Anthropic overload, etc. Without this the route silently 503s.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cause = (err as any).cause;
       console.error('Personalisation: LLM call failed', {
         message: err.message,
         causeMessage: cause instanceof Error ? cause.message : undefined,
         causeName: cause instanceof Error ? cause.name : undefined,
-        // OpenAI SDK errors carry status/code; surface them when present
+        // Anthropic SDK errors carry status/code; surface them when present
         causeStatus: cause && typeof cause === 'object' && 'status' in cause ? (cause as { status?: unknown }).status : undefined,
         causeCode: cause && typeof cause === 'object' && 'code' in cause ? (cause as { code?: unknown }).code : undefined,
       });

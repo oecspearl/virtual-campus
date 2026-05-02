@@ -1,16 +1,16 @@
 // Single-provider LLM service for the Personalised Course Builder.
 //
-// Uses the OpenAI SDK directly (matching the convention in app/api/ai/**),
-// not Vercel AI Gateway. Structured output is via OpenAI's json_object mode
-// and we validate the parsed response against the Zod schema in ./schema.ts —
-// any parse failure or schema mismatch surfaces as LLMUnavailableError, which
-// the route handler turns into a 503 with a "saved as draft, try again"
-// message and a stub draft so the learner doesn't lose their selection.
+// Uses the Anthropic SDK directly. Structured output is via assistant-message
+// prefill (we seed `{` so Claude continues with JSON), and we validate the
+// parsed response against the Zod schema in ./schema.ts — any parse failure
+// or schema mismatch surfaces as LLMUnavailableError, which the route handler
+// turns into a 503 with a "saved as draft, try again" message and a stub
+// draft so the learner doesn't lose their selection.
 //
 // Tests inject `callModel` to exercise the parse / validate / abort paths
 // without making real network calls (./__tests__/llm-service.test.ts).
 
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import {
   type CourseAssemblyRequest,
   type CourseAssemblyResponse,
@@ -21,13 +21,18 @@ import { SYSTEM_PROMPT, buildUserMessage, PROMPT_VERSION } from './prompt';
 
 // ── Defaults ────────────────────────────────────────────────────────────────
 
-const DEFAULT_MODEL = 'gpt-4o';
+const DEFAULT_MODEL = 'claude-sonnet-4-6';
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_TEMPERATURE = 0.3;
+const DEFAULT_MAX_TOKENS = 8_192;
+
+// Prefill the assistant turn with `{` so Claude continues with JSON. We
+// reattach the leading `{` to the response before parsing.
+const JSON_PREFILL = '{';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-export type Provider = 'openai';
+export type Provider = 'anthropic';
 
 export interface AssembleCourseResult {
   response: CourseAssemblyResponse;
@@ -52,7 +57,7 @@ export interface RawModelOutput {
 /**
  * Lowest-level seam: hand a request + model context to "something" that
  * returns a JSON string and token counts. Tests pass a stub here; production
- * uses `defaultCallModel` which goes through the OpenAI SDK.
+ * uses `defaultCallModel` which goes through the Anthropic SDK.
  */
 export type ModelCaller = (
   req: CourseAssemblyRequest,
@@ -69,36 +74,37 @@ export interface LLMServiceOptions {
 // ── Default model caller (production path) ──────────────────────────────────
 
 const defaultCallModel: ModelCaller = async (req, ctx) => {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured.');
+    throw new Error('ANTHROPIC_API_KEY is not configured.');
   }
-  const client = new OpenAI({ apiKey });
+  const client = new Anthropic({ apiKey });
 
-  const completion = await client.chat.completions.create(
+  const message = await client.messages.create(
     {
       model: ctx.model,
+      max_tokens: envNumber('LLM_MAX_TOKENS') ?? DEFAULT_MAX_TOKENS,
       temperature: envNumber('LLM_TEMPERATURE') ?? DEFAULT_TEMPERATURE,
-      // json_object mode forces the model to return valid JSON. Combined
-      // with the Zod parse downstream, this gives us strict-shaped output
-      // without needing OpenAI's beta json_schema strict mode.
-      response_format: { type: 'json_object' },
+      system: SYSTEM_PROMPT,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: buildUserMessage(req) },
+        // Prefill the assistant turn with `{` to force JSON-only output.
+        // Claude will continue from this opening brace and not emit any
+        // prose preamble. We reattach the brace below before parsing.
+        { role: 'assistant', content: JSON_PREFILL },
       ],
     },
     { signal: ctx.signal },
   );
 
-  const content = completion.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('OpenAI returned an empty response.');
+  const textBlock = message.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
+  if (!textBlock || !textBlock.text) {
+    throw new Error('Anthropic returned an empty response.');
   }
   return {
-    rawJson: content,
-    promptTokens: completion.usage?.prompt_tokens,
-    completionTokens: completion.usage?.completion_tokens,
+    rawJson: JSON_PREFILL + textBlock.text,
+    promptTokens: message.usage?.input_tokens,
+    completionTokens: message.usage?.output_tokens,
   };
 };
 
@@ -110,7 +116,7 @@ export class LLMService {
   private readonly callModel: ModelCaller;
 
   constructor(opts: LLMServiceOptions = {}) {
-    this.model = opts.model ?? process.env.OPENAI_MODEL ?? DEFAULT_MODEL;
+    this.model = opts.model ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
     this.timeoutMs =
       opts.timeoutMs ?? envNumber('LLM_TIMEOUT_MS') ?? DEFAULT_TIMEOUT_MS;
     this.callModel = opts.callModel ?? defaultCallModel;
@@ -120,7 +126,7 @@ export class LLMService {
     const controller = new AbortController();
     const timer = setTimeout(() => {
       controller.abort(
-        new Error(`OpenAI request timed out after ${this.timeoutMs}ms`),
+        new Error(`Anthropic request timed out after ${this.timeoutMs}ms`),
       );
     }, this.timeoutMs);
 
@@ -130,7 +136,7 @@ export class LLMService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new LLMUnavailableError(
-        `OpenAI call failed (${this.model}): ${msg}`,
+        `Anthropic call failed (${this.model}): ${msg}`,
         { cause: err },
       );
     } finally {
@@ -142,7 +148,7 @@ export class LLMService {
       parsed = JSON.parse(raw.rawJson);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      throw new LLMUnavailableError(`OpenAI returned non-JSON content: ${msg}`);
+      throw new LLMUnavailableError(`Anthropic returned non-JSON content: ${msg}`);
     }
 
     const validation = courseAssemblySchema.safeParse(parsed);
@@ -156,13 +162,13 @@ export class LLMService {
           raw.rawJson.length > 2000 ? `${raw.rawJson.slice(0, 2000)}…[truncated]` : raw.rawJson,
       });
       throw new LLMUnavailableError(
-        `OpenAI response did not match the expected schema: ${validation.error.message}`,
+        `Anthropic response did not match the expected schema: ${validation.error.message}`,
       );
     }
 
     return {
       response: validation.data as CourseAssemblyResponse,
-      provider: 'openai',
+      provider: 'anthropic',
       model: this.model,
       promptVersion: PROMPT_VERSION,
       promptTokens: raw.promptTokens,

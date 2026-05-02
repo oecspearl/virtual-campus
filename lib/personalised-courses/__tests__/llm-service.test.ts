@@ -53,27 +53,27 @@ function rawOk(response: CourseAssemblyResponse = validResponse): RawModelOutput
 describe('LLMService.assembleCourse — happy path', () => {
   it('parses the JSON response and returns a typed result', async () => {
     const call: ModelCaller = async () => rawOk();
-    const svc = new LLMService({ model: 'gpt-4o', callModel: call });
+    const svc = new LLMService({ model: 'claude-sonnet-4-6', callModel: call });
     const result = await svc.assembleCourse(sampleRequest);
 
-    expect(result.provider).toBe('openai');
-    expect(result.model).toBe('gpt-4o');
+    expect(result.provider).toBe('anthropic');
+    expect(result.model).toBe('claude-sonnet-4-6');
     expect(result.promptVersion).toBe(PROMPT_VERSION);
     expect(result.response).toEqual(validResponse);
     expect(result.promptTokens).toBe(100);
     expect(result.completionTokens).toBe(50);
   });
 
-  it('reads model from OPENAI_MODEL env var when not passed', async () => {
-    const previous = process.env.OPENAI_MODEL;
-    process.env.OPENAI_MODEL = 'gpt-4o-mini';
+  it('reads model from ANTHROPIC_MODEL env var when not passed', async () => {
+    const previous = process.env.ANTHROPIC_MODEL;
+    process.env.ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
     try {
       const svc = new LLMService({ callModel: async () => rawOk() });
       const result = await svc.assembleCourse(sampleRequest);
-      expect(result.model).toBe('gpt-4o-mini');
+      expect(result.model).toBe('claude-haiku-4-5-20251001');
     } finally {
-      if (previous === undefined) delete process.env.OPENAI_MODEL;
-      else process.env.OPENAI_MODEL = previous;
+      if (previous === undefined) delete process.env.ANTHROPIC_MODEL;
+      else process.env.ANTHROPIC_MODEL = previous;
     }
   });
 });
@@ -85,7 +85,7 @@ describe('LLMService.assembleCourse — error paths', () => {
     const call: ModelCaller = async () => {
       throw new Error('socket hang up');
     };
-    const svc = new LLMService({ model: 'gpt-4o', callModel: call });
+    const svc = new LLMService({ model: 'claude-sonnet-4-6', callModel: call });
     await expect(svc.assembleCourse(sampleRequest)).rejects.toBeInstanceOf(
       LLMUnavailableError,
     );
@@ -132,7 +132,7 @@ describe('LLMService.assembleCourse — timeout', () => {
         });
         throw new Error('unreachable');
       };
-      const svc = new LLMService({ model: 'gpt-4o', timeoutMs: 1_000, callModel: call });
+      const svc = new LLMService({ model: 'claude-sonnet-4-6', timeoutMs: 1_000, callModel: call });
       const promise = svc.assembleCourse(sampleRequest);
       // Surface the rejection so vitest doesn't flag an unhandled rejection
       // when the abort fires below.

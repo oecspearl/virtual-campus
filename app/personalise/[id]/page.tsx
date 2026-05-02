@@ -2,23 +2,23 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSupabase } from '@/lib/supabase-provider';
-import Button from '@/app/components/ui/Button';
+import PersonalisedCourseHero from '@/app/components/personalise/PersonalisedCourseHero';
 
-// GFM enables tables, strikethrough, task lists, and autolinks. The LLM-
-// produced syllabus often emits tables (e.g. "Recommended Additions" with
-// insert-before/after columns); without GFM those render as raw pipes.
+// ----------------------------------------------------------------------------
+// Markdown helpers
+// ----------------------------------------------------------------------------
+
 const markdownPlugins = [remarkGfm];
 
-// The LLM occasionally collapses an entire markdown table onto a single
-// line — header row, `|---|` separator, and all data rows concatenated
-// with no newlines. GFM cannot parse that as a table, so it renders as
-// raw pipe text. We detect single-line tables by spotting the separator
-// pattern alongside other content on the same line, then split rows by
-// counting pipes (each row has cellCount + 1 pipes).
+// The LLM occasionally collapses an entire markdown table onto a single line —
+// header, "|---|" separator, and all data rows concatenated with spaces but no
+// newlines. GFM cannot parse that as a table. We detect single-line tables by
+// spotting the separator alongside other content and split rows by counting
+// pipes (each row has cellCount + 1 pipes).
 function normalizeSyllabusMarkdown(md: string): string {
   return md
     .split('\n')
@@ -34,7 +34,6 @@ function splitInlineTable(line: string): string[] {
   const sepEnd = sepStart + sep.length;
   const before = line.slice(0, sepStart).trim();
   const after = line.slice(sepEnd).trim();
-  // If the separator stands alone on its line, no fix needed.
   if (!before && !after) return [line];
 
   const cellCount = (sep.match(/\|/g)?.length ?? 1) - 1;
@@ -90,9 +89,6 @@ const markdownComponents = {
   hr: () => <hr className="my-5 border-gray-200" />,
 };
 
-// Prose modifiers we apply to the wrapping div around ReactMarkdown. These
-// override the default `prose-sm` settings that otherwise produce loose
-// margins, faint bullets, and undersized headings.
 const proseClass =
   'prose prose-sm max-w-none text-gray-700 leading-relaxed ' +
   'prose-headings:text-gray-900 prose-headings:font-semibold ' +
@@ -104,6 +100,10 @@ const proseClass =
   'prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-li:leading-relaxed ' +
   'prose-hr:border-gray-200 prose-hr:my-5 ' +
   'marker:text-gray-400';
+
+// ----------------------------------------------------------------------------
+// Types
+// ----------------------------------------------------------------------------
 
 interface Item {
   id: string;
@@ -142,11 +142,14 @@ type SequenceEntry =
   | { kind: 'selected'; item: Item; displayIndex: number }
   | { kind: 'recommendation'; item: Item };
 
-// Selected items are ordered by `position`. Recommendations slot in *after*
-// the selected item whose position matches their `insert_after_position`,
-// reflecting how the LLM described the proposed insertion point. In draft we
-// render every recommendation; in active we render only the accepted ones —
-// rejected ones are not part of the path the learner approved.
+const TAB_KEYS = ['overview', 'path', 'syllabus'] as const;
+type TabKey = typeof TAB_KEYS[number];
+
+// ----------------------------------------------------------------------------
+// Sequence merge (selected items in position order, recommendations slotted at
+// insert_after_position; in active mode only accepted recommendations show)
+// ----------------------------------------------------------------------------
+
 function buildSequence(
   items: Item[],
   status: CourseDetail['status'],
@@ -197,10 +200,15 @@ function studyHrefFor(item: Item): string | null {
     : null;
 }
 
+// ----------------------------------------------------------------------------
+// Page
+// ----------------------------------------------------------------------------
+
 export default function PersonalisedCourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { supabase } = useSupabase();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [course, setCourse] = React.useState<CourseDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -208,6 +216,11 @@ export default function PersonalisedCourseDetailPage() {
   const [decisions, setDecisions] = React.useState<Record<string, Decision>>({});
   const [approving, setApproving] = React.useState(false);
   const [approveError, setApproveError] = React.useState('');
+
+  const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
+    const t = searchParams.get('tab');
+    return (TAB_KEYS as readonly string[]).includes(t ?? '') ? (t as TabKey) : 'overview';
+  });
 
   React.useEffect(() => {
     let cancelled = false;
@@ -308,14 +321,23 @@ export default function PersonalisedCourseDetailPage() {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 min-h-screen">
-        <div className="mx-auto max-w-4xl px-4 py-12 text-gray-500">Loading…</div>
+      <div className="min-h-screen bg-[#f8f9fa]">
+        <div className="h-64 sm:h-72 animate-pulse bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 opacity-80" />
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-6 gap-6">
+          <div className="lg:col-span-4 space-y-4">
+            <div className="bg-white rounded-lg h-48 animate-pulse" />
+            <div className="bg-white rounded-lg h-64 animate-pulse" />
+          </div>
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg h-72 animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
   if (notFound) {
     return (
-      <div className="bg-gray-50 min-h-screen">
+      <div className="min-h-screen bg-[#f8f9fa]">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center">
           <h1 className="text-xl font-medium text-gray-900">Page not found</h1>
           <p className="mt-2 text-sm text-gray-500">The page you&apos;re looking for doesn&apos;t exist.</p>
@@ -326,271 +348,467 @@ export default function PersonalisedCourseDetailPage() {
   if (!course) return null;
 
   const selectedCount = course.items.filter((i) => i.item_type === 'selected').length;
-  const hasContext =
-    !!course.course_description ||
-    course.inferred_objectives.length > 0 ||
-    !!course.generated_syllabus;
+
+  const tabs: Array<{ key: TabKey; label: string }> = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'path', label: 'Path' },
+    { key: 'syllabus', label: 'Syllabus' },
+  ];
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12 space-y-8">
-        <Hero
-          course={course}
-          selectedCount={selectedCount}
-          recsTotal={recsTotal}
-          recsAcceptedCount={recsAcceptedCount}
-          firstStudyHref={firstStudyHref}
-        />
+    <div className="min-h-screen bg-[#f8f9fa]">
+      <PersonalisedCourseHero
+        title={course.course_title ?? course.learner_goal}
+        goal={course.learner_goal}
+        status={course.status}
+        selectedCount={selectedCount}
+        recsTotal={recsTotal}
+        recsAcceptedCount={recsAcceptedCount}
+        objectivesCount={course.inferred_objectives.length}
+        llmProvider={course.llm_provider}
+      />
 
-        {hasContext && (
-          <details className="group rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" open>
-            <summary className="cursor-pointer list-none px-5 py-4 text-base font-semibold text-gray-900 hover:bg-gray-50 flex items-center justify-between transition-colors">
-              <span>About this path</span>
-              <ChevronDown className="text-gray-400 transition-transform duration-200 group-open:rotate-180" />
-            </summary>
-            <div className="border-t border-gray-100 px-5 py-5 space-y-6">
-              {course.course_description && (
-                <div className={proseClass}>
-                  <ReactMarkdown
-                    remarkPlugins={markdownPlugins}
-                    components={markdownComponents}
-                  >
-                    {normalizeSyllabusMarkdown(course.course_description)}
-                  </ReactMarkdown>
-                </div>
-              )}
-              {course.inferred_objectives.length > 0 && (
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
-                    What you&apos;ll learn
-                  </p>
-                  <ul className="list-disc list-inside text-sm text-gray-700 space-y-1.5">
-                    {course.inferred_objectives.map((o, i) => <li key={i}>{o}</li>)}
-                  </ul>
-                </div>
-              )}
-              {course.generated_syllabus && (
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
-                    Syllabus
-                  </p>
-                  <div className={proseClass}>
-                    <ReactMarkdown
-                      remarkPlugins={markdownPlugins}
-                      components={markdownComponents}
-                    >
-                      {normalizeSyllabusMarkdown(course.generated_syllabus)}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              )}
+      {/* Tab bar — sticky below hero, matches CourseTabBar visual language */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="px-6 sm:px-10 lg:px-12">
+          <nav className="flex gap-0 overflow-x-auto scrollbar-hide -mb-px" aria-label="Path tabs">
+            {tabs.map((tab) => {
+              const active = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`relative text-[13px] px-4 py-3 border-b-2 whitespace-nowrap transition-colors shrink-0 font-medium cursor-pointer ${
+                    active ? '' : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`}
+                  style={
+                    active
+                      ? { borderColor: 'var(--theme-primary)', color: 'var(--theme-primary)' }
+                      : undefined
+                  }
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* Mobile-only sticky CTA — Approve in draft, Continue in active */}
+      {(course.status === 'draft' || (course.status === 'active' && firstStudyHref)) && (
+        <div className="lg:hidden sticky top-[41px] z-30 bg-white border-b border-gray-200/80 px-4 py-3">
+          {course.status === 'draft' ? (
+            <button
+              type="button"
+              onClick={approve}
+              disabled={approving}
+              className="w-full px-4 py-2.5 text-sm font-semibold text-white rounded-lg bg-emerald-700 hover:bg-emerald-800 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {approving
+                ? 'Approving…'
+                : recsTotal > 0
+                  ? `Approve & Start (${recsDecided}/${recsTotal} decided)`
+                  : 'Approve & Start'}
+            </button>
+          ) : firstStudyHref ? (
+            <Link
+              href={firstStudyHref}
+              className="block w-full px-4 py-2.5 text-sm font-semibold text-white text-center rounded-lg bg-emerald-700 hover:bg-emerald-800 transition-colors"
+            >
+              Continue learning →
+            </Link>
+          ) : null}
+        </div>
+      )}
+
+      {/* Two-column body */}
+      <div className="grid grid-cols-1 lg:grid-cols-6 min-h-[calc(100vh-280px)]">
+        <div className="lg:col-span-4 min-w-0 px-4 sm:px-6 lg:px-10 py-6 space-y-6 overflow-y-auto overflow-x-hidden">
+          {/* Conflicts banner — visible on every tab when present */}
+          {course.flagged_conflicts.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-900">Conflicts to review</p>
+              <ul className="mt-2 list-disc list-inside text-sm text-red-800 space-y-1">
+                {course.flagged_conflicts.map((c, i) => <li key={i}>{c}</li>)}
+              </ul>
             </div>
-          </details>
+          )}
+
+          {activeTab === 'overview' && (
+            <OverviewTab
+              course={course}
+              onJumpToPath={() => setActiveTab('path')}
+            />
+          )}
+
+          {activeTab === 'path' && (
+            <PathTab
+              course={course}
+              sequence={sequence}
+              selectedCount={selectedCount}
+              recsTotal={recsTotal}
+              decisions={decisions}
+              setDecisions={setDecisions}
+            />
+          )}
+
+          {activeTab === 'syllabus' && <SyllabusTab course={course} />}
+        </div>
+
+        {/* Persistent sidebar */}
+        <aside className="lg:col-span-2 hidden lg:block bg-white border-l border-gray-200 overflow-y-auto">
+          <div className="p-5 space-y-4">
+            <PathSummaryCard
+              course={course}
+              selectedCount={selectedCount}
+              recsTotal={recsTotal}
+              recsAcceptedCount={recsAcceptedCount}
+              recsDecided={recsDecided}
+              recsPending={recsPending}
+              firstStudyHref={firstStudyHref}
+              approving={approving}
+              approveError={approveError}
+              onApprove={approve}
+            />
+            <QuickLinksCard />
+            {course.approved_at && (
+              <p className="text-[11px] text-gray-400 px-1">
+                Approved {new Date(course.approved_at).toLocaleDateString()}
+                {course.llm_model && (
+                  <>
+                    <br />Model: {course.llm_model}
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Tab content
+// ----------------------------------------------------------------------------
+
+function OverviewTab({
+  course,
+  onJumpToPath,
+}: {
+  course: CourseDetail;
+  onJumpToPath: () => void;
+}) {
+  const hasContent =
+    !!course.course_description ||
+    course.inferred_objectives.length > 0 ||
+    (course.flagged_gaps.length > 0 && course.status === 'draft');
+
+  if (!hasContent) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden">
+        <p className="text-sm text-gray-400 py-12 text-center">
+          No overview available for this path.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden">
+      <div className="px-6 py-5 space-y-6">
+        {course.course_description && (
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
+              About this path
+            </p>
+            <div className={proseClass}>
+              <ReactMarkdown
+                remarkPlugins={markdownPlugins}
+                components={markdownComponents}
+              >
+                {normalizeSyllabusMarkdown(course.course_description)}
+              </ReactMarkdown>
+            </div>
+          </div>
         )}
 
-        {course.flagged_conflicts.length > 0 && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-5 shadow-sm">
-            <p className="text-base font-semibold text-red-900">Conflicts to review</p>
-            <ul className="mt-2 list-disc list-inside text-sm text-red-800 space-y-1">
-              {course.flagged_conflicts.map((c, i) => <li key={i}>{c}</li>)}
+        {course.inferred_objectives.length > 0 && (
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
+              What you&apos;ll learn
+            </p>
+            <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1.5 marker:text-gray-400">
+              {course.inferred_objectives.map((o, i) => <li key={i}>{o}</li>)}
             </ul>
           </div>
         )}
-
-        <section>
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {course.status === 'active' ? 'Your path' : 'Course path'}
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {selectedCount} {selectedCount === 1 ? 'lesson' : 'lessons'}
-              {recsTotal > 0 && course.status === 'draft' && (
-                <> · {recsTotal} recommended addition{recsTotal === 1 ? '' : 's'} to review</>
-              )}
-              {recsAcceptedCount > 0 && course.status === 'active' && (
-                <> + {recsAcceptedCount} accepted addition{recsAcceptedCount === 1 ? '' : 's'}</>
-              )}
-            </p>
-          </div>
-          {sequence.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm text-gray-500 shadow-sm">
-              The model couldn&apos;t form a coherent sequence from the selected lessons.
-              See the conflicts above.
-            </div>
-          ) : (
-            <ol>
-              {sequence.map((entry, idx) => {
-                const connectorBelow = idx < sequence.length - 1;
-                return (
-                  <li key={entry.item.id}>
-                    {entry.kind === 'selected' ? (
-                      <SelectedLessonCard
-                        item={entry.item}
-                        displayIndex={entry.displayIndex}
-                        status={course.status}
-                        connectorBelow={connectorBelow}
-                      />
-                    ) : (
-                      <RecommendedLessonCard
-                        item={entry.item}
-                        status={course.status}
-                        decision={decisions[entry.item.id]}
-                        connectorBelow={connectorBelow}
-                        onAccept={() => setDecisions((p) => ({ ...p, [entry.item.id]: 'accepted' }))}
-                        onReject={() => setDecisions((p) => ({ ...p, [entry.item.id]: 'rejected' }))}
-                      />
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </section>
 
         {course.status === 'draft' && course.flagged_gaps.length > 0 && (
-          <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-            <p className="text-base font-semibold text-amber-900">Gaps the model identified</p>
-            <ul className="mt-2 list-disc list-inside text-sm text-amber-800 space-y-1">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900">Gaps the model identified</p>
+            <ul className="mt-2 list-disc pl-5 text-sm text-amber-800 space-y-1 marker:text-amber-500">
               {course.flagged_gaps.map((g, i) => <li key={i}>{g}</li>)}
             </ul>
-            <p className="mt-2 text-xs text-amber-700">
-              Accepting recommended additions above can help close these.
-            </p>
-          </section>
-        )}
-
-        {course.status === 'draft' && (
-          <div className="sticky bottom-4 z-10">
-            <div className="rounded-xl border border-gray-200 bg-white/95 backdrop-blur shadow-lg p-4">
-              {approveError && (
-                <p className="text-xs text-red-700 mb-2">{approveError}</p>
-              )}
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="text-sm text-gray-700 min-w-0">
-                  {recsTotal === 0 ? (
-                    <>Approving locks the sequence and starts the path.</>
-                  ) : (
-                    <>
-                      <span
-                        className="inline-flex items-center justify-center min-w-[2rem] px-2 h-6 rounded-md text-white text-xs font-semibold mr-1.5"
-                        style={{ backgroundColor: 'var(--theme-primary)' }}
-                      >
-                        {recsDecided}/{recsTotal}
-                      </span>
-                      <span className="font-medium text-gray-900">recommendations decided</span>
-                      {recsPending > 0 && (
-                        <span className="text-gray-500 text-xs block sm:inline sm:ml-2">
-                          {recsPending} pending will be treated as rejected
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-                <Button onClick={approve} disabled={approving}>
-                  {approving ? 'Approving…' : 'Approve & start'}
-                </Button>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={onJumpToPath}
+              className="mt-3 text-xs font-medium text-amber-900 underline underline-offset-2 hover:text-amber-700 cursor-pointer"
+            >
+              Review recommended additions in the Path tab →
+            </button>
           </div>
-        )}
-
-        {course.approved_at && (
-          <p className="text-xs text-gray-400 pt-2">
-            Approved {new Date(course.approved_at).toLocaleString()}
-            {course.llm_provider && ` · Assembled by ${course.llm_provider}`}
-          </p>
         )}
       </div>
     </div>
   );
 }
 
-function Hero({
+function PathTab({
+  course,
+  sequence,
+  selectedCount,
+  recsTotal,
+  decisions,
+  setDecisions,
+}: {
+  course: CourseDetail;
+  sequence: SequenceEntry[];
+  selectedCount: number;
+  recsTotal: number;
+  decisions: Record<string, Decision>;
+  setDecisions: React.Dispatch<React.SetStateAction<Record<string, Decision>>>;
+}) {
+  return (
+    <div>
+      <div className="mb-5">
+        <h2 className="text-lg font-bold text-gray-900">
+          {course.status === 'active' ? 'Your path' : 'Course path'}
+        </h2>
+        <p className="text-sm text-gray-500 mt-0.5">
+          {selectedCount} {selectedCount === 1 ? 'lesson' : 'lessons'}
+          {recsTotal > 0 && course.status === 'draft' && (
+            <> · {recsTotal} recommended addition{recsTotal === 1 ? '' : 's'} to review</>
+          )}
+        </p>
+      </div>
+
+      {sequence.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-500">
+          The model couldn&apos;t form a coherent sequence from the selected lessons.
+          See the conflicts above.
+        </div>
+      ) : (
+        <ol>
+          {sequence.map((entry, idx) => {
+            const connectorBelow = idx < sequence.length - 1;
+            return (
+              <li key={entry.item.id}>
+                {entry.kind === 'selected' ? (
+                  <SelectedLessonCard
+                    item={entry.item}
+                    displayIndex={entry.displayIndex}
+                    status={course.status}
+                    connectorBelow={connectorBelow}
+                  />
+                ) : (
+                  <RecommendedLessonCard
+                    item={entry.item}
+                    status={course.status}
+                    decision={decisions[entry.item.id]}
+                    connectorBelow={connectorBelow}
+                    onAccept={() => setDecisions((p) => ({ ...p, [entry.item.id]: 'accepted' }))}
+                    onReject={() => setDecisions((p) => ({ ...p, [entry.item.id]: 'rejected' }))}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+}
+
+function SyllabusTab({ course }: { course: CourseDetail }) {
+  if (!course.generated_syllabus) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden">
+        <p className="text-sm text-gray-400 py-12 text-center">
+          No syllabus has been generated for this path.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white rounded-lg border border-gray-200/60 overflow-hidden">
+      <div className="px-6 py-5">
+        <div className={proseClass}>
+          <ReactMarkdown
+            remarkPlugins={markdownPlugins}
+            components={markdownComponents}
+          >
+            {normalizeSyllabusMarkdown(course.generated_syllabus)}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Sidebar cards
+// ----------------------------------------------------------------------------
+
+function PathSummaryCard({
   course,
   selectedCount,
   recsTotal,
   recsAcceptedCount,
+  recsDecided,
+  recsPending,
   firstStudyHref,
+  approving,
+  approveError,
+  onApprove,
 }: {
   course: CourseDetail;
   selectedCount: number;
   recsTotal: number;
   recsAcceptedCount: number;
+  recsDecided: number;
+  recsPending: number;
   firstStudyHref: string | null;
+  approving: boolean;
+  approveError: string;
+  onApprove: () => void;
 }) {
-  const metaItems: Array<{ label: string; value: string | number }> = [
+  const stats: Array<{ label: string; value: string | number }> = [
     { label: 'Lessons', value: selectedCount },
   ];
   if (recsTotal > 0) {
-    metaItems.push({
-      label: course.status === 'draft' ? 'Recommended' : 'Accepted additions',
+    stats.push({
+      label: course.status === 'draft' ? 'Recommended' : 'Added',
       value: course.status === 'draft' ? recsTotal : recsAcceptedCount,
     });
   }
   if (course.inferred_objectives.length > 0) {
-    metaItems.push({ label: 'Objectives', value: course.inferred_objectives.length });
+    stats.push({ label: 'Objectives', value: course.inferred_objectives.length });
   }
   if (course.llm_provider) {
-    metaItems.push({ label: 'Assembled by', value: course.llm_provider });
+    stats.push({ label: 'Provider', value: course.llm_provider });
   }
 
+  const decisionPct = recsTotal === 0 ? 100 : Math.round((recsDecided / recsTotal) * 100);
+
   return (
-    <header className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-sm">
-      <div
-        className="absolute inset-x-0 top-0 h-1"
-        style={{
-          background: `linear-gradient(90deg, var(--theme-primary), color-mix(in srgb, var(--theme-primary) 30%, transparent))`,
-        }}
-        aria-hidden="true"
-      />
-
-      <nav className="text-xs text-gray-500 mb-4" aria-label="Breadcrumb">
-        <Link href="/personalise" className="hover:text-gray-700 transition-colors">
-          My paths
-        </Link>
-        <span className="mx-1.5 text-gray-400">/</span>
-        <span className="text-gray-700">
-          {course.course_title ?? 'Untitled path'}
-        </span>
-      </nav>
-
-      <div className="flex items-start justify-between gap-6 flex-wrap">
-        <div className="min-w-0 flex-1 space-y-3">
-          <StatusBadge status={course.status} />
-          <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 leading-tight tracking-tight">
-            {course.course_title ?? course.learner_goal}
-          </h1>
-          <blockquote
-            className="border-l-2 pl-4 text-[15px] text-gray-600 italic"
-            style={{ borderColor: 'var(--theme-primary)' }}
-          >
-            {course.learner_goal}
-          </blockquote>
-        </div>
-        {course.status === 'active' && firstStudyHref && (
-          <Link href={firstStudyHref} className="shrink-0">
-            <Button>Continue learning →</Button>
-          </Link>
-        )}
+    <div className="rounded-lg border border-gray-200/60 overflow-hidden">
+      <div className="px-5 py-4 bg-gradient-to-r from-slate-900 to-slate-800">
+        <p className="text-sm font-bold text-white">
+          {course.status === 'draft' ? 'Review your path' : 'Your personalised path'}
+        </p>
+        <p className="text-[11px] text-slate-400 mt-0.5">
+          {course.status === 'draft' ? 'Approve to start learning' : 'Pick up where you left off'}
+        </p>
       </div>
 
-      {metaItems.length > 0 && (
-        <dl className="mt-6 pt-5 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-          {metaItems.map((m) => (
-            <div key={m.label}>
-              <dt className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">
-                {m.label}
-              </dt>
-              <dd className="mt-1 text-base font-semibold text-gray-900 capitalize">
-                {m.value}
-              </dd>
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-3 mb-4">
+          {stats.map((s) => (
+            <div key={s.label}>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">{s.label}</p>
+              <p className="text-[13px] font-semibold text-gray-800 mt-0.5 capitalize truncate">
+                {s.value}
+              </p>
             </div>
           ))}
-        </dl>
-      )}
-    </header>
+        </div>
+
+        {course.status === 'draft' && recsTotal > 0 && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-50">
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-amber-700 font-medium">Decisions</span>
+              <span className="font-bold text-amber-800">{recsDecided}/{recsTotal}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-amber-200/60">
+              <div
+                className="h-full rounded-full bg-amber-600 transition-all duration-500"
+                style={{ width: `${decisionPct}%` }}
+              />
+            </div>
+            {recsPending > 0 && (
+              <p className="text-[10px] text-amber-700 mt-1.5 leading-snug">
+                {recsPending} pending — will be treated as rejected
+              </p>
+            )}
+          </div>
+        )}
+
+        {course.status === 'draft' ? (
+          <button
+            type="button"
+            onClick={onApprove}
+            disabled={approving}
+            className="w-full py-2.5 rounded-lg text-white text-[13px] font-semibold bg-emerald-700 hover:bg-emerald-800 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            {approving ? 'Approving…' : 'Approve & start path'}
+          </button>
+        ) : firstStudyHref ? (
+          <Link
+            href={firstStudyHref}
+            className="block w-full py-2.5 rounded-lg text-white text-[13px] font-semibold text-center bg-emerald-700 hover:bg-emerald-800 transition-colors"
+          >
+            Continue learning →
+          </Link>
+        ) : (
+          <p className="text-xs text-gray-500 text-center py-2">
+            No lessons available to study.
+          </p>
+        )}
+
+        {approveError && (
+          <p className="mt-2 text-xs text-red-700">{approveError}</p>
+        )}
+      </div>
+    </div>
   );
 }
+
+function QuickLinksCard() {
+  return (
+    <div className="rounded-lg border border-gray-200/60 overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-100">
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Quick links</h3>
+      </div>
+      <div className="p-2">
+        <Link
+          href="/personalise"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+        >
+          <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5M12 3.75v16.5" />
+          </svg>
+          All my paths
+        </Link>
+        <Link
+          href="/personalise/build"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer"
+        >
+          <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Build another path
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Path row + cards (timeline spine)
+// ----------------------------------------------------------------------------
 
 function PathRow({
   badge,
@@ -606,10 +824,7 @@ function PathRow({
       <div className="flex flex-col items-center shrink-0">
         {badge}
         {connectorBelow && (
-          <div
-            className="flex-1 w-px bg-gradient-to-b from-gray-200 to-gray-200 mt-1"
-            aria-hidden="true"
-          />
+          <div className="flex-1 w-px bg-gray-200 mt-1" aria-hidden="true" />
         )}
       </div>
       <div className={`flex-1 min-w-0 ${connectorBelow ? 'pb-5' : ''}`}>
@@ -622,7 +837,7 @@ function PathRow({
 function SelectedBadge({ index }: { index: number }) {
   return (
     <span
-      className="inline-flex items-center justify-center w-9 h-9 rounded-full text-white text-sm font-semibold ring-4 ring-gray-50 shadow-sm"
+      className="inline-flex items-center justify-center w-9 h-9 rounded-full text-white text-sm font-semibold ring-4 ring-[#f8f9fa] shadow-sm"
       style={{ backgroundColor: 'var(--theme-primary)' }}
     >
       {index}
@@ -632,7 +847,7 @@ function SelectedBadge({ index }: { index: number }) {
 
 function RecommendedBadge() {
   return (
-    <span className="inline-flex items-center justify-center w-9 h-9 rounded-full border-2 border-dashed border-amber-400 bg-white text-amber-600 text-base font-semibold ring-4 ring-gray-50">
+    <span className="inline-flex items-center justify-center w-9 h-9 rounded-full border-2 border-dashed border-amber-400 bg-white text-amber-600 text-base font-semibold ring-4 ring-[#f8f9fa]">
       +
     </span>
   );
@@ -677,7 +892,7 @@ function SelectedLessonCard({
           <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">
             What you&apos;ll learn
           </p>
-          <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+          <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1 marker:text-gray-400">
             {item.path_outcomes.map((o, i) => <li key={i}>{o}</li>)}
           </ul>
         </div>
@@ -695,12 +910,12 @@ function SelectedLessonCard({
       {isLinked ? (
         <Link
           href={studyHref!}
-          className="group block rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-indigo-300 hover:-translate-y-0.5 motion-reduce:hover:transform-none transition-all duration-200 cursor-pointer"
+          className="group block rounded-lg border border-gray-200/60 bg-white shadow-sm hover:shadow-md hover:border-indigo-300 hover:-translate-y-0.5 motion-reduce:hover:transform-none transition-all duration-200 cursor-pointer"
         >
           {inner}
         </Link>
       ) : (
-        <div className="group rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="group rounded-lg border border-gray-200/60 bg-white shadow-sm">
           {inner}
         </div>
       )}
@@ -757,7 +972,7 @@ function RecommendedLessonCard({
           <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">
             What you&apos;ll learn
           </p>
-          <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+          <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1 marker:text-gray-400">
             {item.path_outcomes.map((o, i) => <li key={i}>{o}</li>)}
           </ul>
         </div>
@@ -799,7 +1014,7 @@ function RecommendedLessonCard({
   );
 
   const wrapperBase =
-    'rounded-xl border border-amber-200 border-l-4 border-l-amber-400 bg-amber-50/40 shadow-sm';
+    'rounded-lg border border-amber-200 border-l-4 border-l-amber-400 bg-amber-50/40 shadow-sm';
 
   return (
     <PathRow badge={<RecommendedBadge />} connectorBelow={connectorBelow}>
@@ -814,42 +1029,5 @@ function RecommendedLessonCard({
         <div className={`group ${wrapperBase}`}>{inner}</div>
       )}
     </PathRow>
-  );
-}
-
-function StatusBadge({ status }: { status: CourseDetail['status'] }) {
-  const palette = {
-    draft: 'bg-amber-50 text-amber-800 border-amber-200',
-    active: 'bg-green-50 text-green-800 border-green-200',
-    archived: 'bg-gray-50 text-gray-600 border-gray-200',
-  }[status];
-  return (
-    <span
-      className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider border ${palette}`}
-    >
-      {status}
-    </span>
-  );
-}
-
-function ChevronDown({ className = '' }: { className?: string }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        d="M5 7.5L10 12.5L15 7.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

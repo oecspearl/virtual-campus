@@ -195,14 +195,11 @@ function buildSequence(
 }
 
 function studyHrefFor(item: Item, pathId: string): string | null {
-  // Routes to the existing course-context lesson viewer (single source of
-  // truth for SCORM / RichText / Video / mixed-content rendering) but in
-  // path mode (?path=<pathId>). The lesson viewer reads the param and
-  // swaps in path-aware breadcrumb, sidebar, prev/next while keeping all
-  // content rendering identical to the rest of the app.
-  return item.lesson_id && item.course_id
-    ? `/course/${item.course_id}/lesson/${item.lesson_id}?path=${pathId}`
-    : null;
+  // Routes to the path-context lesson viewer at /personalise/<pathId>/lesson/<id>.
+  // That page renders SCORMPlayer / RichTextPlayer with path-shaped props
+  // — same components the course page uses, no source-course leakage in URL
+  // or chrome.
+  return item.lesson_id ? `/personalise/${pathId}/lesson/${item.lesson_id}` : null;
 }
 
 // ----------------------------------------------------------------------------

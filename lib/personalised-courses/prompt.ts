@@ -10,12 +10,11 @@ import type { CourseAssemblyRequest } from './types';
 // The format is YYYY-MM-DD-vN. The N suffix lets us bump multiple times in a
 // single day if needed.
 
-// v4 (Phase 8.2): the prompt now contains an explicit JSON shape spec with
-// the exact camelCase field names. Earlier versions produced occasional
-// snake_case / nested-object outputs that failed Zod validation and 503'd.
-// The shape spec is the canonical reference for the model — keep it in
-// sync with lib/personalised-courses/schema.ts.
-export const PROMPT_VERSION = '2026-05-02-v4';
+// v5 (Phase 8.3): top-level optional arrays now default to [] in the Zod
+// schema so an occasional missed field (e.g., inferredObjectives) no longer
+// 503s. Core invariants (courseTitle, courseDescription, generatedSequence)
+// remain required.
+export const PROMPT_VERSION = '2026-05-02-v5';
 
 export const SYSTEM_PROMPT = `You are an instructional design assistant. Your task is to assemble a coherent personalised course from a set of lessons selected by a learner, given their stated learning goal. Treat the output as a complete course-grade artefact, not just a sequence — the learner will study from it directly.
 

@@ -75,27 +75,35 @@ export const courseAssemblySchema = z.object({
     .describe(
       'The selected lessons sequenced in pedagogically sound order. Empty if the selection is incoherent — in that case populate flaggedConflicts with a clear explanation.',
     ),
+  // The fields below are marked optional with safe defaults so the route
+  // doesn't 503 when the model occasionally omits one. The core invariants
+  // (courseTitle, courseDescription, generatedSequence) stay required.
   recommendedAdditions: z
     .array(recommendedAdditionSchema)
     .max(5)
+    .default([])
     .describe(
       'Up to five additional lessons drawn from availableLessons that would close identified gaps.',
     ),
   flaggedGaps: z
     .array(z.string())
+    .default([])
     .describe(
       'Concepts the learner needs but the assembled path does not cover. Use slugs from conceptTaxonomy where possible.',
     ),
   flaggedConflicts: z
     .array(z.string())
+    .default([])
     .describe(
       'Sequencing or prerequisite conflicts. Each entry is a concise human-readable explanation.',
     ),
   generatedSyllabus: z
     .string()
+    .default('')
     .describe('Markdown syllabus framing the path coherently for the learner.'),
   inferredObjectives: z
     .array(z.string())
+    .default([])
     .describe(
       'Course-level learning objectives the assembled path will achieve. Bloom-aligned verbs preferred. Distinct from per-lesson pathOutcomes.',
     ),

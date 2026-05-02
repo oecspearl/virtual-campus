@@ -22,6 +22,7 @@ export default function EditCoursePage() {
   const [thumbnail, setThumbnail] = React.useState('');
   const [published, setPublished] = React.useState(false);
   const [isPublic, setIsPublic] = React.useState(false);
+  const [allowLessonPersonalisation, setAllowLessonPersonalisation] = React.useState(false);
   const [courseFormat, setCourseFormat] = React.useState<CourseFormat>('lessons');
   const [saving, setSaving] = React.useState(false);
 
@@ -105,6 +106,7 @@ export default function EditCoursePage() {
       setThumbnail(cData.thumbnail||'');
       setPublished(Boolean(cData.published));
       setIsPublic(Boolean(cData.is_public));
+      setAllowLessonPersonalisation(Boolean(cData.allow_lesson_personalisation));
       setCourseFormat(cData.course_format || 'lessons');
     } catch (error) {
       console.error('Error loading course:', error);
@@ -159,6 +161,7 @@ export default function EditCoursePage() {
           syllabus,
           published,
           is_public: isPublic,
+          allow_lesson_personalisation: allowLessonPersonalisation,
           thumbnail,
           course_format: courseFormat,
           grade_level: course.grade_level,
@@ -339,6 +342,25 @@ export default function EditCoursePage() {
               <p className="text-[11px] text-amber-800 leading-snug">
                 Makes lessons and materials readable by anyone, including unauthenticated visitors.
                 Submissions, quiz attempts, and discussion posts still require enrollment.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <input
+                  id="allow_lesson_personalisation"
+                  type="checkbox"
+                  checked={allowLessonPersonalisation}
+                  onChange={(e) => setAllowLessonPersonalisation(e.target.checked)}
+                />
+                <label htmlFor="allow_lesson_personalisation" className="text-xs font-medium text-indigo-900">
+                  <span>Allow lessons to be used in Personalised Course Builder</span>
+                </label>
+              </div>
+              <p className="text-[11px] text-indigo-800 leading-snug">
+                When on, learners can pick this course&apos;s individual lessons and have them
+                assembled — alongside lessons from other courses — into a custom learning path.
+                Only takes effect if your institution has the Personalised Course Builder feature enabled.
               </p>
             </div>
 

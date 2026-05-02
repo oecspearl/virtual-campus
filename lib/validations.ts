@@ -25,6 +25,7 @@ export const courseUpdateSchema = z.object({
   syllabus: z.string().max(100000).optional(),
   published: z.boolean().optional(),
   is_public: z.boolean().optional(),
+  allow_lesson_personalisation: z.boolean().optional(),
   featured: z.boolean().optional(),
   course_format: z.enum(['lessons', 'topics', 'weekly', 'grid', 'player']).optional(),
   start_date: z.string().nullable().optional(),

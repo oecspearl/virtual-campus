@@ -54,6 +54,10 @@ const REGIONAL_FLAG_KEYS: (keyof RegionalFlags)[] = [
   'credit_transfer_issue_enabled',
 ];
 
+type FeatureFlags = {
+  personalised_courses_enabled: boolean;
+};
+
 function SettingsInner({ tenantId }: { tenantId: string }) {
   const [settings, setSettings] = useState<Record<string, SettingEntry>>({});
   const [loading, setLoading] = useState(true);
@@ -70,6 +74,10 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
     credit_transfer_issue_enabled: true,
   });
   const [savingRegional, setSavingRegional] = useState(false);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>({
+    personalised_courses_enabled: false,
+  });
+  const [savingFeatures, setSavingFeatures] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -95,6 +103,11 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
         regional_catalogue_consume_enabled: t.regional_catalogue_consume_enabled !== false,
         credit_transfer_accept_enabled: t.credit_transfer_accept_enabled !== false,
         credit_transfer_issue_enabled: t.credit_transfer_issue_enabled !== false,
+      });
+
+      // Feature flags default OFF (opt-in), unlike regional flags which default ON.
+      setFeatureFlags({
+        personalised_courses_enabled: t.personalised_courses_enabled === true,
       });
 
       // Initialize form from settings
@@ -146,6 +159,34 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
       setError("Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveFeatures(partial: Partial<FeatureFlags>) {
+    setSavingFeatures(true);
+    setError("");
+    setSuccess("");
+    const previous = featureFlags;
+    const next = { ...featureFlags, ...partial };
+    setFeatureFlags(next);
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(partial),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to save feature settings");
+        setFeatureFlags(previous);
+      } else {
+        setSuccess("Feature settings saved");
+      }
+    } catch {
+      setError("Failed to save feature settings");
+      setFeatureFlags(previous);
+    } finally {
+      setSavingFeatures(false);
     }
   }
 
@@ -302,6 +343,23 @@ function SettingsInner({ tenantId }: { tenantId: string }) {
             enabled={regionalFlags.credit_transfer_issue_enabled}
             disabled={savingRegional}
             onChange={(v) => handleSaveRegional({ credit_transfer_issue_enabled: v })}
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-medium mb-1">Optional Features</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Opt this institution into optional features. These default off because
+          they incur additional cost or require content preparation.
+        </p>
+        <div className="space-y-3">
+          <RegionalToggle
+            label="Personalised Course Builder"
+            description="Let learners assemble bespoke courses by picking lessons across the catalogue. An LLM sequences the selection, generates a syllabus, and flags gaps. Lessons are only offered if their parent course is opted in via its course-edit page."
+            enabled={featureFlags.personalised_courses_enabled}
+            disabled={savingFeatures}
+            onChange={(v) => handleSaveFeatures({ personalised_courses_enabled: v })}
           />
         </div>
       </div>

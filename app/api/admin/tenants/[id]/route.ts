@@ -85,6 +85,7 @@ export async function PUT(
       regional_catalogue_consume_enabled,
       credit_transfer_accept_enabled,
       credit_transfer_issue_enabled,
+      personalised_courses_enabled,
     } = body;
 
     const serviceSupabase = createServiceSupabaseClient();
@@ -112,6 +113,8 @@ export async function PUT(
       updateData.credit_transfer_accept_enabled = !!credit_transfer_accept_enabled;
     if (credit_transfer_issue_enabled !== undefined)
       updateData.credit_transfer_issue_enabled = !!credit_transfer_issue_enabled;
+    if (personalised_courses_enabled !== undefined)
+      updateData.personalised_courses_enabled = !!personalised_courses_enabled;
 
     const { data: tenant, error } = await serviceSupabase
       .from('tenants')

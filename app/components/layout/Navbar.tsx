@@ -25,6 +25,7 @@ export default function Navbar() {
   const [role, setRole] = React.useState<string | null>(null);
   const [userName, setUserName] = React.useState<string | null>(null);
   const [userAvatar, setUserAvatar] = React.useState<string | null>(null);
+  const [personalisationEnabled, setPersonalisationEnabled] = React.useState(false);
   const { siteShortName, logoUrl, logoSize } = useBranding();
 
   const isAuthenticated = !!user;
@@ -67,6 +68,32 @@ export default function Navbar() {
     };
 
     fetchUserProfile();
+  }, [user, supabase]);
+
+  // Per-tenant feature flag for the Personalised Course Builder. The endpoint
+  // returns 404 when the tenant hasn't opted in (no leak); we treat 404 the
+  // same as enabled=false. One fetch on auth, no polling.
+  React.useEffect(() => {
+    if (!user) { setPersonalisationEnabled(false); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const res = await fetch('/api/courses/personalise/feature-status', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: 'no-store',
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          setPersonalisationEnabled(!!data?.enabled);
+        }
+      } catch {
+        // Silent: a transient failure should not break the navbar.
+      }
+    })();
+    return () => { cancelled = true; };
   }, [user, supabase]);
 
   // Close dropdowns when clicking outside
@@ -243,6 +270,17 @@ export default function Navbar() {
               style={pathname.startsWith('/courses') ? activeStyle : undefined}
             >
               Courses
+            </Link>
+          )}
+
+          {/* Personalised Paths — gated on tenant.personalised_courses_enabled. */}
+          {isAuthenticated && role === 'student' && personalisationEnabled && (
+            <Link
+              href="/personalise"
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${activeLinkClass(pathname.startsWith('/personalise'))}`}
+              style={pathname.startsWith('/personalise') ? activeStyle : undefined}
+            >
+              My Path
             </Link>
           )}
 

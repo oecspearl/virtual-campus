@@ -21,11 +21,17 @@ const sampleRequest: CourseAssemblyRequest = {
 };
 
 // A response that satisfies the Zod schema. All required fields populated.
-// courseTitle / courseDescription length minimums are enforced by the schema.
+// courseDescription must be at least 200 chars (per schema), so the fixture
+// is long enough on purpose — kept generic so it won't drift if we tweak
+// the prompt.
 const validResponse: CourseAssemblyResponse = {
   courseTitle: 'A focused learning path',
   courseDescription:
-    'A short description of the path that meets the schema minimum length.',
+    'This personalised path situates the learner within a broader topic, ' +
+    'surveying what the assembled lessons cover at a higher level and ' +
+    'motivating why this particular sequence serves their stated goal. ' +
+    'It is intended as a starting point — concrete enough to ship, ' +
+    'generic enough to remain stable across prompt revisions in tests.',
   generatedSequence: [],
   recommendedAdditions: [],
   flaggedGaps: [],

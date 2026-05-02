@@ -144,7 +144,9 @@ export default function PersonalisedCourseDetailPage() {
           {course.course_title ?? course.learner_goal}
         </h1>
         {course.course_description && (
-          <p className="text-sm text-gray-700 mt-2 leading-relaxed">{course.course_description}</p>
+          <div className="text-sm text-gray-700 mt-3 prose prose-sm max-w-none leading-relaxed">
+            <ReactMarkdown>{course.course_description}</ReactMarkdown>
+          </div>
         )}
         <p className="text-xs text-gray-500 mt-3">
           <span className="font-medium">Your goal:</span> {course.learner_goal}

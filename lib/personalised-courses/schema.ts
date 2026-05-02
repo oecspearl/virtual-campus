@@ -65,10 +65,10 @@ export const courseAssemblySchema = z.object({
     ),
   courseDescription: z
     .string()
-    .min(20)
-    .max(1000)
+    .min(200)
+    .max(3000)
     .describe(
-      'A 2–4 sentence description of the path: what the learner will do, who it serves, the outcome. 20–1000 chars.',
+      'A substantial, multi-paragraph course description (200–3000 chars, ~150–500 words) that BUILDS ON the learner\'s goal rather than just restating it. Take the goal as a starting point and add real substance: situate the path in its broader context, survey what the assembled lessons collectively cover, name the kinds of skills, concepts and decisions the learner will engage with, and motivate why this particular sequence serves the stated goal. Use plain prose with paragraph breaks (\\n\\n) where appropriate. Do NOT simply paraphrase the goal sentence.',
     ),
   generatedSequence: z
     .array(sequenceItemSchema)

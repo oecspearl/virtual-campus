@@ -31,9 +31,13 @@ export default function HelpButton({
     lg: 'w-8 h-8'
   };
 
-  const positionClasses = position === 'fixed' 
-    ? 'fixed bottom-6 right-6 z-40' 
+  const positionClasses = position === 'fixed'
+    ? 'fixed right-4 sm:right-6 z-[55]'
     : 'inline-block';
+
+  const fixedStyle = position === 'fixed'
+    ? { bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--help-bottom-offset, 88px))' }
+    : undefined;
 
   return (
     <>
@@ -42,13 +46,14 @@ export default function HelpButton({
         className={`
           ${positionClasses}
           ${sizeClasses[size]}
-          bg-blue-600 hover:bg-blue-700 
-          text-white rounded-full shadow-lg 
-          hover:shadow-xl transition-all duration-200 
+          bg-blue-600 hover:bg-blue-700
+          text-white rounded-full shadow-lg
+          hover:shadow-xl transition-all duration-200
           flex items-center justify-center
           group
           ${className}
         `}
+        style={fixedStyle}
         title="Open Help Center"
         aria-label="Open Help Center"
       >

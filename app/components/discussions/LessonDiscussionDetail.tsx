@@ -588,9 +588,11 @@ interface ReplyItemProps {
   onReply: (replyId: string) => void;
   onVote: (replyId: string, voteType: 'up' | 'down') => void;
   onSolution: () => void;
+  /** Recursion depth — used to cap visible indentation on narrow viewports. */
+  depth?: number;
 }
 
-function ReplyItem({ reply, onReply, onVote, onSolution, onDelete, isInstructor }: ReplyItemProps & { onDelete: (replyId: string) => void; isInstructor: boolean }) {
+function ReplyItem({ reply, onReply, onVote, onSolution, onDelete, isInstructor, depth = 0 }: ReplyItemProps & { onDelete: (replyId: string) => void; isInstructor: boolean }) {
   const { user } = useSupabase();
   const [showReplyForm, setShowReplyForm] = useState(false);
 
@@ -696,22 +698,29 @@ function ReplyItem({ reply, onReply, onVote, onSolution, onDelete, isInstructor 
         </div>
       </div>
 
-      {/* Nested Replies */}
-      {reply.children && reply.children.length > 0 && (
-        <div className="mt-6 ml-6 sm:ml-8 space-y-4 border-l-2 border-gray-100 pl-4 sm:pl-6">
-          {reply.children.map((childReply) => (
-            <ReplyItem
-              key={childReply.id}
-              reply={childReply}
-              onReply={onReply}
-              onVote={onVote}
-              onSolution={onSolution}
-              onDelete={onDelete}
-              isInstructor={isInstructor}
-            />
-          ))}
-        </div>
-      )}
+      {/* Nested Replies — indentation caps at depth 3 so deep threads don't
+          squeeze content off the right edge on a 375px viewport. */}
+      {reply.children && reply.children.length > 0 && (() => {
+        const nextDepth = depth + 1;
+        const cappedMl = nextDepth >= 4 ? '' : 'ml-3 sm:ml-8';
+        const cappedPl = 'pl-3 sm:pl-6';
+        return (
+          <div className={`mt-6 ${cappedMl} space-y-4 border-l-2 border-gray-100 ${cappedPl}`}>
+            {reply.children.map((childReply) => (
+              <ReplyItem
+                key={childReply.id}
+                reply={childReply}
+                onReply={onReply}
+                onVote={onVote}
+                onSolution={onSolution}
+                onDelete={onDelete}
+                isInstructor={isInstructor}
+                depth={nextDepth}
+              />
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }

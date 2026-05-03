@@ -15,15 +15,16 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconPosition?: "left" | "right";
 }
 
+// Base layout enforces a 44x44px touch target across all variants and sizes
+// (WCAG 2.5.5 minimum). Sizes adjust horizontal padding and font-size only.
+const baseLayout =
+  "inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md font-medium transition-colors";
+
 const styles: Record<ButtonVariant, string> = {
-  primary:
-    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors",
-  secondary:
-    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors bg-gray-50 hover:bg-gray-100 text-slate-700",
-  ghost:
-    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-gray-50",
-  outline:
-    "inline-flex items-center px-4 py-2 rounded-md text-sm font-medium border border-gray-200 transition-colors hover:bg-gray-50",
+  primary: `${baseLayout} px-4 py-2 text-sm`,
+  secondary: `${baseLayout} px-4 py-2 text-sm bg-gray-50 hover:bg-gray-100 text-slate-700`,
+  ghost: `${baseLayout} px-4 py-2 text-sm hover:bg-gray-50`,
+  outline: `${baseLayout} px-4 py-2 text-sm border border-gray-200 hover:bg-gray-50`,
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

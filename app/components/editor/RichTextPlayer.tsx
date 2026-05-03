@@ -55,6 +55,19 @@ const T = {
   ctxbarH: 40, // matches video player tab bar h-10
 };
 
+// ─── Prose styling ───────────────────────────────────────────────────────────
+
+// Lesson HTML can contain long code blocks, wide tables, and unbreakable
+// URLs that bust out of narrow viewports. The `[&_pre]` / `[&_table]`
+// arbitrary variants give those a horizontal scroll container so the prose
+// width doesn't push past the parent on mobile. `break-words` covers long
+// inline strings (URLs, identifiers) inside paragraphs.
+const PROSE_BASE =
+  'prose prose-sm sm:prose-base max-w-none break-words ' +
+  '[&_pre]:overflow-x-auto [&_pre]:max-w-full ' +
+  '[&_table]:block [&_table]:overflow-x-auto [&_table]:max-w-full ' +
+  '[&_img]:max-w-full [&_img]:h-auto';
+
 // ─── Section helpers ─────────────────────────────────────────────────────────
 
 function extractSections(content: any[]): { index: number; title: string }[] {
@@ -269,7 +282,7 @@ export default function RichTextPlayer({
                   </div>
                 )}
                 {activePanel === 'instructions' && instructions && (
-                  <div className="text-[12px] text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                  <div className={`text-[12px] text-gray-600 leading-relaxed ${PROSE_BASE}`}>
                     <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructions) }} />
                   </div>
                 )}
@@ -385,7 +398,7 @@ export default function RichTextPlayer({
                           {/* ── Text / Rich Text ── */}
                           {(item.type === 'text' || item.type === 'label' || !item.type) && html && (
                             <div
-                              className="prose prose-sm sm:prose-base max-w-none
+                              className={`${PROSE_BASE}
                                 prose-headings:font-semibold prose-headings:text-gray-900 prose-headings:tracking-tight
                                 prose-p:text-gray-700 prose-p:leading-relaxed
                                 prose-li:text-gray-700
@@ -396,7 +409,7 @@ export default function RichTextPlayer({
                                 prose-img:rounded-lg prose-img:shadow-sm
                                 prose-table:text-sm
                                 prose-th:bg-gray-50 prose-th:font-semibold
-                                prose-td:border-gray-200"
+                                prose-td:border-gray-200`}
                               dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
                             />
                           )}
@@ -540,7 +553,7 @@ export default function RichTextPlayer({
                             const position = item.data?.instructionsPosition === 'after' ? 'after' : 'before';
                             const instructionsNode = hasInstructions ? (
                               <div
-                                className="prose prose-sm sm:prose-base max-w-none text-gray-700 px-4"
+                                className={`${PROSE_BASE} text-gray-700 px-4`}
                                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructionsHtml) }}
                               />
                             ) : null;
@@ -743,7 +756,7 @@ export default function RichTextPlayer({
 
                 {/* Instructions */}
                 {activePanel === 'instructions' && instructions && (
-                  <div className="text-[12px] text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                  <div className={`text-[12px] text-gray-600 leading-relaxed ${PROSE_BASE}`}>
                     <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(instructions) }} />
                   </div>
                 )}

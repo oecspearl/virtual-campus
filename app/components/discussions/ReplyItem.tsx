@@ -32,6 +32,21 @@ export interface ReplyItemProps {
   onDelete: (replyId: string) => void;
   /** Instructors can delete any reply; otherwise only authors can. */
   isInstructor: boolean;
+  /** Recursion depth. Used to cap visual indentation on narrow viewports
+   *  so deeply nested threads don't squeeze content off the right edge.
+   *  Defaults to 0 (top-level reply). */
+  depth?: number;
+}
+
+/** Tailwind classes for the nested-reply container at a given depth.
+ *  Cap visible indentation at depth 3 so a 5-deep thread on a 375px phone
+ *  still leaves >270px of content width. Beyond the cap we stop adding
+ *  margin but keep the left border to signal the thread continues. */
+export function nestedReplyIndent(depth: number): string {
+  const capped = Math.min(depth, 3);
+  // Per-level: 12px on mobile, 24px on sm+. Border + small padding always.
+  const ml = ['', 'ml-3 sm:ml-6', 'ml-3 sm:ml-6', 'ml-3 sm:ml-6'][capped];
+  return `mt-4 ${ml} space-y-3 border-l-2 border-gray-100 pl-3 sm:pl-4`;
 }
 
 function formatDate(dateString: string) {
@@ -60,6 +75,7 @@ export default function ReplyItem({
   onSolution,
   onDelete,
   isInstructor,
+  depth = 0,
 }: ReplyItemProps) {
   const { user } = useSupabase();
 
@@ -151,7 +167,7 @@ export default function ReplyItem({
       </div>
 
       {reply.children && reply.children.length > 0 && (
-        <div className="mt-4 ml-6 space-y-3">
+        <div className={nestedReplyIndent(depth + 1)}>
           {reply.children.map((childReply) => (
             <ReplyItem
               key={childReply.id}
@@ -161,6 +177,7 @@ export default function ReplyItem({
               onSolution={onSolution}
               onDelete={onDelete}
               isInstructor={isInstructor}
+              depth={depth + 1}
             />
           ))}
         </div>

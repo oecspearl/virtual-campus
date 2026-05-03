@@ -466,7 +466,13 @@ function ReplyItem({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`${depth > 0 ? "ml-6 sm:ml-8 border-l-2 border-gray-100 pl-4" : ""}`}
+      // Indentation caps at depth 3 so a 5-deep thread on a 375px viewport
+      // still leaves >280px of content width.
+      className={
+        depth === 0
+          ? ''
+          : `${depth >= 4 ? '' : 'ml-3 sm:ml-8'} border-l-2 border-gray-100 pl-3 sm:pl-4`
+      }
     >
       <div className="bg-white border border-gray-200 rounded-lg p-4">
         {/* Solution Badge */}

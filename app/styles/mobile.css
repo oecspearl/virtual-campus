@@ -6,6 +6,20 @@
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
+
+  /* Floating chrome stack (bottom-right corner) on mobile.
+     Layer order from the floor up: bottom nav (64px), gap (24px),
+     AI chat widget (~56px), gap (8px), Help button.
+     On lg+ the bottom nav is hidden and the corner is free, so offsets shrink. */
+  --toast-bottom-offset: 88px;
+  --help-bottom-offset: 152px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --toast-bottom-offset: 16px;
+    --help-bottom-offset: 88px;
+  }
 }
 
 /* Touch-friendly button sizes (minimum 44x44px) */

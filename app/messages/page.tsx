@@ -33,18 +33,21 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    // Mobile: sidebar takes full width (the empty-state pane is meaningless
+    // until the user selects a room, which routes to /messages/[roomId]).
+    // md and up: sidebar + empty-state placeholder side by side.
+    <div className="flex flex-col md:flex-row h-[calc(100vh-64px)]">
       {/* Sidebar */}
-      <div className="w-80 flex-shrink-0">
+      <div className="w-full md:w-80 flex-1 md:flex-none md:flex-shrink-0 min-w-0">
         <ChatSidebar
           onCreateRoom={() => setShowCreateModal(true)}
           onRoomSelect={(roomId) => router.push(`/messages/${roomId}`)}
         />
       </div>
 
-      {/* Main Content - Empty State */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center">
+      {/* Main Content - Empty State (desktop only; on mobile the sidebar IS the page) */}
+      <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
+        <div className="text-center px-4">
           <Icon
             icon="mdi:chat-processing-outline"
             className="w-24 h-24 mx-auto text-gray-300 mb-4"
@@ -57,7 +60,7 @@ export default function MessagesPage() {
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-[#0066CC] text-white rounded-lg hover:bg-[#0052a3] transition-colors"
+            className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 bg-[#0066CC] text-white rounded-lg hover:bg-[#0052a3] transition-colors"
           >
             New Message
           </button>

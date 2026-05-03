@@ -120,7 +120,7 @@ export default function AccessibleModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto"
+      className="fixed inset-0 z-[60] overflow-hidden"
       aria-hidden={!isOpen}
     >
       {/* Backdrop */}
@@ -130,9 +130,14 @@ export default function AccessibleModal({
         aria-hidden="true"
       />
 
-      {/* Modal container */}
+      {/*
+        Modal container.
+        - Mobile (< sm): bottom-sheet — panel pinned to viewport bottom,
+          full-width, rounded top corners, capped at 85vh with internal scroll.
+        - sm and up: centered card with size-specific max-width.
+      */}
       <div
-        className="flex min-h-full items-center justify-center p-4"
+        className="fixed inset-0 flex items-end justify-center sm:items-center sm:p-4"
         onClick={handleBackdropClick}
       >
         {/* Modal panel */}
@@ -144,14 +149,26 @@ export default function AccessibleModal({
           aria-describedby={descriptionId}
           className={`
             relative w-full ${sizeClasses[size]}
-            bg-white rounded-lg shadow-xl
+            bg-white shadow-xl
+            flex flex-col
+            max-h-[85vh] sm:max-h-[calc(100vh-2rem)]
+            rounded-t-2xl sm:rounded-lg
             transform transition-all
             ${className}
           `}
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
+          {/* Drag handle (mobile bottom-sheet affordance) */}
+          <div
+            className="flex justify-center pt-2 pb-1 sm:hidden"
+            aria-hidden="true"
+          >
+            <span className="block h-1 w-9 rounded-full bg-gray-300" />
+          </div>
+
           {/* Header */}
-          <div className="flex items-start justify-between p-4 border-b border-gray-200">
-            <div>
+          <div className="flex items-start justify-between gap-3 p-4 border-b border-gray-200 flex-shrink-0">
+            <div className="min-w-0 flex-1">
               <h2
                 id={titleId}
                 className="text-lg font-semibold text-gray-900"
@@ -171,7 +188,7 @@ export default function AccessibleModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 -m-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-lg"
+                className="flex items-center justify-center min-h-[44px] min-w-[44px] -mr-2 -mt-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-lg"
                 style={{ '--tw-ring-color': 'var(--theme-primary)' } as React.CSSProperties}
                 aria-label="Close dialog"
               >
@@ -180,8 +197,11 @@ export default function AccessibleModal({
             )}
           </div>
 
-          {/* Content */}
-          <div className="p-4">
+          {/* Content (scrolls when panel is capped) */}
+          <div
+            className="p-4 overflow-y-auto flex-1"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
             {children}
           </div>
         </div>

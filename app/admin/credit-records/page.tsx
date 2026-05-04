@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
 import RoleGuard from '@/app/components/RoleGuard';
 import AccessibleModal from '@/app/components/ui/AccessibleModal';
+import { ResponsiveTable } from '@/app/components/ui/ResponsiveTable';
 import CommentThread from '@/app/components/credit-records/CommentThread';
 
 interface RegistrarRecord {
@@ -250,113 +251,131 @@ export default function AdminCreditRecordsPage() {
             : records;
           return loading ? (
             <div className="bg-white rounded-lg border border-gray-200 p-8 h-40 animate-pulse" />
-          ) : filtered.length === 0 ? (
-            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-              <Icon icon="mdi:inbox-outline" className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-600">
-                {q ? `No records match "${search}"` : 'No records in this view'}
-              </p>
-            </div>
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500">
-                  <tr className="text-left">
-                    <th className="px-4 py-3 font-medium">Student</th>
-                    <th className="px-4 py-3 font-medium">Course</th>
-                    <th className="px-4 py-3 font-medium">Institution</th>
-                    <th className="px-4 py-3 font-medium">Credits</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r) => (
-                    <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50/50">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{r.student?.name}</p>
-                        <p className="text-xs text-gray-500">{r.student?.email}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-gray-900">{r.course_title}</p>
-                        {r.course_code && <p className="text-xs text-gray-500">{r.course_code}</p>}
-                        {r.comment_count > 0 && (
-                          <span
-                            className={`inline-flex items-center gap-1 mt-1 text-xs px-1.5 py-0.5 rounded-full border ${
-                              r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status)
-                                ? 'bg-amber-50 text-amber-700 border-amber-200 font-medium'
-                                : 'bg-gray-50 text-gray-600 border-gray-200'
-                            }`}
-                            title={
-                              r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status)
-                                ? 'Awaiting your response'
-                                : `${r.comment_count} note${r.comment_count === 1 ? '' : 's'}`
-                            }
-                          >
-                            <Icon icon="mdi:forum-outline" className="w-3 h-3" />
-                            {r.comment_count}
-                            {r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status) && (
-                              <span className="ml-0.5">•</span>
-                            )}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {r.issuing_institution_name}
-                        {r.source_type === 'external' && (
-                          <span className="ml-1 text-xs text-gray-400">(external)</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {Number(r.credits).toFixed(2)}
-                        {r.grade && <span className="ml-1 text-xs text-gray-500">({r.grade})</span>}
-                      </td>
-                      <td className="px-4 py-3">
+            <ResponsiveTable<RegistrarRecord>
+              caption="Credit records"
+              rows={filtered}
+              rowKey={(r) => r.id}
+              empty={
+                <div className="flex flex-col items-center">
+                  <Icon icon="mdi:inbox-outline" className="w-12 h-12 text-gray-300 mb-3" />
+                  <p className="text-gray-600">
+                    {q ? `No records match "${search}"` : 'No records in this view'}
+                  </p>
+                </div>
+              }
+              columns={[
+                {
+                  key: 'student',
+                  header: 'Student',
+                  primary: true,
+                  render: (r) => (
+                    <>
+                      <p className="font-medium text-gray-900">{r.student?.name}</p>
+                      <p className="text-xs text-gray-500 break-all">{r.student?.email}</p>
+                    </>
+                  ),
+                },
+                {
+                  key: 'course',
+                  header: 'Course',
+                  render: (r) => (
+                    <>
+                      <p className="text-gray-900">{r.course_title}</p>
+                      {r.course_code && <p className="text-xs text-gray-500">{r.course_code}</p>}
+                      {r.comment_count > 0 && (
                         <span
-                          className={`inline-block px-2 py-0.5 text-xs rounded-full border capitalize ${STATUS_BADGE[r.status] || ''}`}
+                          className={`inline-flex items-center gap-1 mt-1 text-xs px-1.5 py-0.5 rounded-full border ${
+                            r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status)
+                              ? 'bg-amber-50 text-amber-700 border-amber-200 font-medium'
+                              : 'bg-gray-50 text-gray-600 border-gray-200'
+                          }`}
+                          title={
+                            r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status)
+                              ? 'Awaiting your response'
+                              : `${r.comment_count} note${r.comment_count === 1 ? '' : 's'}`
+                          }
                         >
-                          {r.status.replace('_', ' ')}
+                          <Icon icon="mdi:forum-outline" className="w-3 h-3" />
+                          {r.comment_count}
+                          {r.last_comment_by_student && !['approved', 'rejected', 'withdrawn'].includes(r.status) && (
+                            <span className="ml-0.5">•</span>
+                          )}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => openView(r)}
-                            className="text-xs text-gray-600 hover:text-gray-900"
-                          >
-                            View
-                          </button>
-                          {r.status === 'pending' && (
-                            <button
-                              onClick={() => handleStartReview(r.id)}
-                              className="text-xs text-blue-600 hover:text-blue-700"
-                            >
-                              Start review
-                            </button>
-                          )}
-                          {['pending', 'under_review'].includes(r.status) && (
-                            <>
-                              <button
-                                onClick={() => openApprove(r)}
-                                className="text-xs text-green-600 hover:text-green-700"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => openReject(r)}
-                                className="text-xs text-red-600 hover:text-red-700"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </>
+                  ),
+                },
+                {
+                  key: 'institution',
+                  header: 'Institution',
+                  render: (r) => (
+                    <span className="text-gray-600">
+                      {r.issuing_institution_name}
+                      {r.source_type === 'external' && (
+                        <span className="ml-1 text-xs text-gray-400">(external)</span>
+                      )}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'credits',
+                  header: 'Credits',
+                  align: 'right',
+                  render: (r) => (
+                    <span className="font-medium text-gray-900">
+                      {Number(r.credits).toFixed(2)}
+                      {r.grade && <span className="ml-1 text-xs text-gray-500">({r.grade})</span>}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  render: (r) => (
+                    <span
+                      className={`inline-block px-2 py-0.5 text-xs rounded-full border capitalize ${STATUS_BADGE[r.status] || ''}`}
+                    >
+                      {r.status.replace('_', ' ')}
+                    </span>
+                  ),
+                },
+              ]}
+              actions={(r) => (
+                <>
+                  <button
+                    onClick={() => openView(r)}
+                    className="inline-flex items-center justify-center min-h-[44px] px-3 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded"
+                  >
+                    View
+                  </button>
+                  {r.status === 'pending' && (
+                    <button
+                      onClick={() => handleStartReview(r.id)}
+                      className="inline-flex items-center justify-center min-h-[44px] px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
+                    >
+                      Start review
+                    </button>
+                  )}
+                  {['pending', 'under_review'].includes(r.status) && (
+                    <>
+                      <button
+                        onClick={() => openApprove(r)}
+                        className="inline-flex items-center justify-center min-h-[44px] px-3 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => openReject(r)}
+                        className="inline-flex items-center justify-center min-h-[44px] px-3 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            />
           );
           })()}
         </div>

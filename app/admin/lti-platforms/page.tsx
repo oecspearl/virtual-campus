@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
+import { ResponsiveTable } from '@/app/components/ui/ResponsiveTable';
 
 interface LTIExternalPlatform {
   id: string;
@@ -376,98 +377,92 @@ export default function LTIPlatformsPage() {
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Platform Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Issuer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {platforms.map((platform) => (
-                <tr key={platform.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{platform.name}</div>
-                    {platform.description && (
-                      <div className="text-sm text-gray-500">{platform.description}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 truncate max-w-xs">{platform.issuer}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 font-mono">{platform.client_id}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        platform.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : platform.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {platform.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(platform)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <Icon icon="material-symbols:edit" className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => toggleStatus(platform)}
-                        className={`${
-                          platform.status === 'active'
-                            ? 'text-yellow-600 hover:text-yellow-900'
-                            : 'text-green-600 hover:text-green-900'
-                        }`}
-                      >
-                        <Icon
-                          icon={
-                            platform.status === 'active'
-                              ? 'material-symbols:pause'
-                              : 'material-symbols:play-arrow'
-                          }
-                          className="w-5 h-5"
-                        />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(platform.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Icon icon="material-symbols:delete" className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {platforms.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              No external platforms registered. Click "Add Platform" to get started.
-            </div>
+        <ResponsiveTable<LTIExternalPlatform>
+          caption="LTI external platforms"
+          rows={platforms}
+          rowKey={(p) => p.id}
+          empty='No external platforms registered. Click "Add Platform" to get started.'
+          columns={[
+            {
+              key: 'name',
+              header: 'Platform Name',
+              primary: true,
+              render: (p) => (
+                <>
+                  <div className="text-sm font-medium text-gray-900">{p.name}</div>
+                  {p.description && <div className="text-sm text-gray-500">{p.description}</div>}
+                </>
+              ),
+            },
+            {
+              key: 'issuer',
+              header: 'Issuer',
+              render: (p) => (
+                <div className="text-sm text-gray-900 break-all md:truncate md:max-w-xs">{p.issuer}</div>
+              ),
+            },
+            {
+              key: 'client_id',
+              header: 'Client ID',
+              render: (p) => (
+                <div className="text-sm text-gray-900 font-mono break-all">{p.client_id}</div>
+              ),
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              render: (p) => (
+                <span
+                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    p.status === 'active'
+                      ? 'bg-green-100 text-green-800'
+                      : p.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {p.status}
+                </span>
+              ),
+            },
+          ]}
+          actions={(p) => (
+            <>
+              <button
+                onClick={() => handleEdit(p)}
+                aria-label="Edit"
+                className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded"
+              >
+                <Icon icon="material-symbols:edit" className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => toggleStatus(p)}
+                aria-label={p.status === 'active' ? 'Pause' : 'Activate'}
+                className={`inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded ${
+                  p.status === 'active'
+                    ? 'text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50'
+                    : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                }`}
+              >
+                <Icon
+                  icon={
+                    p.status === 'active'
+                      ? 'material-symbols:pause'
+                      : 'material-symbols:play-arrow'
+                  }
+                  className="w-5 h-5"
+                />
+              </button>
+              <button
+                onClick={() => handleDelete(p.id)}
+                aria-label="Delete"
+                className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+              >
+                <Icon icon="material-symbols:delete" className="w-5 h-5" />
+              </button>
+            </>
           )}
-        </div>
+        />
       )}
     </div>
   );

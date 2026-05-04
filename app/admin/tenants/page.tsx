@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import RoleGuard from "@/app/components/RoleGuard";
 import Button from "@/app/components/ui/Button";
+import { ResponsiveTable } from "@/app/components/ui/ResponsiveTable";
 
 type Tenant = {
   id: string;
@@ -192,55 +193,58 @@ function TenantsInner() {
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Loading tenants...</div>
-      ) : tenants.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No tenants found.</div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-600">Name</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Slug</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Plan</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Members</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Created</th>
-                <th className="px-4 py-3 font-medium text-gray-600"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {tenants.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900">{t.name}</td>
-                  <td className="px-4 py-3 text-gray-600 font-mono text-xs">{t.slug}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(t.status)}`}>
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${planColor(t.plan)}`}>
-                      {t.plan}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{t.member_count}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {new Date(t.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/tenants/${t.id}`}
-                      className="text-sm font-medium hover:underline"
-                      style={{ color: "var(--theme-primary)" }}
-                    >
-                      Manage
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveTable<Tenant>
+          caption="Tenants"
+          rows={tenants}
+          rowKey={(t) => t.id}
+          empty="No tenants found."
+          columns={[
+            { key: 'name', header: 'Name', primary: true, render: (t) => t.name },
+            {
+              key: 'slug',
+              header: 'Slug',
+              render: (t) => <span className="font-mono text-xs text-gray-600 break-all">{t.slug}</span>,
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              render: (t) => (
+                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(t.status)}`}>
+                  {t.status}
+                </span>
+              ),
+            },
+            {
+              key: 'plan',
+              header: 'Plan',
+              render: (t) => (
+                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${planColor(t.plan)}`}>
+                  {t.plan}
+                </span>
+              ),
+            },
+            { key: 'members', header: 'Members', render: (t) => t.member_count, align: 'right' },
+            {
+              key: 'created',
+              header: 'Created',
+              render: (t) => (
+                <span className="text-gray-500 text-xs">
+                  {new Date(t.created_at).toLocaleDateString()}
+                </span>
+              ),
+            },
+          ]}
+          actions={(t) => (
+            <Link
+              href={`/admin/tenants/${t.id}`}
+              className="inline-flex items-center justify-center min-h-[44px] px-3 text-sm font-medium hover:underline"
+              style={{ color: "var(--theme-primary)" }}
+            >
+              Manage
+            </Link>
+          )}
+        />
       )}
     </div>
   );

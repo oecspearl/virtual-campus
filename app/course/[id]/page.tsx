@@ -770,8 +770,13 @@ export default function CourseDetailPage() {
         userRole={profile?.role || 'student'}
       />
 
-      {/* Mobile-only sticky action bar — enroll/continue CTA */}
-      <div className="lg:hidden sticky top-[41px] z-30 bg-white border-b border-gray-200/80 px-4 py-3">
+      {/* Mobile-only enrol/continue CTA. Previously sticky at top-[41px],
+          which combined with the sticky CourseTabBar consumed ~95px of
+          viewport on iPhone SE. Now inline so the CTA sits under the hero
+          where users are already looking — scrolling past it returns the
+          full viewport to the page, with the CourseTabBar still sticky for
+          navigation. */}
+      <div className="lg:hidden bg-white border-b border-gray-200/80 px-4 py-2">
         {enrollmentStatus === 'enrolled' ? (
           <Link
             href={lessons.length > 0 ? `/course/${courseId}/lesson/${lessons[0]?.id}` : '#'}

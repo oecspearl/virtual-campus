@@ -30,8 +30,12 @@ export default function CourseTabBar({
     ...(isInstructor ? [{ key: 'files', label: 'Files' }] : []),
   ];
 
+  // Pinned BELOW the global app chrome rather than at viewport top, so the
+  // tab bar doesn't overlap the MobileHeader (~64px, mobile) or the desktop
+  // Navbar (~72px, lg+). Both globals are sticky top-0 z-50; this bar sits
+  // immediately under them at z-40.
   return (
-    <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div className="bg-white border-b border-gray-200 sticky top-16 lg:top-[72px] z-40">
       <div className="px-6 sm:px-10 lg:px-12">
         <nav className="flex gap-0 overflow-x-auto scrollbar-hide -mb-px" aria-label="Course tabs">
           {tabs.map(tab => {

@@ -13,7 +13,14 @@ export default function BottomNavigation() {
 
   // Don't show on certain pages
   const hideOnPages = ['/auth/signin', '/auth/signup', '/offline'];
-  if (hideOnPages.some(page => pathname.startsWith(page))) {
+  // Immersive lesson routes — /course/.../lesson/{id}, /personalise/.../lesson/{id},
+  // /shared-courses/.../lesson/{id} — render a `fixed inset-0` lesson player
+  // (RichText, SCORM, video) that takes over the viewport and provides its
+  // own top chrome and prev/next/mark-complete controls. The global bottom
+  // nav was covering the bottom 64px of that player, hiding the section
+  // prev/next buttons. Sub-routes like /discussions/* keep the normal nav.
+  const isImmersiveLesson = /\/lesson\/[^/]+\/?$/.test(pathname);
+  if (isImmersiveLesson || hideOnPages.some(page => pathname.startsWith(page))) {
     return null;
   }
 

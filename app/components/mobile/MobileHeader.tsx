@@ -34,6 +34,17 @@ export default function MobileHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
+  // Immersive lesson routes render a `fixed inset-0` lesson player that
+  // provides its own top chrome (back-to-course, lesson title, prev/next,
+  // mark complete). The global mobile header here is redundant and the
+  // backdrop-blur strip can leak visually behind the lesson player on iOS.
+  // Mirror the same predicate as BottomNavigation. Early return MUST come
+  // after all hooks above to satisfy Rules of Hooks.
+  const isImmersiveLesson = /\/lesson\/[^/]+\/?$/.test(pathname);
+  if (isImmersiveLesson) {
+    return null;
+  }
+
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-lg lg:hidden">
       <div className="flex items-center justify-between px-4 py-3">

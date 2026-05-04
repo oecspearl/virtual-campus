@@ -463,17 +463,20 @@ export default function QuizPlayer({ quizId }: { quizId: string }) {
             </label>
           </div>
 
-          <div className="flex justify-center space-x-4 mt-6">
+          {/* Stack on mobile, side-by-side from sm. The "I Agree" label is
+              long enough that side-by-side compresses awkwardly on narrow
+              viewports. */}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-center gap-3 sm:gap-4 mt-6">
             <button
               onClick={() => window.history.back()}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               Go Back
             </button>
             <button
               onClick={() => setProctorConsent(true)}
               disabled={!showProctorInfo}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center min-h-[44px] px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               I Agree - Continue to Quiz
             </button>
@@ -552,11 +555,14 @@ export default function QuizPlayer({ quizId }: { quizId: string }) {
             </div>
           </div>
 
-          {/* Instructions */}
+          {/* Instructions — overflow guards mirror RichTextPlayer's PROSE_BASE
+              so long code blocks, wide tables, or unbreakable URLs in
+              instructor-authored content don't bust out of the card on
+              narrow viewports. */}
           {quiz.instructions && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Instructions</h3>
-              <div className="prose prose-sm max-w-none text-gray-700 bg-gray-50 p-4 rounded-md">
+              <div className="prose prose-sm max-w-none break-words text-gray-700 bg-gray-50 p-4 rounded-md [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_table]:block [&_table]:overflow-x-auto [&_table]:max-w-full [&_img]:max-w-full [&_img]:h-auto">
                 <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(quiz.instructions)) }} />
               </div>
             </div>

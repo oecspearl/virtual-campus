@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
+import { ResponsiveTable } from '@/app/components/ui/ResponsiveTable';
 import Link from 'next/link';
 
 interface AtRiskStudent {
@@ -243,116 +244,105 @@ export default function AtRiskStudentsPage() {
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      ) : students.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <Icon icon="material-symbols:check-circle" className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No At-Risk Students</h3>
-          <p className="text-gray-600">All students are performing well!</p>
-        </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Course
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Risk Level
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Risk Score
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Metrics
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Predicted Grade
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {students.map((student) => (
-                <tr key={`${student.student_id}-${student.course_id || 'all'}`} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {student.student_name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {student.student_id.substring(0, 8)}...
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {student.course_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRiskColor(student.risk_level)}`}>
-                      <Icon icon={getRiskIcon(student.risk_level)} className="w-4 h-4 mr-1" />
-                      {student.risk_level.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            student.risk_score >= 70 ? 'bg-red-600' :
-                            student.risk_score >= 50 ? 'bg-orange-600' :
-                            student.risk_score >= 30 ? 'bg-yellow-600' : 'bg-green-600'
-                          }`}
-                          style={{ width: `${student.risk_score}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-gray-900">{student.risk_score}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="space-y-1">
-                      <div>Engagement: {student.engagement_score.toFixed(0)}%</div>
-                      <div>Performance: {student.performance_score.toFixed(0)}%</div>
-                      <div>Attendance: {student.attendance_rate.toFixed(0)}%</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-gray-900">
-                      {student.predicted_grade || 'N/A'}
-                    </span>
-                    <div className="text-xs text-gray-500">
-                      {student.confidence}% confidence
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/admin/students/${student.student_id}`}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View
-                      </Link>
-                      <button
-                        onClick={() => recalculateRisk(student.student_id, student.course_id)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                        title="Recalculate Risk"
-                      >
-                        <Icon icon="material-symbols:refresh" className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveTable<AtRiskStudent>
+          caption="At-risk students"
+          rows={students}
+          rowKey={(s) => `${s.student_id}-${s.course_id || 'all'}`}
+          empty={
+            <div className="flex flex-col items-center">
+              <Icon icon="material-symbols:check-circle" className="w-16 h-16 text-green-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No At-Risk Students</h3>
+              <p className="text-gray-600">All students are performing well!</p>
+            </div>
+          }
+          columns={[
+            {
+              key: 'student',
+              header: 'Student',
+              primary: true,
+              render: (s) => (
+                <>
+                  <div className="text-sm font-medium text-gray-900">{s.student_name}</div>
+                  <div className="text-sm text-gray-500 font-mono">{s.student_id.substring(0, 8)}…</div>
+                </>
+              ),
+            },
+            {
+              key: 'course',
+              header: 'Course',
+              render: (s) => <span className="text-sm text-gray-500">{s.course_name}</span>,
+            },
+            {
+              key: 'risk_level',
+              header: 'Risk Level',
+              render: (s) => (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRiskColor(s.risk_level)}`}>
+                  <Icon icon={getRiskIcon(s.risk_level)} className="w-4 h-4 mr-1" />
+                  {s.risk_level.toUpperCase()}
+                </span>
+              ),
+            },
+            {
+              key: 'risk_score',
+              header: 'Risk Score',
+              render: (s) => (
+                <div className="flex items-center">
+                  <div className="w-16 bg-gray-200 rounded-full h-2 mr-2 flex-shrink-0">
+                    <div
+                      className={`h-2 rounded-full ${
+                        s.risk_score >= 70 ? 'bg-red-600' :
+                        s.risk_score >= 50 ? 'bg-orange-600' :
+                        s.risk_score >= 30 ? 'bg-yellow-600' : 'bg-green-600'
+                      }`}
+                      style={{ width: `${s.risk_score}%` }}
+                    />
+                  </div>
+                  <span className="text-sm text-gray-900">{s.risk_score}%</span>
+                </div>
+              ),
+            },
+            {
+              key: 'metrics',
+              header: 'Metrics',
+              render: (s) => (
+                <div className="space-y-1 text-sm text-gray-500">
+                  <div>Engagement: {s.engagement_score.toFixed(0)}%</div>
+                  <div>Performance: {s.performance_score.toFixed(0)}%</div>
+                  <div>Attendance: {s.attendance_rate.toFixed(0)}%</div>
+                </div>
+              ),
+            },
+            {
+              key: 'predicted_grade',
+              header: 'Predicted Grade',
+              render: (s) => (
+                <>
+                  <span className="text-sm font-medium text-gray-900">{s.predicted_grade || 'N/A'}</span>
+                  <div className="text-xs text-gray-500">{s.confidence}% confidence</div>
+                </>
+              ),
+            },
+          ]}
+          actions={(s) => (
+            <>
+              <Link
+                href={`/admin/students/${s.student_id}`}
+                className="inline-flex items-center justify-center min-h-[44px] px-3 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded text-sm"
+              >
+                View
+              </Link>
+              <button
+                onClick={() => recalculateRisk(s.student_id, s.course_id)}
+                aria-label="Recalculate risk"
+                title="Recalculate risk"
+                className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded"
+              >
+                <Icon icon="material-symbols:refresh" className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        />
       )}
 
       {/* Risk Factors Legend */}

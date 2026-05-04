@@ -6,6 +6,7 @@ import Button from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import Link from 'next/link';
 import AccessibleModal from '@/app/components/ui/AccessibleModal';
+import { ResponsiveTable, ResponsiveTableColumn } from '@/app/components/ui/ResponsiveTable';
 
 interface CustomReport {
   id: string;
@@ -181,7 +182,10 @@ export default function CustomReportsPage() {
         </div>
       )}
 
-      {/* Results Modal */}
+      {/* Results Modal — columns are dynamic per report, derived at render
+          time from selectedReport.columns. The AccessibleModal already
+          handles scroll capping (max-h-[85vh]) so we don't add an inner
+          max-h here, avoiding double-scroll. */}
       <AccessibleModal
         isOpen={!!(selectedReport && results.length > 0)}
         onClose={() => {
@@ -191,54 +195,39 @@ export default function CustomReportsPage() {
         title={selectedReport?.name || 'Report Results'}
         size="full"
       >
-            <div className="max-h-[70vh] overflow-auto">
-              <div className="mb-4 text-sm text-gray-600">
-                {results.length} results
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {selectedReport?.columns.map((col) => (
-                        <th
-                          key={col}
-                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {results.map((row, idx) => (
-                      <tr key={idx}>
-                        {selectedReport?.columns.map((col) => (
-                          <td
-                            key={col}
-                            className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
-                          >
-                            {typeof row[col] === 'object'
-                              ? JSON.stringify(row[col])
-                              : String(row[col] || '')}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="flex justify-end pt-4 border-t border-gray-200 mt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedReport(null);
-                  setResults([]);
-                }}
-              >
-                Close
-              </Button>
-            </div>
+        <div className="mb-4 text-sm text-gray-600">{results.length} results</div>
+        <ResponsiveTable<Record<string, unknown>>
+          caption={selectedReport?.name || 'Report results'}
+          rows={results}
+          rowKey={(_, idx) => String(idx)}
+          empty="No results returned."
+          columns={
+            (selectedReport?.columns ?? []).map<ResponsiveTableColumn<Record<string, unknown>>>((col, i) => ({
+              key: col,
+              header: col,
+              primary: i === 0,
+              render: (row) => {
+                const v = row[col];
+                return (
+                  <span className="break-words">
+                    {typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v ?? '')}
+                  </span>
+                );
+              },
+            }))
+          }
+        />
+        <div className="flex justify-end pt-4 border-t border-gray-200 mt-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSelectedReport(null);
+              setResults([]);
+            }}
+          >
+            Close
+          </Button>
+        </div>
       </AccessibleModal>
     </div>
   );

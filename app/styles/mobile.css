@@ -13,12 +13,17 @@
      On lg+ the bottom nav is hidden and the corner is free, so offsets shrink. */
   --toast-bottom-offset: 88px;
   --help-bottom-offset: 152px;
+
+  /* Bottom-pinned page-level CTAs (e.g. lesson "Next" prompt, sticky action bars)
+     clear the bottom nav on mobile and sit flush at the viewport bottom on lg+. */
+  --lesson-prompt-bottom: 80px;
 }
 
 @media (min-width: 1024px) {
   :root {
     --toast-bottom-offset: 16px;
     --help-bottom-offset: 88px;
+    --lesson-prompt-bottom: 0px;
   }
 }
 

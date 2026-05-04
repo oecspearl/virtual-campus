@@ -621,9 +621,9 @@ function ReplyItem({ reply, onReply, onVote, onSolution, onDelete, isInstructor,
         </div>
         
         <div className="flex-1 min-w-0">
-          {/* Author Info and Status */}
-          <div className="flex items-center gap-3 mb-3">
-            <span className="font-semibold text-gray-900">{reply.author.name}</span>
+          {/* Author Info and Status — wrap on narrow viewports rather than overflow */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 min-w-0">
+            <span className="font-semibold text-gray-900 truncate max-w-full">{reply.author.name}</span>
             <span className="text-sm text-gray-500">{formatDate(reply.created_at)}</span>
             {reply.is_solution && (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
@@ -632,64 +632,64 @@ function ReplyItem({ reply, onReply, onVote, onSolution, onDelete, isInstructor,
               </span>
             )}
           </div>
-          
+
           {/* Reply Content */}
-          <div className="prose prose-sm sm:prose-base max-w-none text-gray-700 mb-4">
+          <div className="prose prose-sm sm:prose-base max-w-none text-gray-700 mb-4 break-words">
             <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(reply.content) }} />
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          {/* Actions — wrap freely; vote sits to the right via ml-auto */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => onReply(reply.id)}
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              <Icon icon="material-symbols:reply" className="w-4 h-4" />
+              Reply
+            </button>
+            {user && (user.id === reply.author.id || isInstructor) && (
               <button
-                onClick={() => onReply(reply.id)}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                onClick={() => {
+                  if (confirm('Delete this reply?')) {
+                    onDelete(reply.id);
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
               >
-                <Icon icon="material-symbols:reply" className="w-4 h-4" />
-                Reply
+                <Icon icon="mdi:delete-outline" className="w-4 h-4" />
+                Delete
               </button>
-              {user && (user.id === reply.author.id || isInstructor) && (
-                <button
-                  onClick={() => {
-                    if (confirm('Delete this reply?')) {
-                      onDelete(reply.id);
-                    }
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Icon icon="mdi:delete-outline" className="w-4 h-4" />
-                  Delete
-                </button>
-              )}
-              {user && !reply.is_solution && (
-                <button
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(`/api/lesson-discussions/${reply.discussion_id}/replies`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          content: reply.content,
-                          parent_reply_id: reply.parent_reply_id,
-                          is_solution: true
-                        })
-                      });
-                      if (response.ok) onSolution();
-                    } catch (err) {
-                      console.error('Error marking as solution:', err);
-                    }
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  <Icon icon="material-symbols:check-circle" className="w-4 h-4" />
-                  Mark as Solution
-                </button>
-              )}
-            </div>
+            )}
+            {user && !reply.is_solution && (
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(`/api/lesson-discussions/${reply.discussion_id}/replies`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        content: reply.content,
+                        parent_reply_id: reply.parent_reply_id,
+                        is_solution: true
+                      })
+                    });
+                    if (response.ok) onSolution();
+                  } catch (err) {
+                    console.error('Error marking as solution:', err);
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-2 min-h-[44px] px-3 py-2 text-sm text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <Icon icon="material-symbols:check-circle" className="w-4 h-4" />
+                <span className="hidden sm:inline">Mark as Solution</span>
+                <span className="sm:hidden">Solution</span>
+              </button>
+            )}
 
             <button
               onClick={() => onVote(reply.id, 'up')}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors group"
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] min-w-[44px] px-3 py-2 ml-auto rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors group"
+              aria-label="Upvote"
             >
               <Icon icon="material-symbols:thumb-up" className="w-4 h-4 group-hover:text-blue-600" />
               <span className="font-medium text-sm">{getVoteCount(reply.votes)}</span>

@@ -273,12 +273,19 @@ export default function SidebarPlayerLayout({
               <span className="text-xs text-gray-500">{progressPercentage}%</span>
             </div>
 
-            {/* Mobile sidebar toggle */}
+            {/* Mobile sidebar toggle — labelled so it's clearly the course outline,
+                not a generic menu */}
             <button
               onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="lg:hidden p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+              className="lg:hidden inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 text-sm font-medium text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-100"
+              aria-label={mobileSidebarOpen ? 'Close lesson list' : 'Open lesson list'}
+              aria-expanded={mobileSidebarOpen}
             >
-              <Icon icon="material-symbols:menu" className="w-5 h-5" />
+              <Icon
+                icon={mobileSidebarOpen ? 'material-symbols:close' : 'material-symbols:list-alt-outline'}
+                className="w-5 h-5"
+              />
+              <span>{mobileSidebarOpen ? 'Close' : 'Lessons'}</span>
             </button>
 
             {/* Desktop sidebar toggle */}

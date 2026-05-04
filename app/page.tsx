@@ -214,7 +214,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 leading-tight"
+            className="text-[2rem] leading-[1.1] sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 sm:leading-tight"
           >
             {homepageHeroTitle.includes('Virtual Campus') ? (
               <>
@@ -232,7 +232,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-xl md:text-2xl text-white/90 mb-12 max-w-4xl mx-auto leading-relaxed"
+            className="text-base sm:text-lg md:text-2xl text-white/90 mb-8 sm:mb-12 max-w-4xl mx-auto leading-relaxed"
           >
             {homepageHeroDescription}
           </motion.p>

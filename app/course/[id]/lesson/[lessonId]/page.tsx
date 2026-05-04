@@ -325,9 +325,15 @@ export default function LessonViewerPage() {
   const progress = effectiveLessons.length > 0 ? Math.round((completedCount / effectiveLessons.length) * 100) : 0;
   const isCourseComplete = completedCount === effectiveLessons.length && effectiveLessons.length > 0;
 
-  // Next lesson prompt component — rendered in all layout branches
+  // Next lesson prompt component — rendered in all layout branches.
+  // Pinned above the global bottom nav on mobile (--bottom-nav-clearance ≈ 80px
+  // = 64px nav + 16px gap, plus iOS safe-area inset). On lg+ the bottom nav
+  // is hidden, so the prompt sits at the viewport bottom.
   const NextLessonPrompt = showNextLessonPrompt && isCompleted ? (
-    <div className="fixed bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom duration-300">
+    <div
+      className="fixed left-0 right-0 z-50 animate-in slide-in-from-bottom duration-300"
+      style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--lesson-prompt-bottom, 80px))' }}
+    >
       <div className="max-w-3xl mx-auto px-4 pb-4">
         <div className="bg-white rounded-xl shadow-2xl border border-gray-200/80 overflow-hidden">
           {isCourseComplete ? (

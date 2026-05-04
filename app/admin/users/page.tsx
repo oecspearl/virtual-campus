@@ -3,6 +3,7 @@
 import React from "react";
 import RoleGuard from "@/app/components/RoleGuard";
 import Button from "@/app/components/ui/Button";
+import { ResponsiveTable } from "@/app/components/ui/ResponsiveTable";
 import { ALL_ROLES, UserRole } from "@/lib/rbac";
 
 type UserItem = {
@@ -12,6 +13,8 @@ type UserItem = {
   role: string;
   student_id?: string;
 };
+
+type EditDraft = { name: string; email: string; role: string };
 
 export default function AdminUsersPage() {
   return (
@@ -26,6 +29,9 @@ function UsersInner() {
   const [loading, setLoading] = React.useState(true);
   const [q, setQ] = React.useState("");
   const [role, setRole] = React.useState<string>("");
+  // One row is editable at a time. Keyed by user.id; null = view mode.
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [draft, setDraft] = React.useState<EditDraft>({ name: '', email: '', role: 'student' });
 
   async function load() {
     setLoading(true);
@@ -39,6 +45,31 @@ function UsersInner() {
   }
 
   React.useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  function startEdit(u: UserItem) {
+    setEditingId(u.id);
+    setDraft({ name: u.name, email: u.email, role: u.role });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(userId: string) {
+    await fetch(`/api/admin/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(draft),
+    });
+    setEditingId(null);
+    load();
+  }
+
+  async function removeUser(userId: string) {
+    if (!confirm('Delete this user?')) return;
+    await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    load();
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -68,27 +99,86 @@ function UsersInner() {
         <CsvImportCard onImported={load} />
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-lg border">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Email</th>
-              <th className="px-3 py-2">Student ID</th>
-              <th className="px-3 py-2">Role</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td className="px-3 py-3" colSpan={5}><span className="text-gray-500">Loading…</span></td></tr>
-            ) : items.length === 0 ? (
-              <tr><td className="px-3 py-3" colSpan={5}><span className="text-gray-500">No users found</span></td></tr>
-            ) : items.map((u) => (
-              <UserRow key={u.id} user={u} onChanged={load} />
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-6">
+        {loading ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">Loading…</div>
+        ) : (
+          <ResponsiveTable<UserItem>
+            caption="Users"
+            rows={items}
+            rowKey={(u) => u.id}
+            empty="No users found"
+            columns={[
+              {
+                key: 'name',
+                header: 'Name',
+                primary: true,
+                render: (u) =>
+                  editingId === u.id ? (
+                    <input
+                      value={draft.name}
+                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                      className="w-full rounded-md border px-2 py-1 text-sm"
+                      aria-label="Name"
+                    />
+                  ) : (
+                    <span className="text-gray-900">{u.name}</span>
+                  ),
+              },
+              {
+                key: 'email',
+                header: 'Email',
+                render: (u) =>
+                  editingId === u.id ? (
+                    <input
+                      value={draft.email}
+                      onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+                      className="w-full rounded-md border px-2 py-1 text-sm"
+                      aria-label="Email"
+                    />
+                  ) : (
+                    <span className="text-gray-700 break-all">{u.email}</span>
+                  ),
+              },
+              {
+                key: 'student_id',
+                header: 'Student ID',
+                mobileLabel: 'Student ID',
+                render: (u) => <span className="text-gray-500 text-xs">{u.student_id || '—'}</span>,
+              },
+              {
+                key: 'role',
+                header: 'Role',
+                render: (u) =>
+                  editingId === u.id ? (
+                    <select
+                      value={draft.role}
+                      onChange={(e) => setDraft({ ...draft, role: e.target.value })}
+                      className="rounded-md border px-2 py-1 text-sm"
+                      aria-label="Role"
+                    >
+                      {ALL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-gray-700">{u.role}</span>
+                  ),
+              },
+            ]}
+            actions={(u) =>
+              editingId === u.id ? (
+                <>
+                  <Button onClick={() => saveEdit(u.id)}><span>Save</span></Button>
+                  <Button variant="outline" onClick={cancelEdit}><span>Cancel</span></Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => startEdit(u)}><span>Edit</span></Button>
+                  <Button variant="outline" onClick={() => removeUser(u.id)}><span>Delete</span></Button>
+                </>
+              )
+            }
+          />
+        )}
       </div>
     </div>
   );
@@ -142,64 +232,3 @@ function CsvImportCard({ onImported }: { onImported: () => void }) {
   );
 }
 
-function UserRow({ user, onChanged }: { user: UserItem; onChanged: () => void }) {
-  const [editing, setEditing] = React.useState(false);
-  const [name, setName] = React.useState(user.name);
-  const [email, setEmail] = React.useState(user.email);
-  const [role, setRole] = React.useState(user.role);
-
-  async function save() {
-    await fetch(`/api/admin/users/${user.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, email, role }) });
-    setEditing(false);
-    onChanged();
-  }
-
-  async function remove() {
-    await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
-    onChanged();
-  }
-
-  return (
-    <tr>
-      <td className="px-3 py-2 align-top">
-        {editing ? (
-          <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-md border px-2 py-1 text-sm" />
-        ) : (
-          <span className="text-gray-900">{user.name}</span>
-        )}
-      </td>
-      <td className="px-3 py-2 align-top">
-        {editing ? (
-          <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-md border px-2 py-1 text-sm" />
-        ) : (
-          <span className="text-gray-700">{user.email}</span>
-        )}
-      </td>
-      <td className="px-3 py-2 align-top">
-        <span className="text-gray-500 text-xs">{user.student_id || '—'}</span>
-      </td>
-      <td className="px-3 py-2 align-top">
-        {editing ? (
-          <select value={role} onChange={(e) => setRole(e.target.value)} className="rounded-md border px-2 py-1 text-sm">
-            {ALL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-        ) : (
-          <span className="text-gray-700">{user.role}</span>
-        )}
-      </td>
-      <td className="px-3 py-2 align-top">
-        {editing ? (
-          <div className="flex gap-2">
-            <Button onClick={save}><span>Save</span></Button>
-            <Button variant="outline" onClick={() => setEditing(false)}><span>Cancel</span></Button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setEditing(true)}><span>Edit</span></Button>
-            <Button variant="outline" onClick={remove}><span>Delete</span></Button>
-          </div>
-        )}
-      </td>
-    </tr>
-  );
-}

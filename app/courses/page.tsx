@@ -166,16 +166,16 @@ export default function CoursesPage() {
             background: `linear-gradient(to right, var(--theme-primary)E6, var(--theme-secondary)E6, var(--theme-accent)E6)`
           }}
         ></div>
-        <div className="relative mx-auto max-w-8xl px-4 py-16 lg:py-24">
+        <div className="relative mx-auto max-w-8xl px-4 py-10 sm:py-16 lg:py-24">
           <div className="max-w-4xl">
-            <h1 className="text-4xl lg:text-6xl font-bold text-white mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6">
               Explore Courses
             </h1>
-            <p 
-              className="text-xl mb-8 max-w-3xl leading-relaxed"
+            <p
+              className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 max-w-3xl leading-relaxed"
               style={{ color: 'rgba(255, 255, 255, 0.9)' }}
             >
-              Discover comprehensive learning experiences designed for Caribbean students. 
+              Discover comprehensive learning experiences designed for Caribbean students.
               Find the perfect course to advance your education journey.
             </p>
             
@@ -220,7 +220,7 @@ export default function CoursesPage() {
           <div className="mt-12 bg-white/95 backdrop-blur-sm rounded-lg border border-white/20 p-4 sm:p-6 lg:p-8 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-6">
               <div className="sm:col-span-2 lg:col-span-3">
-                <label className="block text-lg font-bold text-gray-900 mb-4">
+                <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2 sm:mb-4">
                   <svg className="w-5 h-5 inline mr-3" style={{ color: 'var(--theme-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -234,7 +234,7 @@ export default function CoursesPage() {
                 />
               </div>
               <div className="lg:col-span-2">
-                <label className="block text-lg font-bold text-gray-900 mb-4">
+                <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2 sm:mb-4">
                   <Icon icon="material-symbols:folder" className="w-5 h-5 inline mr-3 text-green-600" />
                   Category
                 </label>
@@ -252,7 +252,7 @@ export default function CoursesPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-lg font-bold text-gray-900 mb-4">
+                <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2 sm:mb-4">
                   <svg className="w-5 h-5 inline mr-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>

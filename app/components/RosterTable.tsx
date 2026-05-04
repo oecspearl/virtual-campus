@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ResponsiveTable } from "@/app/components/ui/ResponsiveTable";
 
 export type Enrollment = {
   id: string;
@@ -38,35 +39,42 @@ export default function RosterTable({ classId }: { classId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 items-center">
-        <input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Add student by email" className="border rounded px-3 py-2 text-sm flex-1" />
-        <button disabled={loading} onClick={addStudent} className="px-3 py-2 text-sm rounded bg-blue-500 text-white">{loading?"Adding...":"Add"}</button>
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <input
+          value={email}
+          onChange={(e)=>setEmail(e.target.value)}
+          placeholder="Add student by email"
+          className="border rounded px-3 py-2 text-sm flex-1 min-h-[44px]"
+        />
+        <button
+          disabled={loading}
+          onClick={addStudent}
+          className="inline-flex items-center justify-center min-h-[44px] px-3 py-2 text-sm rounded bg-blue-500 text-white disabled:opacity-50"
+        >
+          {loading?"Adding...":"Add"}
+        </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500">
-              <th className="py-2 pr-4">Student ID</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {enrollments.map((e)=> (
-              <tr key={e.id} className="border-t">
-                <td className="py-2 pr-4">{e.student_id}</td>
-                <td className="py-2 pr-4">{e.status}</td>
-                <td className="py-2 pr-4">
-                  {e.status!=="dropped" && (
-                    <button onClick={()=>drop(e.id)} className="text-red-600">Drop</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ResponsiveTable<Enrollment>
+        caption="Class roster"
+        rows={enrollments}
+        rowKey={(e) => e.id}
+        empty="No students enrolled yet."
+        columns={[
+          { key: 'student_id', header: 'Student ID', primary: true, render: (e) => e.student_id },
+          { key: 'status', header: 'Status', render: (e) => e.status },
+        ]}
+        actions={(e) =>
+          e.status !== 'dropped' ? (
+            <button
+              onClick={() => drop(e.id)}
+              className="inline-flex items-center justify-center min-h-[44px] px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+            >
+              Drop
+            </button>
+          ) : null
+        }
+      />
     </div>
   );
 }

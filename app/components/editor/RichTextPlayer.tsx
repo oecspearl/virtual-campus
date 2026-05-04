@@ -173,16 +173,18 @@ export default function RichTextPlayer({
           <button
             onClick={() => prevLessonId && onNavigate(prevLessonId)}
             disabled={!prevLessonId}
-            className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors"
+            aria-label="Previous lesson"
+            className="inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
           <button
             onClick={() => nextLessonId && onNavigate(nextLessonId)}
             disabled={!nextLessonId}
-            className="text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors"
+            aria-label="Next lesson"
+            className="inline-flex items-center justify-center w-11 h-11 sm:w-9 sm:h-9 text-gray-400 hover:text-white disabled:text-gray-700 disabled:cursor-not-allowed transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
           {isCompleted ? (
             <span className="px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium bg-gray-600 text-gray-400 cursor-default whitespace-nowrap">Completed</span>

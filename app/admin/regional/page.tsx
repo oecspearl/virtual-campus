@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '@iconify/react';
 import RoleGuard from '@/app/components/RoleGuard';
+import { ResponsiveTable } from '@/app/components/ui/ResponsiveTable';
 
 interface PerTenant {
   tenant: { id: string; name: string; slug: string; status: string };
@@ -215,83 +216,51 @@ function Inner() {
               Catalogue-share and credit-transfer activity, per tenant
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500">
-                <tr className="text-left">
-                  <th className="px-4 py-3 font-medium">Institution</th>
-                  <th className="px-4 py-3 font-medium text-right" title="Courses this tenant published to specific tenants">
-                    Targeted shares
-                  </th>
-                  <th className="px-4 py-3 font-medium text-right" title="Courses this tenant published to the whole network">
-                    Network-wide shares
-                  </th>
-                  <th className="px-4 py-3 font-medium text-right" title="Students of this tenant taking courses from elsewhere">
-                    Outbound enrolments
-                  </th>
-                  <th className="px-4 py-3 font-medium text-right" title="Students from elsewhere taking this tenant's courses">
-                    Inbound enrolments
-                  </th>
-                  <th className="px-4 py-3 font-medium text-right" title="Completed inbound enrolments">
-                    Inbound completions
-                  </th>
-                  <th className="px-4 py-3 font-medium text-right" title="Credit records received as the reviewing institution">
-                    Transfers in
-                  </th>
-                  <th className="px-4 py-3 font-medium text-right" title="Transfers approved to be on this tenant's transcripts">
-                    Transfers approved
-                  </th>
-                  <th className="px-4 py-3 font-medium text-right">Credits awarded</th>
-                  <th className="px-4 py-3 font-medium text-right" title="Credit records where this tenant was the source">
-                    Transfers out
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {per_tenant.map((t) => (
-                  <tr key={t.tenant.id} className="border-t border-gray-100">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{t.tenant.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {t.tenant.slug}
-                        {t.tenant.status !== 'active' && (
-                          <span className="ml-2 text-amber-600 capitalize">{t.tenant.status}</span>
-                        )}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-900">{t.outgoing_shares}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">{t.network_wide_shares}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">
-                      {t.incoming_cross_tenant_enrollments}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-900">
-                      {t.issued_cross_tenant_enrollments}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-900">{t.issued_completions}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">
-                      {t.credit_records_received}
-                    </td>
-                    <td className="px-4 py-3 text-right text-green-700">
-                      {t.credit_records_approved_as_receiver}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                      {Number(t.credits_awarded_as_receiver).toFixed(1)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-900">
-                      {t.credit_records_issued}
-                    </td>
-                  </tr>
-                ))}
-                {per_tenant.length === 0 && (
-                  <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
-                      No institutions yet
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTable<PerTenant>
+            caption="Per-institution catalogue and credit-transfer activity"
+            rows={per_tenant}
+            rowKey={(t) => t.tenant.id}
+            empty="No institutions yet"
+            columns={[
+              {
+                key: 'institution',
+                header: 'Institution',
+                primary: true,
+                render: (t) => (
+                  <>
+                    <p className="font-medium text-gray-900">{t.tenant.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {t.tenant.slug}
+                      {t.tenant.status !== 'active' && (
+                        <span className="ml-2 text-amber-600 capitalize">{t.tenant.status}</span>
+                      )}
+                    </p>
+                  </>
+                ),
+              },
+              { key: 'outgoing_shares', header: 'Targeted shares', mobileLabel: 'Targeted shares', align: 'right', render: (t) => t.outgoing_shares },
+              { key: 'network_wide_shares', header: 'Network-wide shares', mobileLabel: 'Network-wide', align: 'right', render: (t) => t.network_wide_shares },
+              { key: 'in_enrolments', header: 'Outbound enrolments', mobileLabel: 'Outbound', align: 'right', render: (t) => t.incoming_cross_tenant_enrollments },
+              { key: 'out_enrolments', header: 'Inbound enrolments', mobileLabel: 'Inbound', align: 'right', render: (t) => t.issued_cross_tenant_enrollments },
+              { key: 'completions', header: 'Inbound completions', mobileLabel: 'Completions', align: 'right', render: (t) => t.issued_completions },
+              { key: 'transfers_in', header: 'Transfers in', mobileLabel: 'Transfers in', align: 'right', render: (t) => t.credit_records_received },
+              {
+                key: 'transfers_approved',
+                header: 'Transfers approved',
+                mobileLabel: 'Approved',
+                align: 'right',
+                render: (t) => <span className="text-green-700">{t.credit_records_approved_as_receiver}</span>,
+              },
+              {
+                key: 'credits_awarded',
+                header: 'Credits awarded',
+                mobileLabel: 'Credits awarded',
+                align: 'right',
+                render: (t) => <span className="font-medium">{Number(t.credits_awarded_as_receiver).toFixed(1)}</span>,
+              },
+              { key: 'transfers_out', header: 'Transfers out', mobileLabel: 'Transfers out', align: 'right', render: (t) => t.credit_records_issued },
+            ]}
+          />
         </section>
 
         {/* Flow matrix */}
@@ -302,38 +271,38 @@ function Inner() {
               Issuing institution → reviewing institution, all submissions regardless of status
             </p>
           </div>
-          {flows.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500">No credit flows yet.</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500">
-                <tr className="text-left">
-                  <th className="px-4 py-3 font-medium">From (issuer)</th>
-                  <th className="px-4 py-3 font-medium">To (reviewer)</th>
-                  <th className="px-4 py-3 font-medium text-right">Records</th>
-                </tr>
-              </thead>
-              <tbody>
-                {flows.map((f, i) => (
-                  <tr
-                    key={`${f.issuing_tenant_id}->${f.receiving_tenant_id}-${i}`}
-                    className="border-t border-gray-100"
-                  >
-                    <td className="px-4 py-3 text-gray-900">{f.issuing_tenant_name}</td>
-                    <td className="px-4 py-3 text-gray-900">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Icon icon="mdi:arrow-right" className="w-3.5 h-3.5 text-gray-400" />
-                        {f.receiving_tenant_name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {f.record_count}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <div className="p-2 md:p-0">
+            <ResponsiveTable<Flow>
+              caption="Credit-transfer flows"
+              rows={flows}
+              rowKey={(f, i) => `${f.issuing_tenant_id}->${f.receiving_tenant_id}-${i}`}
+              empty="No credit flows yet."
+              columns={[
+                {
+                  key: 'from',
+                  header: 'From (issuer)',
+                  primary: true,
+                  render: (f) => f.issuing_tenant_name,
+                },
+                {
+                  key: 'to',
+                  header: 'To (reviewer)',
+                  render: (f) => (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Icon icon="mdi:arrow-right" className="w-3.5 h-3.5 text-gray-400 md:hidden" />
+                      {f.receiving_tenant_name}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'records',
+                  header: 'Records',
+                  align: 'right',
+                  render: (f) => <span className="font-medium text-gray-900">{f.record_count}</span>,
+                },
+              ]}
+            />
+          </div>
         </section>
       </div>
     </div>

@@ -4,7 +4,8 @@ import React from 'react';
 import { Icon } from '@iconify/react';
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   KeyboardSensor,
   closestCenter,
   useSensor,
@@ -86,8 +87,11 @@ export interface ReorderListProps {
 }
 
 export function ReorderList({ ids, disabled, onReorder, children }: ReorderListProps) {
+  // Mouse drags activate after 5px; touch drags require a 250ms long-press
+  // with 5px tolerance so vertical scroll gestures aren't hijacked.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

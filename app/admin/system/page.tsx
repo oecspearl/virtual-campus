@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
 import RoleGuard from "@/app/components/RoleGuard";
+import { ResponsiveTable } from "@/app/components/ui/ResponsiveTable";
 
 type TenantStat = {
   id: string;
@@ -241,69 +242,55 @@ function DashboardInner() {
           ))}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 font-medium text-gray-600">Tenant</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Slug</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Plan</th>
-                <th className="px-4 py-3 font-medium text-gray-600 text-right">Members</th>
-                <th className="px-4 py-3 font-medium text-gray-600 text-right">Courses</th>
-                <th className="px-4 py-3 font-medium text-gray-600 text-right">Enrollments</th>
-                <th className="px-4 py-3 font-medium text-gray-600 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredTenants.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
-                    No tenants match your filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredTenants.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900">{t.name}</td>
-                    <td className="px-4 py-3 text-gray-600 font-mono text-xs">{t.slug}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={t.status} />
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 capitalize">{t.plan}</td>
-                    <td className="px-4 py-3 text-gray-700 text-right">{t.member_count}</td>
-                    <td className="px-4 py-3 text-gray-700 text-right">{t.course_count}</td>
-                    <td className="px-4 py-3 text-gray-700 text-right">{t.enrollment_count}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleToggleStatus(t)}
-                          disabled={togglingStatus === t.id}
-                          className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                            t.status === "active"
-                              ? "text-red-700 bg-red-50 hover:bg-red-100"
-                              : "text-green-700 bg-green-50 hover:bg-green-100"
-                          } ${togglingStatus === t.id ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          {togglingStatus === t.id
-                            ? "..."
-                            : t.status === "active"
-                            ? "Suspend"
-                            : "Activate"}
-                        </button>
-                        <Link
-                          href={`/admin/tenants/${t.id}`}
-                          className="px-2.5 py-1 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
-                        >
-                          Manage
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="p-2 md:p-0">
+          <ResponsiveTable<TenantStat>
+            caption="Tenants"
+            rows={filteredTenants}
+            rowKey={(t) => t.id}
+            empty="No tenants match your filters."
+            columns={[
+              { key: 'name', header: 'Tenant', primary: true, render: (t) => t.name },
+              {
+                key: 'slug',
+                header: 'Slug',
+                render: (t) => <span className="text-gray-600 font-mono text-xs break-all">{t.slug}</span>,
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                render: (t) => <StatusBadge status={t.status} />,
+              },
+              {
+                key: 'plan',
+                header: 'Plan',
+                render: (t) => <span className="text-gray-600 capitalize">{t.plan}</span>,
+              },
+              { key: 'members', header: 'Members', align: 'right', render: (t) => t.member_count },
+              { key: 'courses', header: 'Courses', align: 'right', render: (t) => t.course_count },
+              { key: 'enrollments', header: 'Enrollments', align: 'right', render: (t) => t.enrollment_count },
+            ]}
+            actions={(t) => (
+              <>
+                <button
+                  onClick={() => handleToggleStatus(t)}
+                  disabled={togglingStatus === t.id}
+                  className={`inline-flex items-center justify-center min-h-[44px] px-3 rounded text-xs font-medium transition-colors ${
+                    t.status === 'active'
+                      ? 'text-red-700 bg-red-50 hover:bg-red-100'
+                      : 'text-green-700 bg-green-50 hover:bg-green-100'
+                  } ${togglingStatus === t.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {togglingStatus === t.id ? '…' : t.status === 'active' ? 'Suspend' : 'Activate'}
+                </button>
+                <Link
+                  href={`/admin/tenants/${t.id}`}
+                  className="inline-flex items-center justify-center min-h-[44px] px-3 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
+                  Manage
+                </Link>
+              </>
+            )}
+          />
         </div>
       </div>
 
@@ -330,47 +317,54 @@ function DashboardInner() {
           )}
 
           {userResults.length > 0 && (
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-4 py-2 font-medium text-gray-600">Name</th>
-                    <th className="px-4 py-2 font-medium text-gray-600">Email</th>
-                    <th className="px-4 py-2 font-medium text-gray-600">Role</th>
-                    <th className="px-4 py-2 font-medium text-gray-600">Tenant(s)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {userResults.map((u) => (
-                    <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 font-medium text-gray-900">{u.name || "—"}</td>
-                      <td className="px-4 py-2 text-gray-600">{u.email}</td>
-                      <td className="px-4 py-2">
-                        <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 capitalize">
-                          {u.role?.replace(/_/g, " ") || "student"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        {u.tenant_memberships.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {u.tenant_memberships.map((tm) => (
-                              <span
-                                key={tm.tenant_id}
-                                className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700"
-                                title={`Role: ${tm.role}`}
-                              >
-                                {tm.tenant_name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">No membership</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-4">
+              <ResponsiveTable<SearchUser>
+                caption="User search results"
+                rows={userResults}
+                rowKey={(u) => u.id}
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Name',
+                    primary: true,
+                    render: (u) => <span className="font-medium text-gray-900">{u.name || '—'}</span>,
+                  },
+                  {
+                    key: 'email',
+                    header: 'Email',
+                    render: (u) => <span className="text-gray-600 break-all">{u.email}</span>,
+                  },
+                  {
+                    key: 'role',
+                    header: 'Role',
+                    render: (u) => (
+                      <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 capitalize">
+                        {u.role?.replace(/_/g, ' ') || 'student'}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'tenants',
+                    header: 'Tenant(s)',
+                    render: (u) =>
+                      u.tenant_memberships.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {u.tenant_memberships.map((tm) => (
+                            <span
+                              key={tm.tenant_id}
+                              className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700"
+                              title={`Role: ${tm.role}`}
+                            >
+                              {tm.tenant_name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">No membership</span>
+                      ),
+                  },
+                ]}
+              />
             </div>
           )}
 

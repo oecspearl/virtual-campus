@@ -7,7 +7,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -191,8 +192,14 @@ export default function CourseAssignmentsPage() {
     setReorderDraft([]);
   };
 
+  // Split mouse and touch so vertical scroll on a phone isn't immediately
+  // hijacked into a drag. Mouse drags activate after a 5px move (instant
+  // feel for instructors on desktop). Touch drags require a 250ms long-press
+  // with a 5px tolerance — this is dnd-kit's recommended pattern for
+  // distinguishing drag from scroll on touch devices.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

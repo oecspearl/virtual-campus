@@ -135,6 +135,12 @@ export default function CourseGradesPage() {
                 Full Gradebook
               </Link>
               <Link
+                href={`/courses/${courseId}/gradebook/categories`}
+                className="px-3 py-1.5 text-xs border border-gray-200 text-slate-600 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                Categories
+              </Link>
+              <Link
                 href={`/courses/${courseId}/gradebook/setup`}
                 className="px-3 py-1.5 text-xs border border-gray-200 text-slate-600 hover:bg-gray-50 rounded-md transition-colors"
               >

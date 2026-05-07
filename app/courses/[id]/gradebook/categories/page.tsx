@@ -1,0 +1,744 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import RoleGuard from '@/app/components/RoleGuard';
+import Breadcrumb from '@/app/components/ui/Breadcrumb';
+
+type Aggregation =
+  | 'mean'
+  | 'weighted_mean'
+  | 'simple_weighted_mean'
+  | 'sum'
+  | 'max'
+  | 'min'
+  | 'median';
+
+interface Category {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  aggregation: Aggregation;
+  drop_lowest: number;
+  drop_highest: number;
+  keep_highest: number | null;
+  weight: number | null;
+  extra_credit: boolean;
+  hidden: boolean;
+  sort_order: number;
+}
+
+interface LetterBand {
+  letter: string;
+  min_percentage: number;
+}
+
+const AGGREGATIONS: { value: Aggregation; label: string; hint: string }[] = [
+  { value: 'weighted_mean', label: 'Weighted mean', hint: 'Average weighted by per-child weight' },
+  { value: 'mean', label: 'Mean', hint: 'Unweighted average of child percentages' },
+  { value: 'simple_weighted_mean', label: 'Simple weighted mean', hint: 'Weighted by max points' },
+  { value: 'sum', label: 'Sum (natural)', hint: 'Total points / total max' },
+  { value: 'max', label: 'Max', hint: 'Best score wins' },
+  { value: 'min', label: 'Min', hint: 'Worst score wins' },
+  { value: 'median', label: 'Median', hint: '50th percentile' },
+];
+
+const DEFAULT_NEW_CATEGORY = {
+  name: '',
+  parent_id: null as string | null,
+  aggregation: 'weighted_mean' as Aggregation,
+  drop_lowest: 0,
+  drop_highest: 0,
+  keep_highest: null as number | null,
+  weight: null as number | null,
+  extra_credit: false,
+  hidden: false,
+  sort_order: 0,
+};
+
+function GradebookCategoriesPageInner() {
+  const router = useRouter();
+  const { id: courseId } = useParams<{ id: string }>();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [scale, setScale] = useState<LetterBand[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<Category | null>(null);
+  const [newCategory, setNewCategory] = useState({ ...DEFAULT_NEW_CATEGORY });
+
+  const loadAll = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [catRes, letterRes] = await Promise.all([
+        fetch(`/api/courses/${courseId}/gradebook/categories`, { cache: 'no-store' }),
+        fetch(`/api/courses/${courseId}/gradebook/letter-scale`, { cache: 'no-store' }),
+      ]);
+      if (!catRes.ok) throw new Error('Failed to load categories');
+      if (!letterRes.ok) throw new Error('Failed to load letter scale');
+      const catData = await catRes.json();
+      const letterData = await letterRes.json();
+      setCategories(Array.isArray(catData.categories) ? catData.categories : []);
+      setScale(Array.isArray(letterData.scale) ? letterData.scale : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load gradebook');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (courseId) loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId]);
+
+  const flash = (msg: string) => {
+    setSuccessMessage(msg);
+    setTimeout(() => setSuccessMessage(''), 2500);
+  };
+
+  const tree = useMemo(() => {
+    const roots = categories.filter((c) => c.parent_id === null);
+    const childrenOf = (id: string) =>
+      categories.filter((c) => c.parent_id === id).sort((a, b) => a.sort_order - b.sort_order);
+    return { roots, childrenOf };
+  }, [categories]);
+
+  // ─── Mutators ──────────────────────────────────────────────────────────
+
+  const createCategory = async () => {
+    if (!newCategory.name.trim()) {
+      setError('Name is required');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/courses/${courseId}/gradebook/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCategory),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Failed to create category');
+      }
+      setNewCategory({ ...DEFAULT_NEW_CATEGORY });
+      flash('Category created');
+      await loadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startEdit = (c: Category) => {
+    setEditingId(c.id);
+    setEditingDraft({ ...c });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingDraft(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingDraft) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(
+        `/api/courses/${courseId}/gradebook/categories/${editingDraft.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(editingDraft),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Failed to update');
+      }
+      cancelEdit();
+      flash('Category updated');
+      await loadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    if (!confirm('Delete this category? Items inside will fall back to the default root.')) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(
+        `/api/courses/${courseId}/gradebook/categories/${id}`,
+        { method: 'DELETE' }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Failed to delete');
+      }
+      flash('Category deleted');
+      await loadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveLetterScale = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/courses/${courseId}/gradebook/letter-scale`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scale }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Failed to save letter scale');
+      }
+      flash('Letter scale saved');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addLetterBand = () =>
+    setScale((s) => [...s, { letter: '', min_percentage: 0 }]);
+  const removeLetterBand = (i: number) =>
+    setScale((s) => s.filter((_, idx) => idx !== i));
+  const updateLetterBand = (i: number, patch: Partial<LetterBand>) =>
+    setScale((s) => s.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
+
+  // ─── Render helpers ────────────────────────────────────────────────────
+
+  const renderCategoryRow = (c: Category, depth: number) => {
+    const isEditing = editingId === c.id && editingDraft;
+    const indent = { paddingLeft: `${depth * 24 + 20}px` };
+
+    if (isEditing && editingDraft) {
+      return (
+        <div
+          key={c.id}
+          className="px-5 py-4 border-b border-gray-100 bg-blue-50/30"
+          style={indent}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="text-xs text-slate-500">
+              Name
+              <input
+                type="text"
+                value={editingDraft.name}
+                onChange={(e) =>
+                  setEditingDraft({ ...editingDraft, name: e.target.value })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Aggregation
+              <select
+                value={editingDraft.aggregation}
+                onChange={(e) =>
+                  setEditingDraft({
+                    ...editingDraft,
+                    aggregation: e.target.value as Aggregation,
+                  })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              >
+                {AGGREGATIONS.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-slate-500">
+              Weight (in parent)
+              <input
+                type="number"
+                step="0.01"
+                value={editingDraft.weight ?? ''}
+                onChange={(e) =>
+                  setEditingDraft({
+                    ...editingDraft,
+                    weight: e.target.value === '' ? null : Number(e.target.value),
+                  })
+                }
+                placeholder="auto (1.0)"
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Drop lowest
+              <input
+                type="number"
+                min={0}
+                value={editingDraft.drop_lowest}
+                onChange={(e) =>
+                  setEditingDraft({
+                    ...editingDraft,
+                    drop_lowest: Number(e.target.value),
+                  })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Drop highest
+              <input
+                type="number"
+                min={0}
+                value={editingDraft.drop_highest}
+                onChange={(e) =>
+                  setEditingDraft({
+                    ...editingDraft,
+                    drop_highest: Number(e.target.value),
+                  })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Keep highest
+              <input
+                type="number"
+                min={0}
+                value={editingDraft.keep_highest ?? ''}
+                onChange={(e) =>
+                  setEditingDraft({
+                    ...editingDraft,
+                    keep_highest:
+                      e.target.value === '' ? null : Number(e.target.value),
+                  })
+                }
+                placeholder="off"
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
+              <input
+                type="checkbox"
+                checked={editingDraft.extra_credit}
+                onChange={(e) =>
+                  setEditingDraft({
+                    ...editingDraft,
+                    extra_credit: e.target.checked,
+                  })
+                }
+              />
+              Extra credit
+            </label>
+            <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
+              <input
+                type="checkbox"
+                checked={editingDraft.hidden}
+                onChange={(e) =>
+                  setEditingDraft({ ...editingDraft, hidden: e.target.checked })
+                }
+              />
+              Hidden from students
+            </label>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={saveEdit}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs bg-slate-800 text-white rounded-md hover:bg-slate-700 disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={cancelEdit}
+              className="px-3 py-1.5 text-xs border border-gray-200 text-slate-600 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const aggregationLabel =
+      AGGREGATIONS.find((a) => a.value === c.aggregation)?.label ?? c.aggregation;
+
+    return (
+      <div
+        key={c.id}
+        className="px-5 py-3 border-b border-gray-100 hover:bg-gray-50/50 transition-colors flex items-center justify-between"
+        style={indent}
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span className="text-sm text-slate-700 truncate">
+            {c.name}
+            {c.parent_id === null && (
+              <span className="ml-2 text-[10px] text-slate-400 uppercase tracking-wider">
+                root
+              </span>
+            )}
+          </span>
+          <span className="text-[11px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full whitespace-nowrap">
+            {aggregationLabel}
+          </span>
+          {c.weight != null && (
+            <span className="text-[11px] text-slate-500 whitespace-nowrap">
+              w={c.weight}
+            </span>
+          )}
+          {(c.drop_lowest > 0 || c.drop_highest > 0 || c.keep_highest != null) && (
+            <span className="text-[11px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full whitespace-nowrap">
+              {c.keep_highest != null
+                ? `keep ${c.keep_highest}`
+                : `drop ${c.drop_lowest > 0 ? `-${c.drop_lowest}` : ''}${c.drop_highest > 0 ? ` +${c.drop_highest}` : ''}`}
+            </span>
+          )}
+          {c.extra_credit && (
+            <span className="text-[11px] px-2 py-0.5 bg-green-50 text-green-700 rounded-full">
+              EC
+            </span>
+          )}
+          {c.hidden && (
+            <span className="text-[11px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+              hidden
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => startEdit(c)}
+            className="text-xs text-slate-500 hover:text-slate-800"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => deleteCategory(c.id)}
+            className="text-xs text-red-500 hover:text-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTree = (parentId: string | null, depth: number): React.ReactNode => {
+    const nodes =
+      parentId === null ? tree.roots : tree.childrenOf(parentId);
+    return nodes.map((c) => (
+      <React.Fragment key={c.id}>
+        {renderCategoryRow(c, depth)}
+        {renderTree(c.id, depth + 1)}
+      </React.Fragment>
+    ));
+  };
+
+  // ─── Page ──────────────────────────────────────────────────────────────
+
+  return (
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <Breadcrumb
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Courses', href: '/courses' },
+            { label: 'Gradebook', href: `/courses/${courseId}/gradebook` },
+            { label: 'Categories' },
+          ]}
+          className="mb-6"
+        />
+
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-normal text-slate-900 tracking-tight">
+              Gradebook Categories
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Hierarchical categories with aggregation strategies and drop rules.
+              Edits trigger a class-wide grade recompute.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/courses/${courseId}/gradebook`}
+              className="px-3 py-1.5 text-xs border border-gray-200 text-slate-600 hover:bg-gray-50 rounded-md transition-colors"
+            >
+              Full Gradebook
+            </Link>
+            <Link
+              href={`/courses/${courseId}/gradebook/setup`}
+              className="px-3 py-1.5 text-xs border border-gray-200 text-slate-600 hover:bg-gray-50 rounded-md transition-colors"
+            >
+              Legacy Setup
+            </Link>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="mb-4 p-3 rounded-md bg-green-50 border border-green-200 text-sm text-green-700">
+            {successMessage}
+          </div>
+        )}
+
+        {/* Categories tree */}
+        <div className="bg-white rounded-lg border border-gray-200/80 overflow-hidden mb-6">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-slate-700">Tree</h2>
+            <button
+              onClick={() => router.refresh()}
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="p-8 text-center text-sm text-slate-400">Loading…</div>
+          ) : categories.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-400">
+              No categories yet. Create one below to get started.
+            </div>
+          ) : (
+            <div>{renderTree(null, 0)}</div>
+          )}
+        </div>
+
+        {/* Add category */}
+        <div className="bg-white rounded-lg border border-gray-200/80 p-5 mb-6">
+          <h2 className="text-sm font-medium text-slate-700 mb-4">Add category</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="text-xs text-slate-500">
+              Name
+              <input
+                type="text"
+                value={newCategory.name}
+                onChange={(e) =>
+                  setNewCategory({ ...newCategory, name: e.target.value })
+                }
+                placeholder="e.g. Quizzes"
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Parent
+              <select
+                value={newCategory.parent_id ?? ''}
+                onChange={(e) =>
+                  setNewCategory({
+                    ...newCategory,
+                    parent_id: e.target.value || null,
+                  })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              >
+                <option value="">(root)</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-slate-500">
+              Aggregation
+              <select
+                value={newCategory.aggregation}
+                onChange={(e) =>
+                  setNewCategory({
+                    ...newCategory,
+                    aggregation: e.target.value as Aggregation,
+                  })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              >
+                {AGGREGATIONS.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-slate-500">
+              Weight (in parent)
+              <input
+                type="number"
+                step="0.01"
+                value={newCategory.weight ?? ''}
+                onChange={(e) =>
+                  setNewCategory({
+                    ...newCategory,
+                    weight: e.target.value === '' ? null : Number(e.target.value),
+                  })
+                }
+                placeholder="auto"
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Drop lowest
+              <input
+                type="number"
+                min={0}
+                value={newCategory.drop_lowest}
+                onChange={(e) =>
+                  setNewCategory({
+                    ...newCategory,
+                    drop_lowest: Number(e.target.value),
+                  })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              Drop highest
+              <input
+                type="number"
+                min={0}
+                value={newCategory.drop_highest}
+                onChange={(e) =>
+                  setNewCategory({
+                    ...newCategory,
+                    drop_highest: Number(e.target.value),
+                  })
+                }
+                className="mt-1 w-full px-3 py-1.5 text-sm border border-gray-200 rounded-md"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
+              <input
+                type="checkbox"
+                checked={newCategory.extra_credit}
+                onChange={(e) =>
+                  setNewCategory({
+                    ...newCategory,
+                    extra_credit: e.target.checked,
+                  })
+                }
+              />
+              Extra credit
+            </label>
+            <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
+              <input
+                type="checkbox"
+                checked={newCategory.hidden}
+                onChange={(e) =>
+                  setNewCategory({ ...newCategory, hidden: e.target.checked })
+                }
+              />
+              Hidden from students
+            </label>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={createCategory}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs bg-slate-800 text-white rounded-md hover:bg-slate-700 disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Add category'}
+            </button>
+          </div>
+        </div>
+
+        {/* Letter scale */}
+        <div className="bg-white rounded-lg border border-gray-200/80 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-medium text-slate-700">Letter scale</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                The highest band the student&apos;s percentage clears wins. Leave empty
+                for no letter grades.
+              </p>
+            </div>
+            <button
+              onClick={addLetterBand}
+              className="text-xs text-slate-500 hover:text-slate-800"
+            >
+              + Add band
+            </button>
+          </div>
+
+          {scale.length === 0 ? (
+            <p className="text-xs text-slate-400 py-4">No bands defined.</p>
+          ) : (
+            <div className="space-y-2">
+              {scale.map((b, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={b.letter}
+                    onChange={(e) => updateLetterBand(i, { letter: e.target.value })}
+                    placeholder="A"
+                    className="w-16 px-2 py-1.5 text-sm border border-gray-200 rounded-md"
+                  />
+                  <span className="text-xs text-slate-400">≥</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    max={100}
+                    value={b.min_percentage}
+                    onChange={(e) =>
+                      updateLetterBand(i, {
+                        min_percentage: Number(e.target.value),
+                      })
+                    }
+                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-md"
+                  />
+                  <span className="text-xs text-slate-400">%</span>
+                  <button
+                    onClick={() => removeLetterBand(i)}
+                    className="ml-auto text-xs text-red-500 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-[11px] text-slate-400">
+              Saving recomputes every student&apos;s cached letter.
+            </p>
+            <button
+              onClick={saveLetterScale}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs bg-slate-800 text-white rounded-md hover:bg-slate-700 disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save scale'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function GradebookCategoriesPage() {
+  return (
+    <RoleGuard
+      roles={['instructor', 'curriculum_designer', 'admin', 'super_admin', 'tenant_admin']}
+    >
+      <GradebookCategoriesPageInner />
+    </RoleGuard>
+  );
+}

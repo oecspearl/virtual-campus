@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 
 interface Category {
@@ -141,9 +142,17 @@ export default function GradebookSetup() {
 
   return (
     <div className="mx-auto max-w-4xl p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gradebook Setup</h1>
-        <p className="text-gray-600">Configure how grades are calculated and displayed for this course</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Gradebook Setup</h1>
+          <p className="text-gray-600">Configure how grades are calculated and displayed for this course</p>
+        </div>
+        <Link
+          href={`/courses/${courseId}/gradebook/categories`}
+          className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+        >
+          New: hierarchical categories →
+        </Link>
       </div>
 
       {/* Success Message */}

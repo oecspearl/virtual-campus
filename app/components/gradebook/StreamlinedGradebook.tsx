@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import Button from "@/app/components/ui/Button";
 import BulkGradeUpload from "@/app/components/gradebook/BulkGradeUpload";
 
@@ -362,6 +363,12 @@ export default function StreamlinedGradebook({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Gradebook</h1>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Link
+              href={`/courses/${courseId}/gradebook/categories`}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+            >
+              Categories &amp; Aggregation
+            </Link>
             <BulkGradeUpload courseId={courseId} onSuccess={loadGradebook} />
             <Button
               onClick={syncQuizGrades}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
 
 async function calculateQuizTotalPoints(tq: any, quizId: string): Promise<number> {
   const { data: questions, error } = await tq
@@ -73,6 +74,10 @@ export async function POST(
             .delete()
             .eq("id", gradeItem.id);
         }
+
+        await recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
+          console.error('Grade summary recompute failed:', err)
+        );
 
         return NextResponse.json({
           success: true,
@@ -175,6 +180,10 @@ export async function POST(
             }
           }
         }
+
+        await recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
+          console.error('Grade summary recompute failed:', err)
+        );
 
         return NextResponse.json({
           success: true,

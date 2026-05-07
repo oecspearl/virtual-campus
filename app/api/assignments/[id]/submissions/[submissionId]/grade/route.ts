@@ -3,6 +3,8 @@ import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/s
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { updateCompetenciesFromAssignment } from "@/lib/adaptive-learning";
 import { syncCrossTenantGrade } from "@/lib/enrollment-check";
+import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
+import { recomputeCourseGradeSummary } from "@/lib/services/gradebook-summary";
 
 export async function POST(
   request: Request,
@@ -157,6 +159,18 @@ export async function POST(
                 });
               } catch (crossSyncError) {
                 console.error('Cross-tenant grade sync error:', crossSyncError);
+              }
+
+              try {
+                const tenantId = getTenantIdFromRequest(request as any);
+                const tq = createTenantQuery(tenantId);
+                await recomputeCourseGradeSummary(
+                  tq,
+                  lesson.course_id,
+                  submission.student_id
+                );
+              } catch (recomputeErr) {
+                console.error('Grade summary recompute failed:', recomputeErr);
               }
             }
           }

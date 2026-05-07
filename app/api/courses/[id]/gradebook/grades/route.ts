@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { recomputeCourseGradeSummary } from "@/lib/services/gradebook-summary";
 
 export async function GET(
   request: Request,
@@ -161,6 +162,20 @@ export async function POST(
       }, { status: 500 });
     }
 
+    // Refresh cached summary for every student touched. Failures here are
+    // logged but don't fail the request — the next read will compute on
+    // demand if the cache is stale.
+    const studentsTouched = Array.from(
+      new Set(processedEntries.map((e) => e.student_id))
+    );
+    await Promise.all(
+      studentsTouched.map((sid) =>
+        recomputeCourseGradeSummary(tq, courseId, sid).catch((err) => {
+          console.error('Grade summary recompute failed for', sid, err);
+        })
+      )
+    );
+
     return NextResponse.json({ grades: grades || [] });
 
   } catch (e: any) {
@@ -233,6 +248,12 @@ export async function PUT(
     if (error) {
       console.error('Grade update error:', error);
       return NextResponse.json({ error: "Failed to update grade" }, { status: 500 });
+    }
+
+    if (grade?.student_id) {
+      await recomputeCourseGradeSummary(tq, courseId, grade.student_id).catch(
+        (err) => console.error('Grade summary recompute failed:', err)
+      );
     }
 
     return NextResponse.json(grade);

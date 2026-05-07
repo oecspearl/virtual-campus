@@ -21,12 +21,27 @@ interface StudentGrade {
   grade_item?: GradeItem;
 }
 
+interface BreakdownEntry {
+  category_id: string;
+  name: string;
+  percentage: number | null;
+  points: number;
+  max_points: number;
+}
+
+interface GradeSummary {
+  percentage: number | null;
+  letter: string | null;
+  breakdown: BreakdownEntry[];
+}
+
 export default function CourseGradesPage() {
   const { id: courseId } = useParams<{ id: string }>();
   const [course, setCourse] = useState<{ title: string } | null>(null);
   const [profile, setProfile] = useState<{ id: string; role: string } | null>(null);
   const [gradeItems, setGradeItems] = useState<GradeItem[]>([]);
   const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
+  const [summary, setSummary] = useState<GradeSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,12 +67,23 @@ export default function CourseGradesPage() {
           setGradeItems(giData.gradeItems || giData.grade_items || giData.items || []);
         }
 
-        // Fetch student's own grades
+        // Fetch student's own grades + cached summary in parallel.
         if (pData?.id) {
-          const gradesRes = await fetch(`/api/courses/${courseId}/gradebook/grades?student_id=${pData.id}`, { cache: 'no-store' });
+          const [gradesRes, summaryRes] = await Promise.all([
+            fetch(`/api/courses/${courseId}/gradebook/grades?student_id=${pData.id}`, { cache: 'no-store' }),
+            fetch(`/api/courses/${courseId}/gradebook/summary?student_id=${pData.id}`, { cache: 'no-store' }),
+          ]);
           if (gradesRes.ok) {
             const gData = await gradesRes.json();
             setStudentGrades(gData.grades || []);
+          }
+          if (summaryRes.ok) {
+            const sData = await summaryRes.json();
+            setSummary({
+              percentage: sData.percentage ?? null,
+              letter: sData.letter ?? null,
+              breakdown: Array.isArray(sData.breakdown) ? sData.breakdown : [],
+            });
           }
         }
       } catch (err) {
@@ -141,14 +167,58 @@ export default function CourseGradesPage() {
           </div>
         ) : (
           <>
-            {/* Summary */}
+            {/* Summary — uses the cached aggregation engine result; falls
+                back to the flat sum/sum% if the summary endpoint hasn't
+                populated yet. */}
             {!isStaff && (
-              <div className="bg-white rounded-lg border border-gray-200/80 px-5 py-4 mb-4 flex items-center justify-between">
-                <span className="text-sm text-slate-600">Overall Grade</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-slate-400">{totalEarned} / {totalPossible}</span>
-                  <span className="text-lg font-medium text-slate-800 tabular-nums">{overallPct}%</span>
+              <div className="bg-white rounded-lg border border-gray-200/80 mb-4 overflow-hidden">
+                <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
+                  <div>
+                    <div className="text-sm text-slate-600">Overall Grade</div>
+                    <div className="text-[11px] text-slate-400">
+                      {summary
+                        ? 'Computed from category aggregation'
+                        : 'Computed from totals'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-400 tabular-nums">
+                      {totalEarned} / {totalPossible}
+                    </span>
+                    {summary?.letter && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold">
+                        {summary.letter}
+                      </span>
+                    )}
+                    <span className="text-lg font-medium text-slate-800 tabular-nums">
+                      {summary?.percentage != null
+                        ? `${summary.percentage.toFixed(1)}%`
+                        : `${overallPct}%`}
+                    </span>
+                  </div>
                 </div>
+                {summary && summary.breakdown.length > 0 && (
+                  <div className="divide-y divide-gray-50">
+                    {summary.breakdown.map((b) => (
+                      <div
+                        key={b.category_id}
+                        className="px-5 py-2.5 flex items-center justify-between text-sm"
+                      >
+                        <span className="text-slate-600">{b.name}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-slate-400 tabular-nums">
+                            {b.points.toFixed(0)} / {b.max_points.toFixed(0)}
+                          </span>
+                          <span className="text-slate-700 tabular-nums w-14 text-right">
+                            {b.percentage != null
+                              ? `${b.percentage.toFixed(1)}%`
+                              : '—'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

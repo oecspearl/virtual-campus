@@ -70,13 +70,74 @@ interface StudentGradebookProps {
   };
 }
 
-// Helper to convert percentage to letter grade
-function getLetterGrade(percentage: number): string {
+interface LetterBand {
+  letter: string;
+  min_percentage: number;
+}
+
+// Hardcoded fallback used only when the course has no configured scale.
+function getDefaultLetterGrade(percentage: number): string {
   if (percentage >= 90) return 'A';
   if (percentage >= 80) return 'B';
   if (percentage >= 70) return 'C';
   if (percentage >= 60) return 'D';
   return 'F';
+}
+
+/**
+ * Apply a course-configured letter scale: highest band the percentage
+ * clears wins. Mirrors the engine-side `assignLetter` so per-item letters
+ * agree with the overall letter the server computes.
+ */
+function letterFromScale(
+  percentage: number,
+  scale: LetterBand[]
+): string | null {
+  if (scale.length === 0) return null;
+  const sorted = [...scale].sort(
+    (a, b) => b.min_percentage - a.min_percentage
+  );
+  for (const band of sorted) {
+    if (percentage >= band.min_percentage) return band.letter;
+  }
+  return null;
+}
+
+/**
+ * Pick a colour tier for a percentage, scale-aware.
+ *
+ * When a scale is configured, the matched band's *position* within the
+ * scale drives the colour — top band is always green, the lowest red,
+ * with blue/yellow filling the middle thirds. This makes "A" green and
+ * "F" red regardless of where the instructor set the cutoffs (e.g. an
+ * A=70% scale shouldn't paint As yellow under a 90/80/70 hardcoding).
+ *
+ * Without a scale, falls back to the legacy 90/80/70/60 thresholds.
+ */
+function colorClassFor(
+  percentage: number,
+  scale: LetterBand[]
+): string {
+  if (scale.length === 0) {
+    if (percentage >= 90) return 'text-green-600';
+    if (percentage >= 80) return 'text-blue-600';
+    if (percentage >= 70) return 'text-yellow-600';
+    return 'text-red-600';
+  }
+
+  const sorted = [...scale].sort(
+    (a, b) => b.min_percentage - a.min_percentage
+  );
+  const total = sorted.length;
+  const matchedIndex = sorted.findIndex((b) => percentage >= b.min_percentage);
+
+  // Below the lowest band (only happens when the lowest band has min > 0):
+  if (matchedIndex === -1) return 'text-red-600';
+
+  if (matchedIndex === 0) return 'text-green-600';
+  if (matchedIndex < total / 3) return 'text-blue-600';
+  if (matchedIndex < (2 * total) / 3) return 'text-yellow-600';
+  return 'text-red-600';
 }
 
 export default function StudentGradebook({
@@ -88,6 +149,7 @@ export default function StudentGradebook({
   const [grades, setGrades] = useState<Grade[]>(initialData?.grades || []);
   const [settings, setSettings] = useState<GradebookSettings>(initialData?.settings || {});
   const [summary, setSummary] = useState<GradeSummary | null>(null);
+  const [letterScale, setLetterScale] = useState<LetterBand[]>([]);
   const [loading, setLoading] = useState(!initialData);
 
   // Get display preferences from settings with sensible defaults.
@@ -107,7 +169,7 @@ export default function StudentGradebook({
       // Use cache-busting headers and timestamp to ensure fresh data.
       // Fetch the legacy gradebook payload + the new aggregation summary
       // (engine-computed % + letter + breakdown) in parallel.
-      const [res, summaryRes] = await Promise.all([
+      const [res, summaryRes, scaleRes] = await Promise.all([
         fetch(`/api/courses/${courseId}/gradebook?t=${Date.now()}`, {
           cache: 'no-store',
           headers: {
@@ -117,6 +179,9 @@ export default function StudentGradebook({
           },
         }),
         fetch(`/api/courses/${courseId}/gradebook/summary?t=${Date.now()}`, {
+          cache: 'no-store',
+        }),
+        fetch(`/api/courses/${courseId}/gradebook/letter-scale?t=${Date.now()}`, {
           cache: 'no-store',
         }),
       ]);
@@ -143,6 +208,12 @@ export default function StudentGradebook({
         });
       } else {
         setSummary(null);
+      }
+      if (scaleRes.ok) {
+        const scaleData = await scaleRes.json();
+        setLetterScale(Array.isArray(scaleData.scale) ? scaleData.scale : []);
+      } else {
+        setLetterScale([]);
       }
     } catch (error) {
       console.error('Error loading gradebook:', error);
@@ -267,19 +338,38 @@ export default function StudentGradebook({
             </div>
             <div className="text-right">
               {showLetterGrades && (
-                <div className="text-3xl font-bold text-blue-600">
-                  {summary?.letter ?? getLetterGrade(totals.percentage)}
+                <div
+                  className={`text-3xl font-bold ${colorClassFor(
+                    summary?.percentage ?? totals.percentage,
+                    letterScale
+                  )}`}
+                >
+                  {summary?.letter ??
+                    letterFromScale(totals.percentage, letterScale) ??
+                    getDefaultLetterGrade(totals.percentage)}
                 </div>
               )}
               {showPercentages && (
-                <div className={`${showLetterGrades ? 'text-lg' : 'text-3xl'} font-bold text-blue-600`}>
+                <div
+                  className={`${
+                    showLetterGrades ? 'text-lg' : 'text-3xl'
+                  } font-bold ${colorClassFor(
+                    summary?.percentage ?? totals.percentage,
+                    letterScale
+                  )}`}
+                >
                   {summary?.percentage != null
                     ? `${summary.percentage.toFixed(1)}%`
                     : `${totals.percentage}%`}
                 </div>
               )}
               {!showLetterGrades && !showPercentages && showPoints && (
-                <div className="text-lg font-bold text-blue-600">
+                <div
+                  className={`text-lg font-bold ${colorClassFor(
+                    totals.percentage,
+                    letterScale
+                  )}`}
+                >
                   {totals.points}/{totals.max}
                 </div>
               )}
@@ -366,13 +456,14 @@ export default function StudentGradebook({
                       {hasGrade ? (
                         <div className="flex flex-col items-end">
                           {showLetterGrades && (
-                            <div className={`text-lg font-bold ${
-                              percentage >= 90 ? 'text-green-600' :
-                              percentage >= 80 ? 'text-blue-600' :
-                              percentage >= 70 ? 'text-yellow-600' :
-                              'text-red-600'
-                            }`}>
-                              {getLetterGrade(percentage)}
+                            <div
+                              className={`text-lg font-bold ${colorClassFor(
+                                percentage,
+                                letterScale
+                              )}`}
+                            >
+                              {letterFromScale(percentage, letterScale) ??
+                                getDefaultLetterGrade(percentage)}
                             </div>
                           )}
                           {showPoints && (
@@ -381,12 +472,12 @@ export default function StudentGradebook({
                             </div>
                           )}
                           {showPercentages && (
-                            <div className={`text-sm font-medium ${
-                              percentage >= 90 ? 'text-green-600' :
-                              percentage >= 80 ? 'text-blue-600' :
-                              percentage >= 70 ? 'text-yellow-600' :
-                              'text-red-600'
-                            }`}>
+                            <div
+                              className={`text-sm font-medium ${colorClassFor(
+                                percentage,
+                                letterScale
+                              )}`}
+                            >
                               {percentage}%
                             </div>
                           )}

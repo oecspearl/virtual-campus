@@ -71,6 +71,7 @@ export default function UserProfileComponent({ onProfileUpdate }: UserProfileCom
   const [enrollments, setEnrollments] = useState<EnrolledCourse[]>([]);
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
   const [enrollmentsError, setEnrollmentsError] = useState('');
+  const [coursesView, setCoursesView] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     loadProfile();
@@ -759,15 +760,53 @@ export default function UserProfileComponent({ onProfileUpdate }: UserProfileCom
                 </p>
               </div>
             </div>
-            {enrollments.length > 0 && (
-              <Link
-                href="/my-courses"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
-              >
-                View all
-                <Icon icon="material-symbols:arrow-forward" className="w-4 h-4" />
-              </Link>
-            )}
+            <div className="flex items-center gap-3">
+              {enrollments.length > 0 && (
+                <div
+                  role="group"
+                  aria-label="View mode"
+                  className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setCoursesView('grid')}
+                    aria-pressed={coursesView === 'grid'}
+                    title="Grid view"
+                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                      coursesView === 'grid'
+                        ? 'bg-white text-blue-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon icon="material-symbols:grid-view" className="w-4 h-4" />
+                    Grid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoursesView('list')}
+                    aria-pressed={coursesView === 'list'}
+                    title="List view"
+                    className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                      coursesView === 'list'
+                        ? 'bg-white text-blue-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon icon="material-symbols:view-list" className="w-4 h-4" />
+                    List
+                  </button>
+                </div>
+              )}
+              {enrollments.length > 0 && (
+                <Link
+                  href="/my-courses"
+                  className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                >
+                  View all
+                  <Icon icon="material-symbols:arrow-forward" className="w-4 h-4" />
+                </Link>
+              )}
+            </div>
           </div>
 
           {enrollmentsLoading ? (
@@ -802,7 +841,7 @@ export default function UserProfileComponent({ onProfileUpdate }: UserProfileCom
                 Browse courses
               </Link>
             </div>
-          ) : (
+          ) : coursesView === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {enrollments.map((e) => {
                 const course = e.courses!;
@@ -859,6 +898,83 @@ export default function UserProfileComponent({ onProfileUpdate }: UserProfileCom
                 );
               })}
             </div>
+          ) : (
+            <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+              {enrollments.map((e) => {
+                const course = e.courses!;
+                return (
+                  <li key={e.id}>
+                    <Link
+                      href={`/course/${course.id}`}
+                      className="group flex items-center gap-4 p-3 sm:p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-14 shrink-0 rounded-md overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600">
+                        {course.thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={course.thumbnail}
+                            alt={course.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Icon icon="material-symbols:menu-book" className="w-6 h-6 text-white/80" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-1">
+                            {course.title}
+                          </h3>
+                          {course.published === false && (
+                            <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
+                              Draft
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                          {course.subject_area && (
+                            <span className="inline-flex items-center gap-1">
+                              <Icon icon="material-symbols:category" className="w-3.5 h-3.5" />
+                              {course.subject_area}
+                            </span>
+                          )}
+                          {course.difficulty && (
+                            <span className="inline-flex items-center gap-1 capitalize">
+                              <Icon icon="material-symbols:bar-chart" className="w-3.5 h-3.5" />
+                              {course.difficulty}
+                            </span>
+                          )}
+                          {course.grade_level && (
+                            <span className="inline-flex items-center gap-1">
+                              <Icon icon="material-symbols:school" className="w-3.5 h-3.5" />
+                              {course.grade_level}
+                            </span>
+                          )}
+                          {e.classes?.name && (
+                            <span className="inline-flex items-center gap-1">
+                              <Icon icon="material-symbols:groups" className="w-3.5 h-3.5" />
+                              {e.classes.name}
+                            </span>
+                          )}
+                          {e.enrolled_at && (
+                            <span className="inline-flex items-center gap-1">
+                              <Icon icon="material-symbols:event" className="w-3.5 h-3.5" />
+                              Enrolled {new Date(e.enrolled_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Icon
+                        icon="material-symbols:chevron-right"
+                        className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors shrink-0"
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </m.div>

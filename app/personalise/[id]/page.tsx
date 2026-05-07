@@ -218,6 +218,8 @@ export default function PersonalisedCourseDetailPage() {
   const [decisions, setDecisions] = React.useState<Record<string, Decision>>({});
   const [approving, setApproving] = React.useState(false);
   const [approveError, setApproveError] = React.useState('');
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
 
   const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
     const t = searchParams.get('tab');
@@ -286,6 +288,47 @@ export default function PersonalisedCourseDetailPage() {
     ).length;
   }, [course, decisions]);
   const recsDecided = recsTotal - recsPending;
+
+  const saveEdits = async (fields: { courseTitle: string | null; learnerGoal: string }) => {
+    if (!course) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not signed in');
+    const res = await fetch(`/api/courses/personalise/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(fields),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? 'Failed to save changes.');
+    }
+    setCourse((prev) =>
+      prev
+        ? {
+            ...prev,
+            course_title: fields.courseTitle,
+            learner_goal: fields.learnerGoal,
+          }
+        : prev,
+    );
+  };
+
+  const deletePath = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not signed in');
+    const res = await fetch(`/api/courses/personalise/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? 'Failed to delete path.');
+    }
+    router.push('/personalise');
+  };
 
   const approve = async () => {
     if (!course) return;
@@ -457,6 +500,44 @@ export default function PersonalisedCourseDetailPage() {
           )}
 
           {activeTab === 'syllabus' && <SyllabusTab course={course} />}
+
+          {editOpen && (
+            <EditPathModal
+              initialTitle={course.course_title ?? ''}
+              initialGoal={course.learner_goal}
+              onClose={() => setEditOpen(false)}
+              onSave={async (fields) => {
+                await saveEdits(fields);
+                setEditOpen(false);
+              }}
+            />
+          )}
+
+          {deleteOpen && (
+            <DeletePathModal
+              title={course.course_title ?? course.learner_goal}
+              onClose={() => setDeleteOpen(false)}
+              onConfirm={deletePath}
+            />
+          )}
+        </div>
+
+        {/* Mobile-only edit/delete row — sidebar is desktop-only */}
+        <div className="lg:hidden px-4 pb-6 -mt-2 flex items-center justify-end gap-4">
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="text-xs font-medium text-gray-600 hover:text-gray-900 cursor-pointer"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="text-xs font-medium text-red-600 hover:text-red-800 cursor-pointer"
+          >
+            Delete path
+          </button>
         </div>
 
         {/* Persistent sidebar */}
@@ -473,6 +554,8 @@ export default function PersonalisedCourseDetailPage() {
               approving={approving}
               approveError={approveError}
               onApprove={approve}
+              onEdit={() => setEditOpen(true)}
+              onDelete={() => setDeleteOpen(true)}
             />
             <QuickLinksCard />
             {course.approved_at && (
@@ -677,6 +760,8 @@ function PathSummaryCard({
   approving,
   approveError,
   onApprove,
+  onEdit,
+  onDelete,
 }: {
   course: CourseDetail;
   selectedCount: number;
@@ -688,6 +773,8 @@ function PathSummaryCard({
   approving: boolean;
   approveError: string;
   onApprove: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const stats: Array<{ label: string; value: string | number }> = [
     { label: 'Lessons', value: selectedCount },
@@ -775,6 +862,29 @@ function PathSummaryCard({
         {approveError && (
           <p className="mt-2 text-xs text-red-700">{approveError}</p>
         )}
+
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L7.5 19.151l-4.5 1.5 1.5-4.5L16.862 4.487z" />
+            </svg>
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-800 cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1037,5 +1147,215 @@ function RecommendedLessonCard({
         <div className={`group ${wrapperBase}`}>{inner}</div>
       )}
     </PathRow>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Edit / delete modals
+// ----------------------------------------------------------------------------
+
+function ModalShell({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/40"
+        aria-hidden="true"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="relative w-full max-w-md rounded-lg bg-white shadow-xl border border-gray-200/60"
+      >
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-gray-700 cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EditPathModal({
+  initialTitle,
+  initialGoal,
+  onClose,
+  onSave,
+}: {
+  initialTitle: string;
+  initialGoal: string;
+  onClose: () => void;
+  onSave: (fields: { courseTitle: string | null; learnerGoal: string }) => Promise<void>;
+}) {
+  const [title, setTitle] = React.useState(initialTitle);
+  const [goal, setGoal] = React.useState(initialGoal);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const trimmedTitle = title.trim();
+  const trimmedGoal = goal.trim();
+  const goalValid = trimmedGoal.length >= 10 && trimmedGoal.length <= 500;
+  const titleValid = trimmedTitle.length === 0 || trimmedTitle.length <= 500;
+  const dirty = trimmedTitle !== initialTitle.trim() || trimmedGoal !== initialGoal.trim();
+
+  const submit = async () => {
+    if (!goalValid || !titleValid) return;
+    setSaving(true);
+    setError('');
+    try {
+      await onSave({
+        courseTitle: trimmedTitle.length === 0 ? null : trimmedTitle,
+        learnerGoal: trimmedGoal,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save changes.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell title="Edit path" onClose={onClose}>
+      <div className="px-5 py-4 space-y-4">
+        <div>
+          <label className="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">
+            Title
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={500}
+            placeholder="Use the goal as the title"
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          />
+          <p className="mt-1 text-[11px] text-gray-400">
+            Leave blank to fall back to the goal as the title.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">
+            Learning goal
+          </label>
+          <textarea
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            maxLength={500}
+            rows={4}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+          />
+          <div className="mt-1 flex items-center justify-between text-[11px]">
+            <span className={goalValid ? 'text-gray-400' : 'text-red-600'}>
+              10–500 characters
+            </span>
+            <span className="text-gray-400">{trimmedGoal.length}/500</span>
+          </div>
+        </div>
+
+        {error && <p className="text-xs text-red-700">{error}</p>}
+      </div>
+
+      <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2 rounded-b-lg">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={saving}
+          className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={saving || !dirty || !goalValid || !titleValid}
+          className="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700 rounded-md hover:bg-emerald-800 cursor-pointer disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function DeletePathModal({
+  title,
+  onClose,
+  onConfirm,
+}: {
+  title: string;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const confirm = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await onConfirm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete path.');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <ModalShell title="Delete path" onClose={onClose}>
+      <div className="px-5 py-4 space-y-3">
+        <p className="text-sm text-gray-700">
+          Delete <span className="font-semibold">&ldquo;{title}&rdquo;</span>? This permanently
+          removes the path and its sequence. This can&apos;t be undone.
+        </p>
+        {error && <p className="text-xs text-red-700">{error}</p>}
+      </div>
+
+      <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2 rounded-b-lg">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={busy}
+          className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={confirm}
+          disabled={busy}
+          className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 cursor-pointer disabled:opacity-50"
+        >
+          {busy ? 'Deleting…' : 'Delete path'}
+        </button>
+      </div>
+    </ModalShell>
   );
 }

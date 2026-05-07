@@ -630,6 +630,56 @@ export async function fetchCatalogue(
   };
 }
 
+// ── Mutations: edit / delete ────────────────────────────────────────────────
+
+export interface UpdatePersonalisedCourseInput {
+  course_title?: string | null;
+  learner_goal?: string;
+}
+
+/**
+ * Updates learner-editable fields on a personalised course. Caller is
+ * responsible for the ownership check — we don't re-verify here so the
+ * route handler can return uniform 404s instead of 403s.
+ *
+ * Only the fields a learner can sensibly rename are allowed. The
+ * LLM-generated narrative (description, syllabus, objectives, gaps) is
+ * left untouched so we don't end up with a title that contradicts the
+ * generated story.
+ */
+export async function updatePersonalisedCourse(
+  tq: TenantQuery,
+  id: string,
+  input: UpdatePersonalisedCourseInput,
+): Promise<void> {
+  const patch: Record<string, unknown> = {};
+  if (input.course_title !== undefined) patch.course_title = input.course_title;
+  if (input.learner_goal !== undefined) patch.learner_goal = input.learner_goal;
+  if (Object.keys(patch).length === 0) return;
+
+  await tq
+    .from('personalised_courses')
+    .update(patch)
+    .eq('id', id);
+}
+
+/**
+ * Hard-deletes a personalised course. The personalised_course_lessons
+ * children cascade via FK; personalised_course_requests audit rows have
+ * ON DELETE SET NULL so the audit trail is preserved without the FK.
+ *
+ * Caller verifies ownership before calling.
+ */
+export async function deletePersonalisedCourse(
+  tq: TenantQuery,
+  id: string,
+): Promise<void> {
+  await tq
+    .from('personalised_courses')
+    .delete()
+    .eq('id', id);
+}
+
 /**
  * Approves a draft: applies recommendation accept/reject decisions, sets
  * status to 'active', stamps approved_at. Caller is responsible for the

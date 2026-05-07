@@ -46,6 +46,20 @@ interface GradebookSettings {
   show_letter_grades?: boolean;
 }
 
+interface SummaryBreakdown {
+  category_id: string;
+  name: string;
+  percentage: number | null;
+  points: number;
+  max_points: number;
+}
+
+interface GradeSummary {
+  percentage: number | null;
+  letter: string | null;
+  breakdown: SummaryBreakdown[];
+}
+
 interface StudentGradebookProps {
   courseId: string;
   initialData?: {
@@ -73,26 +87,39 @@ export default function StudentGradebook({
   const [items, setItems] = useState<GradeItem[]>(initialData?.items || []);
   const [grades, setGrades] = useState<Grade[]>(initialData?.grades || []);
   const [settings, setSettings] = useState<GradebookSettings>(initialData?.settings || {});
+  const [summary, setSummary] = useState<GradeSummary | null>(null);
   const [loading, setLoading] = useState(!initialData);
 
-  // Get display preferences from settings with sensible defaults
+  // Get display preferences from settings with sensible defaults.
+  // Letter grades are now opt-out: if a course-level letter scale exists
+  // (summary.letter is non-null), show it regardless of the legacy
+  // `show_letter_grades` flag, because the new engine treats the configured
+  // scale as the source of truth.
   const showPoints = settings.show_points_to_students !== false;
   const showPercentages = settings.show_percentages_to_students !== false;
-  const showLetterGrades = settings.show_letter_grades === true;
+  const showLetterGrades =
+    settings.show_letter_grades === true || summary?.letter != null;
 
   // Memoize loadGradebook to avoid recreating it on every render
   const loadGradebook = useCallback(async () => {
     try {
       setLoading(true);
-      // Use cache-busting headers and timestamp to ensure fresh data
-      const res = await fetch(`/api/courses/${courseId}/gradebook?t=${Date.now()}`, { 
-        cache: "no-store",
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
+      // Use cache-busting headers and timestamp to ensure fresh data.
+      // Fetch the legacy gradebook payload + the new aggregation summary
+      // (engine-computed % + letter + breakdown) in parallel.
+      const [res, summaryRes] = await Promise.all([
+        fetch(`/api/courses/${courseId}/gradebook?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        }),
+        fetch(`/api/courses/${courseId}/gradebook/summary?t=${Date.now()}`, {
+          cache: 'no-store',
+        }),
+      ]);
       if (!res.ok) {
         console.error('Failed to load gradebook');
         return;
@@ -103,6 +130,19 @@ export default function StudentGradebook({
       setGrades(data.grades || []);
       if (data.settings) {
         setSettings(data.settings);
+      }
+      // Summary is best-effort. If the new tables aren't migrated yet, we
+      // silently fall back to the local sum/sum percentage and the
+      // hardcoded letter-grade scale.
+      if (summaryRes.ok) {
+        const sData = await summaryRes.json();
+        setSummary({
+          percentage: sData.percentage ?? null,
+          letter: sData.letter ?? null,
+          breakdown: Array.isArray(sData.breakdown) ? sData.breakdown : [],
+        });
+      } else {
+        setSummary(null);
       }
     } catch (error) {
       console.error('Error loading gradebook:', error);
@@ -207,7 +247,9 @@ export default function StudentGradebook({
           </button>
         </div>
 
-        {/* Overall Grade Summary */}
+        {/* Overall Grade Summary — engine-computed when summary is available
+            (configured letter scale + category aggregation), else falls back
+            to flat sum-of-points and the hardcoded A/B/C/D/F bands. */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -217,16 +259,23 @@ export default function StudentGradebook({
                   {totals.points} out of {totals.max} points
                 </p>
               )}
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {summary
+                  ? 'Computed from category aggregation'
+                  : 'Computed from totals'}
+              </p>
             </div>
             <div className="text-right">
               {showLetterGrades && (
                 <div className="text-3xl font-bold text-blue-600">
-                  {getLetterGrade(totals.percentage)}
+                  {summary?.letter ?? getLetterGrade(totals.percentage)}
                 </div>
               )}
               {showPercentages && (
                 <div className={`${showLetterGrades ? 'text-lg' : 'text-3xl'} font-bold text-blue-600`}>
-                  {totals.percentage}%
+                  {summary?.percentage != null
+                    ? `${summary.percentage.toFixed(1)}%`
+                    : `${totals.percentage}%`}
                 </div>
               )}
               {!showLetterGrades && !showPercentages && showPoints && (
@@ -243,10 +292,38 @@ export default function StudentGradebook({
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(totals.percentage, 100)}%` }}
+                style={{
+                  width: `${Math.min(summary?.percentage ?? totals.percentage, 100)}%`,
+                }}
               ></div>
             </div>
           </div>
+
+          {/* Per-category breakdown (only shown when the new engine has data) */}
+          {summary && summary.breakdown.length > 0 && (
+            <div className="mt-4 divide-y divide-blue-100">
+              {summary.breakdown.map((b) => (
+                <div
+                  key={b.category_id}
+                  className="py-2 flex items-center justify-between text-sm"
+                >
+                  <span className="text-gray-700">{b.name}</span>
+                  <div className="flex items-center gap-3">
+                    {showPoints && (
+                      <span className="text-xs text-gray-500 tabular-nums">
+                        {b.points.toFixed(0)} / {b.max_points.toFixed(0)}
+                      </span>
+                    )}
+                    <span className="font-medium text-blue-700 tabular-nums w-14 text-right">
+                      {b.percentage != null
+                        ? `${b.percentage.toFixed(1)}%`
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

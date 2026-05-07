@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { LazyMotion, domAnimation, m } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
@@ -22,6 +23,24 @@ interface UserProfile {
   learning_preferences?: Record<string, any>;
   created_at?: string;
   updated_at?: string;
+}
+
+interface EnrolledCourse {
+  id: string;
+  course_id: string;
+  status: string;
+  enrolled_at: string;
+  courses: {
+    id: string;
+    title: string;
+    description?: string;
+    thumbnail?: string;
+    difficulty?: string;
+    grade_level?: string;
+    subject_area?: string;
+    published?: boolean;
+  } | null;
+  classes?: { id: string; name: string } | null;
 }
 
 interface UserProfileComponentProps {
@@ -48,9 +67,46 @@ export default function UserProfileComponent({ onProfileUpdate }: UserProfileCom
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Enrolled courses state
+  const [enrollments, setEnrollments] = useState<EnrolledCourse[]>([]);
+  const [enrollmentsLoading, setEnrollmentsLoading] = useState(true);
+  const [enrollmentsError, setEnrollmentsError] = useState('');
+
   useEffect(() => {
     loadProfile();
+    loadEnrollments();
   }, []);
+
+  const loadEnrollments = async () => {
+    try {
+      setEnrollmentsLoading(true);
+      setEnrollmentsError('');
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        setEnrollmentsError('Sign in to view your enrolled courses.');
+        return;
+      }
+
+      const response = await fetch('/api/enrollments?me=1', {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load enrollments');
+      }
+
+      const data = await response.json();
+      const list: EnrolledCourse[] = Array.isArray(data.enrollments) ? data.enrollments : [];
+      setEnrollments(list.filter((e) => e.courses));
+    } catch (err) {
+      console.error('Enrollments load error:', err);
+      setEnrollmentsError(err instanceof Error ? err.message : 'Failed to load enrolled courses');
+    } finally {
+      setEnrollmentsLoading(false);
+    }
+  };
 
   const loadProfile = async () => {
     try {
@@ -680,6 +736,132 @@ export default function UserProfileComponent({ onProfileUpdate }: UserProfileCom
           </div>
         </m.div>
       </div>
+
+      {/* Enrolled Courses */}
+      <m.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="mt-8"
+      >
+        <div className="bg-white rounded-lg p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                <Icon icon="material-symbols:menu-book" className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">My Courses</h2>
+                <p className="text-sm text-gray-500">
+                  {enrollmentsLoading
+                    ? 'Loading…'
+                    : `${enrollments.length} active enrollment${enrollments.length === 1 ? '' : 's'}`}
+                </p>
+              </div>
+            </div>
+            {enrollments.length > 0 && (
+              <Link
+                href="/my-courses"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              >
+                View all
+                <Icon icon="material-symbols:arrow-forward" className="w-4 h-4" />
+              </Link>
+            )}
+          </div>
+
+          {enrollmentsLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="border border-gray-100 rounded-lg overflow-hidden animate-pulse">
+                  <div className="h-32 bg-gray-200" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : enrollmentsError ? (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-center gap-3">
+              <Icon icon="material-symbols:error" className="w-5 h-5 text-red-600" />
+              <p className="text-red-600 text-sm">{enrollmentsError}</p>
+            </div>
+          ) : enrollments.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-gray-200 rounded-lg">
+              <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icon icon="material-symbols:school" className="w-7 h-7 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No active enrollments</h3>
+              <p className="text-sm text-gray-500 mb-4">You aren&apos;t enrolled in any courses yet.</p>
+              <Link
+                href="/courses"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <Icon icon="material-symbols:explore" className="w-4 h-4" />
+                Browse courses
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {enrollments.map((e) => {
+                const course = e.courses!;
+                return (
+                  <Link
+                    key={e.id}
+                    href={`/course/${course.id}`}
+                    className="group border border-gray-100 rounded-lg overflow-hidden hover:border-blue-300 hover:shadow-md transition-all"
+                  >
+                    <div className="relative h-32 bg-gradient-to-br from-blue-500 to-indigo-600">
+                      {course.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={course.thumbnail}
+                          alt={course.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Icon icon="material-symbols:menu-book" className="w-10 h-10 text-white/80" />
+                        </div>
+                      )}
+                      {course.published === false && (
+                        <span className="absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
+                          Draft
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-700 transition-colors">
+                        {course.title}
+                      </h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                        {course.subject_area && (
+                          <span className="inline-flex items-center gap-1">
+                            <Icon icon="material-symbols:category" className="w-3.5 h-3.5" />
+                            {course.subject_area}
+                          </span>
+                        )}
+                        {course.difficulty && (
+                          <span className="inline-flex items-center gap-1 capitalize">
+                            <Icon icon="material-symbols:bar-chart" className="w-3.5 h-3.5" />
+                            {course.difficulty}
+                          </span>
+                        )}
+                      </div>
+                      {e.classes?.name && (
+                        <p className="mt-2 text-xs text-gray-500 truncate">
+                          Section: <span className="text-gray-700">{e.classes.name}</span>
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </m.div>
     </div>
     </LazyMotion>
   );

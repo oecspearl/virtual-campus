@@ -34,6 +34,19 @@ interface LetterBand {
   min_percentage: number;
 }
 
+interface GradeItem {
+  id: string;
+  title: string;
+  type: string;
+  category: string | null;
+  category_id: string | null;
+  points: number;
+  weight: number;
+  extra_credit: boolean;
+  hidden: boolean;
+  locked: boolean;
+}
+
 const AGGREGATIONS: { value: Aggregation; label: string; hint: string }[] = [
   { value: 'weighted_mean', label: 'Weighted mean', hint: 'Average weighted by per-child weight' },
   { value: 'mean', label: 'Mean', hint: 'Unweighted average of child percentages' },
@@ -62,6 +75,7 @@ function GradebookCategoriesPageInner() {
   const { id: courseId } = useParams<{ id: string }>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [scale, setScale] = useState<LetterBand[]>([]);
+  const [items, setItems] = useState<GradeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -69,21 +83,36 @@ function GradebookCategoriesPageInner() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState({ ...DEFAULT_NEW_CATEGORY });
+  // Items mover state
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [moveTargetId, setMoveTargetId] = useState<string>('');
 
   const loadAll = async () => {
     setLoading(true);
     setError('');
     try {
-      const [catRes, letterRes] = await Promise.all([
+      const [catRes, letterRes, itemsRes] = await Promise.all([
         fetch(`/api/courses/${courseId}/gradebook/categories`, { cache: 'no-store' }),
         fetch(`/api/courses/${courseId}/gradebook/letter-scale`, { cache: 'no-store' }),
+        fetch(`/api/courses/${courseId}/gradebook/items`, { cache: 'no-store' }),
       ]);
       if (!catRes.ok) throw new Error('Failed to load categories');
       if (!letterRes.ok) throw new Error('Failed to load letter scale');
+      if (!itemsRes.ok) throw new Error('Failed to load grade items');
       const catData = await catRes.json();
       const letterData = await letterRes.json();
+      const itemsData = await itemsRes.json();
       setCategories(Array.isArray(catData.categories) ? catData.categories : []);
       setScale(Array.isArray(letterData.scale) ? letterData.scale : []);
+      const list: GradeItem[] = Array.isArray(itemsData.items)
+        ? itemsData.items
+        : Array.isArray(itemsData.gradeItems)
+        ? itemsData.gradeItems
+        : Array.isArray(itemsData.grade_items)
+        ? itemsData.grade_items
+        : [];
+      setItems(list);
+      setSelectedItemIds(new Set());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load gradebook');
     } finally {
@@ -223,6 +252,95 @@ function GradebookCategoriesPageInner() {
     setScale((s) => s.filter((_, idx) => idx !== i));
   const updateLetterBand = (i: number, patch: Partial<LetterBand>) =>
     setScale((s) => s.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
+
+  // ─── Items mover ───────────────────────────────────────────────────────
+
+  const itemsByCategory = useMemo(() => {
+    const groups = new Map<string | null, GradeItem[]>();
+    for (const it of items) {
+      const key = it.category_id ?? null;
+      const list = groups.get(key) ?? [];
+      list.push(it);
+      groups.set(key, list);
+    }
+    return groups;
+  }, [items]);
+
+  const toggleItemSelect = (id: string) =>
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const selectAllUncategorised = () => {
+    const orphans = (itemsByCategory.get(null) ?? []).map((i) => i.id);
+    setSelectedItemIds(new Set(orphans));
+  };
+
+  const clearSelection = () => setSelectedItemIds(new Set());
+
+  const moveSelectedItems = async () => {
+    if (selectedItemIds.size === 0) {
+      setError('No items selected');
+      return;
+    }
+    if (!moveTargetId) {
+      setError('Pick a destination category');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/courses/${courseId}/gradebook/items`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_ids: Array.from(selectedItemIds),
+          category_id: moveTargetId === '__none__' ? null : moveTargetId,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Failed to move items');
+      }
+      const data = await res.json();
+      flash(`Moved ${data.moved ?? selectedItemIds.size} item(s)`);
+      await loadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to move items');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleItemFlag = async (
+    item: GradeItem,
+    field: 'extra_credit' | 'hidden' | 'locked'
+  ) => {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch(
+        `/api/courses/${courseId}/gradebook/items/${item.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ [field]: !item[field] }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Failed to update item');
+      }
+      await loadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // ─── Render helpers ────────────────────────────────────────────────────
 
@@ -519,6 +637,160 @@ function GradebookCategoriesPageInner() {
             </div>
           ) : (
             <div>{renderTree(null, 0)}</div>
+          )}
+        </div>
+
+        {/* Items mover */}
+        <div className="bg-white rounded-lg border border-gray-200/80 overflow-hidden mb-6">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-medium text-slate-700">Grade items</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Move items between categories. Items not assigned to a category
+                fall back to a synthetic root and won&apos;t show in the
+                breakdown — assign them to make them navigable.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {(itemsByCategory.get(null) ?? []).length > 0 && (
+                <button
+                  onClick={selectAllUncategorised}
+                  className="text-xs text-amber-600 hover:text-amber-800"
+                >
+                  Select uncategorised ({(itemsByCategory.get(null) ?? []).length})
+                </button>
+              )}
+              {selectedItemIds.size > 0 && (
+                <button
+                  onClick={clearSelection}
+                  className="text-xs text-slate-500 hover:text-slate-800"
+                >
+                  Clear ({selectedItemIds.size})
+                </button>
+              )}
+            </div>
+          </div>
+
+          {selectedItemIds.size > 0 && (
+            <div className="px-5 py-2.5 bg-blue-50/60 border-b border-blue-100 flex items-center gap-2">
+              <span className="text-xs text-slate-700">
+                Move {selectedItemIds.size} item(s) to:
+              </span>
+              <select
+                value={moveTargetId}
+                onChange={(e) => setMoveTargetId(e.target.value)}
+                className="px-2 py-1 text-xs border border-gray-200 rounded-md"
+              >
+                <option value="">— select category —</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+                <option value="__none__">(uncategorised)</option>
+              </select>
+              <button
+                onClick={moveSelectedItems}
+                disabled={saving || !moveTargetId}
+                className="px-3 py-1 text-xs bg-slate-800 text-white rounded-md hover:bg-slate-700 disabled:opacity-50"
+              >
+                {saving ? 'Moving…' : 'Move'}
+              </button>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="p-8 text-center text-sm text-slate-400">Loading…</div>
+          ) : items.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-400">
+              No grade items in this course yet.
+            </div>
+          ) : (
+            <div>
+              {/* Render uncategorised first so staff notice them */}
+              {[null, ...categories.map((c) => c.id)].map((catId) => {
+                const list = itemsByCategory.get(catId) ?? [];
+                if (list.length === 0) return null;
+                const cat =
+                  catId === null ? null : categories.find((c) => c.id === catId);
+                return (
+                  <div key={catId ?? '__none__'} className="border-b border-gray-100 last:border-b-0">
+                    <div className="px-5 py-2 bg-gray-50/60 text-[11px] uppercase tracking-wider font-medium text-slate-500 flex items-center justify-between">
+                      <span>
+                        {cat?.name ?? 'Uncategorised'}{' '}
+                        <span className="text-slate-400 normal-case">
+                          ({list.length})
+                        </span>
+                      </span>
+                      {catId === null && (
+                        <span className="text-[10px] text-amber-600 normal-case">
+                          ⚠ not in any category
+                        </span>
+                      )}
+                    </div>
+                    {list.map((item) => {
+                      const checked = selectedItemIds.has(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          className="px-5 py-2.5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 flex items-center gap-3"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleItemSelect(item.id)}
+                          />
+                          <span className="text-sm text-slate-700 truncate flex-1">
+                            {item.title}
+                          </span>
+                          <span className="text-[11px] text-slate-400 capitalize">
+                            {item.type}
+                          </span>
+                          <span className="text-[11px] text-slate-400 tabular-nums w-12 text-right">
+                            {item.points} pts
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => toggleItemFlag(item, 'extra_credit')}
+                              className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                item.extra_credit
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                              }`}
+                              title="Toggle extra credit"
+                            >
+                              EC
+                            </button>
+                            <button
+                              onClick={() => toggleItemFlag(item, 'hidden')}
+                              className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                item.hidden
+                                  ? 'bg-gray-200 text-gray-700'
+                                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                              }`}
+                              title="Toggle hidden"
+                            >
+                              hidden
+                            </button>
+                            <button
+                              onClick={() => toggleItemFlag(item, 'locked')}
+                              className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                item.locked
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                              }`}
+                              title="Toggle locked"
+                            >
+                              locked
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 

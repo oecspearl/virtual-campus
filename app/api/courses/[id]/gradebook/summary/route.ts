@@ -77,6 +77,29 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const requestedStudentId = searchParams.get('student_id');
+    const wantAll = searchParams.get('all') === '1';
+
+    // Staff variant: GET ?all=1 returns every cached summary in the course.
+    // Used by the admin gradebook to display engine-computed totals + letters
+    // without fanning out one fetch per student.
+    if (wantAll) {
+      if (!isStaff) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+      const { data: rows, error: listError } = await tq
+        .from('course_grade_summary')
+        .select('student_id, percentage, letter, breakdown, computed_at')
+        .eq('course_id', courseId);
+      if (listError) {
+        console.error('Grade summary list error:', listError);
+        return NextResponse.json(
+          { error: 'Failed to fetch grade summaries' },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({ summaries: rows ?? [] });
+    }
+
     const studentId = requestedStudentId ?? user.id;
 
     if (!isStaff && studentId !== user.id) {

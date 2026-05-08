@@ -42,6 +42,36 @@ interface GradebookStats {
   courses_with_orphaned_items: number;
 }
 
+interface StudentSummary {
+  student_id: string;
+  percentage: number | null;
+  letter: string | null;
+}
+
+interface LetterBand {
+  letter: string;
+  min_percentage: number;
+}
+
+function colorClassFor(percentage: number, scale: LetterBand[]): string {
+  if (scale.length === 0) {
+    if (percentage >= 90) return 'text-green-600';
+    if (percentage >= 80) return 'text-blue-600';
+    if (percentage >= 70) return 'text-yellow-600';
+    return 'text-red-600';
+  }
+  const sorted = [...scale].sort(
+    (a, b) => b.min_percentage - a.min_percentage
+  );
+  const total = sorted.length;
+  const matchedIndex = sorted.findIndex((b) => percentage >= b.min_percentage);
+  if (matchedIndex === -1) return 'text-red-600';
+  if (matchedIndex === 0) return 'text-green-600';
+  if (matchedIndex < total / 3) return 'text-blue-600';
+  if (matchedIndex < (2 * total) / 3) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
 interface GradebookSettings {
   grading_scheme?: string;
   total_points?: number;
@@ -71,6 +101,8 @@ export default function StreamlinedGradebook({
   const [grades, setGrades] = useState<Grade[]>(initialData?.grades || []);
   const [stats, setStats] = useState<GradebookStats | null>(initialData?.stats || null);
   const [settings, setSettings] = useState<GradebookSettings>(initialData?.settings || {});
+  const [summaries, setSummaries] = useState<StudentSummary[]>([]);
+  const [letterScale, setLetterScale] = useState<LetterBand[]>([]);
   const [loading, setLoading] = useState(!initialData);
   const [cleaning, setCleaning] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
@@ -119,9 +151,15 @@ export default function StreamlinedGradebook({
   async function loadGradebook() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/courses/${courseId}/gradebook`, {
-        cache: "no-store"
-      });
+      const [res, summariesRes, scaleRes] = await Promise.all([
+        fetch(`/api/courses/${courseId}/gradebook`, { cache: "no-store" }),
+        fetch(`/api/courses/${courseId}/gradebook/summary?all=1`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/courses/${courseId}/gradebook/letter-scale`, {
+          cache: "no-store",
+        }),
+      ]);
       if (!res.ok) {
         console.error('Failed to load gradebook');
         return;
@@ -133,6 +171,21 @@ export default function StreamlinedGradebook({
       setStats(data.stats || null);
       if (data.settings) {
         setSettings(data.settings);
+      }
+      // Engine summaries + letter scale are best-effort. If the new tables
+      // aren't migrated yet (or the staff is not authorised), fall back to
+      // the legacy local sum/sum percentage.
+      if (summariesRes.ok) {
+        const sData = await summariesRes.json();
+        setSummaries(Array.isArray(sData.summaries) ? sData.summaries : []);
+      } else {
+        setSummaries([]);
+      }
+      if (scaleRes.ok) {
+        const scaleData = await scaleRes.json();
+        setLetterScale(Array.isArray(scaleData.scale) ? scaleData.scale : []);
+      } else {
+        setLetterScale([]);
       }
     } catch (error) {
       console.error('Error loading gradebook:', error);
@@ -322,14 +375,37 @@ export default function StreamlinedGradebook({
     return m;
   }, [grades]);
 
-  // Calculate totals for each student
+  // Index summaries by student for O(1) lookup.
+  const summaryByStudent = useMemo(() => {
+    const m = new Map<string, StudentSummary>();
+    for (const s of summaries) m.set(s.student_id, s);
+    return m;
+  }, [summaries]);
+
+  // Calculate totals for each student. Points/max are still summed locally
+  // (the staff table needs raw points columns), and the engine summary
+  // overrides percentage + letter when the staff is viewing the full
+  // course. With a category filter applied, the local sum is what staff
+  // actually want to see (engine total wouldn't match the visible items),
+  // so we keep the local percentage in that case.
+  const isFiltered = selectedCategory !== 'all';
+
   const studentTotals = useMemo(() => {
-    const totals = new Map<string, { points: number; max: number; percentage: number }>();
-    
+    const totals = new Map<
+      string,
+      {
+        points: number;
+        max: number;
+        percentage: number;
+        letter: string | null;
+        fromEngine: boolean;
+      }
+    >();
+
     for (const student of students) {
       let points = 0;
       let max = 0;
-      
+
       for (const item of filteredItems) {
         const grade = gradeIndex.get(`${student.id}:${item.id}`);
         if (grade) {
@@ -337,13 +413,21 @@ export default function StreamlinedGradebook({
         }
         max += item.points;
       }
-      
-      const percentage = max > 0 ? Math.round((points / max) * 100) : 0;
-      totals.set(student.id, { points, max, percentage });
+
+      const fallback = max > 0 ? Math.round((points / max) * 100) : 0;
+      const summary = summaryByStudent.get(student.id);
+      const useEngine = !isFiltered && summary?.percentage != null;
+      totals.set(student.id, {
+        points,
+        max,
+        percentage: useEngine ? Math.round(summary!.percentage!) : fallback,
+        letter: useEngine ? summary?.letter ?? null : null,
+        fromEngine: useEngine,
+      });
     }
-    
+
     return totals;
-  }, [students, filteredItems, gradeIndex]);
+  }, [students, filteredItems, gradeIndex, summaryByStudent, isFiltered]);
 
   if (loading) {
     return (
@@ -452,7 +536,7 @@ export default function StreamlinedGradebook({
       {/* Mobile Card View - visible on small screens */}
       <div className="md:hidden space-y-4">
         {students.map((student) => {
-          const total = studentTotals.get(student.id) || { points: 0, max: 0, percentage: 0 };
+          const total = studentTotals.get(student.id) || { points: 0, max: 0, percentage: 0, letter: null as string | null, fromEngine: false };
           return (
             <div key={student.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               {/* Student header */}
@@ -463,7 +547,8 @@ export default function StreamlinedGradebook({
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-gray-900">{total.points}/{total.max}</div>
-                  <div className={`text-xs font-semibold ${total.percentage >= 70 ? 'text-green-600' : total.percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <div className={`text-xs font-semibold ${colorClassFor(total.percentage, letterScale)}`}>
+                    {total.letter ? `${total.letter} · ` : ''}
                     {total.percentage}%
                   </div>
                 </div>
@@ -559,7 +644,7 @@ export default function StreamlinedGradebook({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {students.map((student) => {
-                const total = studentTotals.get(student.id) || { points: 0, max: 0, percentage: 0 };
+                const total = studentTotals.get(student.id) || { points: 0, max: 0, percentage: 0, letter: null as string | null, fromEngine: false };
                 return (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="sticky left-0 bg-white px-6 py-4 whitespace-nowrap z-10">
@@ -638,7 +723,8 @@ export default function StreamlinedGradebook({
                         <span>
                           {total.points}/{total.max}
                         </span>
-                        <span className="text-gray-500">
+                        <span className={colorClassFor(total.percentage, letterScale)}>
+                          {total.letter ? `${total.letter} · ` : ''}
                           {total.percentage}%
                         </span>
                       </div>

@@ -82,14 +82,23 @@ export async function GET(
     // Staff variant: GET ?all=1 returns every cached summary in the course.
     // Used by the admin gradebook to display engine-computed totals + letters
     // without fanning out one fetch per student.
+    //
+    // If the cache is cold (no grade has triggered a recompute since the
+    // tables were created), warm it for every enrolled student in one
+    // pass before returning. Mirrors the single-student GET's on-demand
+    // behaviour so the admin never sees a stale-empty list when grades exist.
     if (wantAll) {
       if (!isStaff) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
       }
-      const { data: rows, error: listError } = await tq
-        .from('course_grade_summary')
-        .select('student_id, percentage, letter, breakdown, computed_at')
-        .eq('course_id', courseId);
+
+      const fetchSummaries = async () =>
+        tq
+          .from('course_grade_summary')
+          .select('student_id, percentage, letter, breakdown, computed_at')
+          .eq('course_id', courseId);
+
+      let { data: rows, error: listError } = await fetchSummaries();
       if (listError) {
         console.error('Grade summary list error:', listError);
         return NextResponse.json(
@@ -97,6 +106,34 @@ export async function GET(
           { status: 500 }
         );
       }
+
+      // Warm if empty or partially populated — covers the post-migration
+      // "no writes yet" case and the "student enrolled after last
+      // recompute" case. We compare against the enrolled-student count
+      // rather than only checking for emptiness.
+      const { count: enrolledCount } = await tq
+        .from('enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('course_id', courseId)
+        .eq('status', 'active');
+
+      const cachedCount = rows?.length ?? 0;
+      if ((enrolledCount ?? 0) > cachedCount) {
+        try {
+          await recomputeCourseGradeSummariesForCourse(tq, courseId);
+          ({ data: rows, error: listError } = await fetchSummaries());
+          if (listError) {
+            console.error('Grade summary re-list error:', listError);
+            return NextResponse.json(
+              { error: 'Failed to fetch grade summaries after recompute' },
+              { status: 500 }
+            );
+          }
+        } catch (recomputeErr) {
+          console.error('Bulk recompute on cold cache failed:', recomputeErr);
+        }
+      }
+
       return NextResponse.json({ summaries: rows ?? [] });
     }
 

@@ -25,6 +25,10 @@ interface RubricGraderProps {
    *  to drive the running total + the assignment grade input. */
   onChange: (scores: RubricScoreSelection[]) => void;
   disabled?: boolean;
+  /** Assignment's max points. When provided AND the rubric's total
+   *  max differs, the rubric total is shown scaled into this range
+   *  (e.g. "Total: 60/90 → saves as 13.3 of 20"). */
+  assignmentMax?: number;
 }
 
 /**
@@ -40,6 +44,7 @@ export default function RubricGrader({
   initialScores,
   onChange,
   disabled,
+  assignmentMax,
 }: RubricGraderProps) {
   const [selectionByCriterion, setSelectionByCriterion] = useState<
     Record<string, RubricScoreSelection>
@@ -125,14 +130,27 @@ export default function RubricGrader({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+      <div className="flex items-center justify-between border-b border-gray-200 pb-2 gap-3">
         <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
           Rubric scoring
         </span>
-        <span className="text-sm tabular-nums">
-          <span className="font-bold text-gray-900">{total}</span>
-          <span className="text-gray-400"> / {maxTotal}</span>
-        </span>
+        <div className="text-sm tabular-nums text-right">
+          <div>
+            <span className="font-bold text-gray-900">{total}</span>
+            <span className="text-gray-400"> / {maxTotal}</span>
+          </div>
+          {assignmentMax !== undefined &&
+            maxTotal > 0 &&
+            assignmentMax !== maxTotal && (
+              <div className="text-[11px] text-gray-500">
+                saves as{' '}
+                <span className="font-semibold text-gray-700">
+                  {((total / maxTotal) * assignmentMax).toFixed(1)}
+                </span>
+                <span className="text-gray-400"> / {assignmentMax}</span>
+              </div>
+            )}
+        </div>
       </div>
 
       <div className="space-y-4">

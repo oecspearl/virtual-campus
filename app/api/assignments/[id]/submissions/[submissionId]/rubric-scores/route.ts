@@ -20,6 +20,75 @@ interface ScoreInput {
   comment?: string;
 }
 
+interface RubricLevel {
+  points?: number | string;
+}
+
+interface RubricCriterion {
+  id?: string;
+  levels?: RubricLevel[];
+}
+
+/**
+ * The max possible grade from a rubric = sum, across criteria, of the
+ * highest-points level. The rubric definition lives on
+ * assignments.rubric (JSONB or stringified JSON).
+ *
+ * Returns 0 when the rubric is missing/malformed — callers should
+ * treat that as "no scaling possible" and fall back to the unscaled
+ * total. Today that path can only fire when the front-end submits
+ * scores against an assignment whose rubric was deleted server-side,
+ * which is an edge case we don't actively design for.
+ */
+function computeRubricMax(rubricRaw: unknown): number {
+  let rubric: unknown = rubricRaw;
+  if (typeof rubric === 'string') {
+    try {
+      rubric = JSON.parse(rubric);
+    } catch {
+      return 0;
+    }
+  }
+  if (!Array.isArray(rubric)) return 0;
+  let max = 0;
+  for (const c of rubric as RubricCriterion[]) {
+    const levels = Array.isArray(c?.levels) ? c.levels : [];
+    let high = 0;
+    for (const lvl of levels) {
+      const pts = Number(lvl?.points);
+      if (Number.isFinite(pts) && pts > high) high = pts;
+    }
+    max += high;
+  }
+  return max;
+}
+
+/**
+ * Scale a rubric total into the assignment's max points. If the
+ * rubric's max-possible (e.g. 90 from a 4×4 grid of 0/3/6/9 levels)
+ * exceeds the assignment's points (e.g. 20), this maps the picked
+ * total proportionally so the saved grade always fits the assignment.
+ *
+ * Edge cases:
+ *   - rubricMax === 0: no scaling info available; return the unscaled
+ *     total. The submission grade column will accept it but
+ *     downstream gradebook % may exceed 100. The grader UI should
+ *     not normally hit this (a rubric with no levels is empty).
+ *   - assignmentMax === 0: return 0 — the assignment is itself
+ *     ungradable.
+ *   - rubricMax === assignmentMax: identity (no scaling).
+ */
+function scaleRubricTotal(
+  total: number,
+  rubricMax: number,
+  assignmentMax: number
+): number {
+  if (assignmentMax <= 0) return 0;
+  if (rubricMax <= 0) return total;
+  if (rubricMax === assignmentMax) return total;
+  return (total / rubricMax) * assignmentMax;
+}
+
 /**
  * GET — current rubric selections for a submission.
  *   Visible to: the student who owns the submission, plus staff.
@@ -37,7 +106,7 @@ async function loadAssignmentContext(
 ) {
   const { data: assignment } = await tq
     .from('assignments')
-    .select('id, course_id, lesson_id, points')
+    .select('id, course_id, lesson_id, points, rubric')
     .eq('id', assignmentId)
     .maybeSingle();
 
@@ -179,11 +248,24 @@ export async function POST(
       }
     }
 
-    // Mirror the rubric total into assignment_submissions.grade and
-    // optionally update feedback.
-    const total = scoresInput.reduce((sum, s) => sum + Number(s.points || 0), 0);
+    // Compute the rubric total (raw, in rubric's own scale) and scale
+    // to the assignment's max points before mirroring into
+    // assignment_submissions.grade. Without this scaling a 4-criteria
+    // rubric of 5 levels x 5 points each (max 100) would store 100
+    // into a 20-point assignment, which is what the user reported.
+    const rubricTotal = scoresInput.reduce(
+      (sum, s) => sum + Number(s.points || 0),
+      0
+    );
+    const assignment = await loadAssignmentContext(tq, assignmentId);
+    const assignmentMax = Number(assignment?.points ?? 100) || 100;
+    const rubricMax = computeRubricMax(assignment?.rubric);
+    const scaledGrade = scaleRubricTotal(rubricTotal, rubricMax, assignmentMax);
+    // Round to 2 decimals to match the rest of the gradebook surface.
+    const finalGrade = Math.round(scaledGrade * 100) / 100;
+
     const updatePayload: Record<string, unknown> = {
-      grade: total,
+      grade: finalGrade,
       status: 'graded',
       graded_by: user.id,
       graded_at: now,
@@ -205,11 +287,12 @@ export async function POST(
 
     // Sync into the gradebook the same way the regular /grade endpoint
     // does: find the matching course_grade_items row and upsert the
-    // course_grades row, then refresh the cached summary.
-    const assignment = await loadAssignmentContext(tq, assignmentId);
+    // course_grades row, then refresh the cached summary. Using the
+    // already-scaled finalGrade so the gradebook agrees with what we
+    // wrote into assignment_submissions.grade.
     if (assignment?.course_id) {
-      const maxPoints = Number(assignment.points ?? 100) || 100;
-      const percentage = maxPoints > 0 ? (total / maxPoints) * 100 : 0;
+      const percentage =
+        assignmentMax > 0 ? (finalGrade / assignmentMax) * 100 : 0;
 
       const { data: gradeItem } = await serviceSupabase
         .from('course_grade_items')
@@ -228,8 +311,8 @@ export async function POST(
                 course_id: assignment.course_id,
                 student_id: submission.student_id,
                 grade_item_id: gradeItem.id,
-                score: total,
-                max_score: maxPoints,
+                score: finalGrade,
+                max_score: assignmentMax,
                 percentage: Number(percentage.toFixed(2)),
                 feedback: feedback ?? null,
                 graded_by: user.id,
@@ -256,7 +339,13 @@ export async function POST(
 
     return NextResponse.json({
       saved: scoresInput.length,
-      total,
+      // The unscaled rubric total (in the rubric's own scale).
+      total: rubricTotal,
+      // What we actually wrote into assignment_submissions.grade and
+      // course_grades after scaling to the assignment's max points.
+      grade: finalGrade,
+      assignment_max: assignmentMax,
+      rubric_max: rubricMax,
     });
   } catch (e) {
     console.error('Rubric scores POST error:', e);

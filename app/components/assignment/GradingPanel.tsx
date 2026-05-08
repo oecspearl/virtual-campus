@@ -123,6 +123,30 @@ export default function GradingPanel({
     [rubricScores]
   );
 
+  /** Sum of the highest level points across criteria — the rubric's
+   *  ceiling, in its own scale. */
+  const rubricMax = useMemo(() => {
+    let max = 0;
+    for (const c of rubricCriteria) {
+      const levels = Array.isArray(c?.levels) ? c.levels : [];
+      let high = 0;
+      for (const lvl of levels) {
+        const pts = Number(lvl.points);
+        if (Number.isFinite(pts) && pts > high) high = pts;
+      }
+      max += high;
+    }
+    return max;
+  }, [rubricCriteria]);
+
+  /** What the server will actually store as assignment_submissions.grade —
+   *  the rubric total scaled into the assignment's max points. */
+  const scaledGrade = useMemo(() => {
+    if (rubricMax <= 0 || maxPoints <= 0) return rubricTotal;
+    if (rubricMax === maxPoints) return rubricTotal;
+    return (rubricTotal / rubricMax) * maxPoints;
+  }, [rubricTotal, rubricMax, maxPoints]);
+
   const submitRubric = useCallback(async () => {
     setError(null);
     setLoading(true);
@@ -139,9 +163,12 @@ export default function GradingPanel({
       );
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
-        const total = Number(data.total ?? rubricTotal);
+        // Server returns both the raw rubric `total` and the scaled
+        // `grade`. The submission list (and the gradebook) shows the
+        // scaled grade, so that's what we propagate to the parent.
+        const finalGrade = Number(data.grade ?? data.total ?? scaledGrade);
         setSaved(true);
-        onSaved?.({ grade: total, feedback, status: 'graded' });
+        onSaved?.({ grade: finalGrade, feedback, status: 'graded' });
         onGraded?.();
         window.setTimeout(() => setSaved(false), 1500);
       } else {
@@ -270,6 +297,7 @@ export default function GradingPanel({
               initialScores={rubricScores}
               onChange={setRubricScores}
               disabled={loading}
+              assignmentMax={maxPoints}
             />
           )}
 
@@ -364,7 +392,19 @@ export default function GradingPanel({
               ) : (
                 <>
                   <Icon icon="mdi:check-circle" className="w-4 h-4" aria-hidden="true" />
-                  <span>{useRubric ? `Save rubric (${rubricTotal} pts)` : 'Save & next'}</span>
+                  <span>
+                    {useRubric
+                      ? `Save rubric (${
+                          // Show the scaled grade — the value that
+                          // will actually land in the gradebook —
+                          // unless the rubric already matches the
+                          // assignment's scale.
+                          rubricMax > 0 && rubricMax !== maxPoints
+                            ? `${scaledGrade.toFixed(1)} of ${maxPoints}`
+                            : `${rubricTotal} pts`
+                        })`
+                      : 'Save & next'}
+                  </span>
                 </>
               )}
             </button>

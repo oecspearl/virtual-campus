@@ -80,7 +80,11 @@ export async function POST(
       student_id: user.id,
       submission_type,
       content: content || null,
-      files: files ? JSON.stringify(files) : null,
+      // Don't JSON.stringify here — `files` is a JSONB column. Stringifying
+      // before insert stores a JSON string value (escaped), not an array,
+      // which forces every reader to JSON.parse on the way out. Pass the
+      // array directly and let Supabase encode it.
+      files: files ?? null,
       status,
       submitted_at: status === 'submitted' ? new Date().toISOString() : null,
       late: isLate,

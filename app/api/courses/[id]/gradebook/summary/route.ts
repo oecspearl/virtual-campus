@@ -191,19 +191,7 @@ export async function GET(
         .eq('student_id', studentId)
         .maybeSingle();
 
-    // Always recompute on read. The cache row exists so other readers
-    // (admin ?all=1, programmatic consumers) see fresh-as-of-last-write
-    // data without round-tripping through the engine, but the canonical
-    // "what does this student see right now" path is the recompute.
-    // This costs a few extra indexed queries per read; cheap relative to
-    // the freshness win.
-    try {
-      await recomputeCourseGradeSummary(tq, courseId, studentId);
-    } catch (recomputeErr) {
-      console.error('Per-read recompute failed:', recomputeErr);
-    }
-
-    const { data: summary, error } = await fetchSingle();
+    let { data: summary, error } = await fetchSingle();
 
     if (error) {
       console.error('Grade summary fetch error:', error);
@@ -211,6 +199,79 @@ export async function GET(
         { error: 'Failed to fetch grade summary' },
         { status: 500 }
       );
+    }
+
+    // Multi-table stale check: any of grades / items / categories /
+    // letter-scale being touched after the cache was computed means the
+    // summary may be wrong. Four parallel max() queries; fast on indexed
+    // columns, far cheaper than recomputing on every read (which was
+    // causing function timeouts).
+    let staleCache = false;
+    if (summary) {
+      const [latestGrade, latestItem, latestCat, latestLetter] =
+        await Promise.all([
+          tq
+            .from('course_grades')
+            .select('updated_at')
+            .eq('course_id', courseId)
+            .eq('student_id', studentId)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          tq
+            .from('course_grade_items')
+            .select('updated_at')
+            .eq('course_id', courseId)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          tq
+            .from('course_grade_categories')
+            .select('updated_at')
+            .eq('course_id', courseId)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          tq
+            .from('course_grade_letters')
+            .select('updated_at')
+            .eq('course_id', courseId)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+      const computedAt = new Date(summary.computed_at).getTime();
+      const ts = (row: { data: { updated_at?: string } | null } | { data: null }) =>
+        row.data?.updated_at ? new Date(row.data.updated_at).getTime() : 0;
+      const newest = Math.max(
+        ts(latestGrade),
+        ts(latestItem),
+        ts(latestCat),
+        ts(latestLetter)
+      );
+      if (newest > computedAt) staleCache = true;
+    }
+
+    if (!summary || staleCache) {
+      try {
+        await recomputeCourseGradeSummary(tq, courseId, studentId);
+        const refreshed = (await fetchSingle()).data;
+        if (refreshed) {
+          return NextResponse.json(
+            {
+              course_id: courseId,
+              student_id: studentId,
+              ...refreshed,
+              computed_on_demand: true,
+            },
+            { headers: NO_CACHE_HEADERS }
+          );
+        }
+      } catch (recomputeErr) {
+        console.error('Per-read recompute failed:', recomputeErr);
+        // Fall through to whatever we had cached, even if stale.
+      }
     }
 
     if (!summary) {

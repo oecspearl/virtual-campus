@@ -17,18 +17,36 @@ export async function GET(
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);
 
-    // Check if user has access to this course
+    // Course members (staff or enrolled students) can read the items list.
+    // Students need this to render their own grades page; the data is not
+    // sensitive — every item shows on the gradebook anyway.
     const isInstructor = await checkCourseInstructor(tq, user.id, courseId);
-    const isAdmin = hasRole(user.role, ["admin", "super_admin", "curriculum_designer"]);
+    const isAdmin = hasRole(user.role, [
+      "admin",
+      "super_admin",
+      "tenant_admin",
+      "curriculum_designer",
+    ]);
 
     if (!isInstructor && !isAdmin) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      const { data: enrolled } = await tq
+        .from("enrollments")
+        .select("id")
+        .eq("course_id", courseId)
+        .eq("student_id", user.id)
+        .eq("status", "active")
+        .single();
+      if (!enrolled) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
     }
 
     const { data: gradeItems, error } = await tq
       .from("course_grade_items")
       .select("*")
       .eq("course_id", courseId)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -36,7 +54,13 @@ export async function GET(
       return NextResponse.json({ error: "Failed to fetch grade items" }, { status: 500 });
     }
 
-    return NextResponse.json({ items: gradeItems || [] });
+    // Hide items flagged hidden from students.
+    const visible = (gradeItems ?? []).filter((it: { hidden?: boolean }) => {
+      if (isInstructor || isAdmin) return true;
+      return !it.hidden;
+    });
+
+    return NextResponse.json({ items: visible });
 
   } catch (e: any) {
     console.error('Grade items GET API error:', e);

@@ -9,10 +9,12 @@ import RoleGuard from '@/app/components/RoleGuard';
 
 interface GradeItem {
   id: string;
-  name: string;
-  category: string;
-  max_points: number;
+  title: string;
+  category: string | null;
+  points: number;
   weight?: number;
+  type?: string;
+  due_date?: string | null;
 }
 
 interface StudentGrade {
@@ -107,7 +109,7 @@ export default function CourseGradesPage() {
     const score = getScore(gi.id);
     return sum + (score ?? 0);
   }, 0);
-  const totalPossible = gradeItems.reduce((sum, gi) => sum + gi.max_points, 0);
+  const totalPossible = gradeItems.reduce((sum, gi) => sum + (gi.points ?? 0), 0);
   const overallPct = totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0;
 
   return (
@@ -255,17 +257,20 @@ export default function CourseGradesPage() {
               </div>
               {gradeItems.map((item) => {
                 const score = getScore(item.id);
-                const pct = score != null ? Math.round((score / item.max_points) * 100) : null;
+                const max = item.points ?? 0;
+                const pct = score != null && max > 0 ? Math.round((score / max) * 100) : null;
                 return (
                   <div key={item.id} className="grid grid-cols-12 gap-4 px-5 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition-colors">
-                    <div className="col-span-5 text-sm text-slate-700 truncate">{item.name}</div>
+                    <div className="col-span-5 text-sm text-slate-700 truncate">{item.title}</div>
                     <div className="col-span-2 text-xs text-slate-400 capitalize">{item.category || '—'}</div>
-                    <div className="col-span-2 text-sm text-slate-400 text-right tabular-nums">{item.max_points}</div>
+                    <div className="col-span-2 text-sm text-slate-400 text-right tabular-nums">{max}</div>
                     <div className="col-span-3 text-right">
                       {score != null ? (
                         <span className="text-sm text-slate-700 tabular-nums">
-                          {score} <span className="text-slate-300">/ {item.max_points}</span>
-                          <span className="ml-2 text-xs text-slate-400">{pct}%</span>
+                          {score} <span className="text-slate-300">/ {max}</span>
+                          {pct != null && (
+                            <span className="ml-2 text-xs text-slate-400">{pct}%</span>
+                          )}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-300">—</span>

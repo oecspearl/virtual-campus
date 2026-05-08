@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import dynamic from "next/dynamic";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -19,31 +18,11 @@ import PerformanceTracker from "@/app/components/pwa/PerformanceTracker";
 import PWARegistration from "@/app/components/pwa/PWARegistration";
 import BottomNavigation from "@/app/components/mobile/BottomNavigation";
 import MobileHeader from "@/app/components/mobile/MobileHeader";
-
-// Defer heavy / always-floating widgets out of the initial JS bundle so
-// they don't block FCP. They render after the page is interactive.
-//
-// AIChatWidget (~509 lines + framer-motion + react-markdown +
-// react-syntax-highlighter) was the single largest contributor to
-// critical-path JS. HelpButton, PWAInstallPrompt, and OfflineIndicator
-// are all "appears later" UI by nature — pushing them out of SSR is
-// safe and removes them from the initial render budget.
-const AIChatWidget = dynamic(
-  () => import("@/app/components/ai/AIChatWidget"),
-  { ssr: false }
-);
-const HelpButton = dynamic(
-  () => import("@/app/components/help/HelpButton"),
-  { ssr: false }
-);
-const PWAInstallPrompt = dynamic(
-  () => import("@/app/components/pwa/PWAInstallPrompt"),
-  { ssr: false }
-);
-const OfflineIndicator = dynamic(
-  () => import("@/app/components/pwa/OfflineIndicator"),
-  { ssr: false }
-);
+// Floating widgets (chat, help, PWA prompts) are deferred via
+// next/dynamic with ssr:false inside a client wrapper. Keeping that
+// behind one import prevents `app/layout.tsx` from leaking into client
+// rendering, which Next 15 forbids when ssr:false is in play.
+import FloatingWidgets from "@/app/components/layout/FloatingWidgets";
 
 const primaryFont = Inter({
   weight: ["400", "500", "600", "700"],
@@ -128,12 +107,9 @@ export default async function RootLayout({
               </main>
               <Footer />
               <BottomNavigation />
-              <HelpButton />
-              <AIChatWidget />
               <PerformanceTracker />
               <PWARegistration />
-              <PWAInstallPrompt />
-              <OfflineIndicator />
+              <FloatingWidgets />
             </HelpProvider>
           </SupabaseProvider>
         </NextIntlClientProvider>

@@ -10,6 +10,25 @@ export interface SubmissionFile {
   size?: number;
   /** Optional MIME type if the API surfaces it; we still infer from extension. */
   type?: string;
+  /**
+   * The id from the `files` table, set by FileUploadZone. When present,
+   * we serve the file through `/api/files/<id>` instead of the stored
+   * URL — that route enforces auth + ownership and works regardless of
+   * whether the storage bucket is public.
+   */
+  fileId?: string;
+}
+
+/**
+ * Resolve the URL we actually fetch. Prefer the authenticated proxy
+ * when the file has a fileId; fall back to the raw stored URL for
+ * legacy submissions that pre-date the proxy. The proxy rewrite is
+ * also a safety net for installations whose storage bucket is private:
+ * the public URL stored in the row would 403, the proxy works.
+ */
+function resolveFileUrl(file: SubmissionFile): string {
+  if (file.fileId) return `/api/files/${encodeURIComponent(file.fileId)}`;
+  return file.url;
 }
 
 export type Submission = {
@@ -77,7 +96,7 @@ function ImagePreview({ file }: { file: SubmissionFile }) {
     <div className="rounded border border-gray-200 bg-gray-50 overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={file.url}
+        src={resolveFileUrl(file)}
         alt={file.name}
         className="block max-h-[600px] w-full object-contain mx-auto bg-white"
       />
@@ -93,7 +112,7 @@ function PdfPreview({ file }: { file: SubmissionFile }) {
   return (
     <div className="rounded border border-gray-200 overflow-hidden bg-white">
       <iframe
-        src={file.url}
+        src={resolveFileUrl(file)}
         title={file.name}
         className="w-full"
         style={{ height: 'min(80vh, 720px)' }}
@@ -109,7 +128,7 @@ function VideoPreview({ file }: { file: SubmissionFile }) {
       preload="metadata"
       className="w-full max-h-[600px] rounded border border-gray-200 bg-black"
     >
-      <source src={file.url} />
+      <source src={resolveFileUrl(file)} />
       Your browser does not support inline video playback.
     </video>
   );
@@ -118,7 +137,7 @@ function VideoPreview({ file }: { file: SubmissionFile }) {
 function AudioPreview({ file }: { file: SubmissionFile }) {
   return (
     <audio controls preload="metadata" className="w-full">
-      <source src={file.url} />
+      <source src={resolveFileUrl(file)} />
       Your browser does not support inline audio playback.
     </audio>
   );
@@ -144,7 +163,7 @@ function TextPreview({ file }: { file: SubmissionFile }) {
 
     (async () => {
       try {
-        const res = await fetch(file.url);
+        const res = await fetch(resolveFileUrl(file));
         if (!res.ok) {
           if (!cancelled) setError(`Couldn't load file (${res.status})`);
           return;
@@ -174,7 +193,10 @@ function TextPreview({ file }: { file: SubmissionFile }) {
   if (error) {
     return (
       <div className="text-xs text-gray-500 italic px-3 py-2 border border-gray-200 rounded">
-        {error}. <a href={file.url} target="_blank" rel="noreferrer" className="underline text-blue-600">Open file</a>
+        {error}.{' '}
+        <a href={resolveFileUrl(file)} target="_blank" rel="noreferrer" className="underline text-blue-600">
+          Open file
+        </a>
       </div>
     );
   }
@@ -193,7 +215,7 @@ function TextPreview({ file }: { file: SubmissionFile }) {
       {truncated && (
         <div className="text-[11px] text-amber-600">
           Preview truncated — file exceeds {formatBytes(TEXT_PREVIEW_BYTE_CAP)}.{' '}
-          <a href={file.url} className="underline text-blue-600" target="_blank" rel="noreferrer">
+          <a href={resolveFileUrl(file)} className="underline text-blue-600" target="_blank" rel="noreferrer">
             Open full file
           </a>
         </div>
@@ -203,29 +225,28 @@ function TextPreview({ file }: { file: SubmissionFile }) {
 }
 
 function OfficePreview({ file }: { file: SubmissionFile }) {
-  // Office docs can't render inline without a third-party viewer.
-  // Google Docs's public viewer can render docx/xlsx/pptx if the file
-  // URL is publicly reachable. We surface that as a "preview" CTA;
-  // graders without the URL public can still download.
-  const gdocsUrl = `https://docs.google.com/viewer?embedded=true&url=${encodeURIComponent(
-    file.url
-  )}`;
+  // Office docs (.docx/.xlsx/.pptx) can't render inline without a
+  // third-party viewer. Google Docs's public viewer would render them
+  // BUT it needs a publicly fetchable URL — and our auth-gated proxy
+  // (which exists precisely to keep submissions private) won't return
+  // anything for Google's servers. So we surface the download link
+  // with a clear "no inline preview" message instead of an iframe
+  // that's almost guaranteed to be blank.
   return (
-    <div className="space-y-2">
-      <iframe
-        src={gdocsUrl}
-        title={file.name}
-        className="w-full rounded border border-gray-200 bg-white"
-        style={{ height: 'min(80vh, 720px)' }}
-      />
-      <p className="text-[11px] text-gray-500">
-        Office docs preview via Google Docs viewer; requires the file URL to be
-        publicly accessible. If the preview is blank,{' '}
-        <a href={file.url} className="underline text-blue-600" target="_blank" rel="noreferrer">
-          download the file
-        </a>{' '}
-        instead.
+    <div className="text-sm text-gray-600 px-3 py-4 border border-dashed border-gray-200 rounded">
+      <p className="mb-2">
+        Inline preview isn&apos;t available for Office documents. Download the file
+        to view it:
       </p>
+      <a
+        href={resolveFileUrl(file)}
+        download={file.name}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center gap-1 text-blue-600 underline"
+      >
+        Download {file.name}
+      </a>
     </div>
   );
 }
@@ -243,7 +264,12 @@ function FilePreview({ file }: { file: SubmissionFile }) {
       return (
         <div className="text-sm text-gray-500 px-3 py-4 border border-dashed border-gray-200 rounded text-center">
           No inline preview for this file type.{' '}
-          <a href={file.url} className="underline text-blue-600" target="_blank" rel="noreferrer">
+          <a
+            href={resolveFileUrl(file)}
+            className="underline text-blue-600"
+            target="_blank"
+            rel="noreferrer"
+          >
             Open or download
           </a>
         </div>
@@ -366,7 +392,7 @@ export default function SubmissionViewer({ submission }: { submission: Submissio
             )}
           </div>
           <a
-            href={active.url}
+            href={resolveFileUrl(active)}
             download={active.name}
             target="_blank"
             rel="noreferrer"

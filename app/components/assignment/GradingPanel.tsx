@@ -1,8 +1,12 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import SubmissionViewer from "@/app/components/assignment/SubmissionViewer";
+import RubricGrader, {
+  type RubricCriterion,
+  type RubricScoreSelection,
+} from "@/app/components/assignment/RubricGrader";
 
 interface GradingPanelProps {
   assignmentId: string;
@@ -32,6 +36,16 @@ export default function GradingPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  // Rubric state. When the assignment has a rubric, the rubric drives
+  // the grade total; the manual grade input is hidden. The rubric
+  // definition lives on assignments.rubric (JSONB) — fetched via the
+  // assignment endpoint. Per-criterion selections are persisted in
+  // assignment_submission_rubric_scores via a dedicated endpoint.
+  const [rubricCriteria, setRubricCriteria] = useState<RubricCriterion[]>([]);
+  const [rubricScores, setRubricScores] = useState<RubricScoreSelection[]>([]);
+  const [rubricLoading, setRubricLoading] = useState(true);
+
   const gradeInputRef = useRef<HTMLInputElement | null>(null);
 
   // Reset form when the active submission changes.
@@ -40,13 +54,108 @@ export default function GradingPanel({
     setGrade(submission?.grade ?? '');
     setError(null);
     setSaved(false);
-    // Focus the grade input when switching submissions so the grader can
-    // start typing immediately.
-    const t = window.setTimeout(() => gradeInputRef.current?.focus(), 0);
-    return () => window.clearTimeout(t);
   }, [submission?.id, submission?.grade, submission?.feedback]);
 
-  async function submitGrade() {
+  // Load the rubric definition (from assignments.rubric JSONB via the
+  // assignment endpoint), plus the submission-specific scores whenever
+  // the active submission changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setRubricLoading(true);
+      try {
+        const [assignmentRes, scoresRes] = await Promise.all([
+          fetch(`/api/assignments/${encodeURIComponent(assignmentId)}`, {
+            cache: 'no-store',
+          }),
+          submission?.id
+            ? fetch(
+                `/api/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(
+                  submission.id
+                )}/rubric-scores`,
+                { cache: 'no-store' }
+              )
+            : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+        const assignmentData = assignmentRes.ok ? await assignmentRes.json() : null;
+        const scoresData =
+          scoresRes && scoresRes.ok ? await scoresRes.json() : null;
+        const rawRubric = assignmentData?.rubric;
+        // The endpoint already parses string JSON, but be defensive.
+        let parsedRubric: RubricCriterion[] = [];
+        if (Array.isArray(rawRubric)) {
+          parsedRubric = rawRubric as RubricCriterion[];
+        } else if (typeof rawRubric === 'string' && rawRubric.trim()) {
+          try {
+            const parsed = JSON.parse(rawRubric);
+            if (Array.isArray(parsed)) parsedRubric = parsed as RubricCriterion[];
+          } catch {
+            parsedRubric = [];
+          }
+        }
+        setRubricCriteria(parsedRubric);
+        setRubricScores(
+          Array.isArray(scoresData?.scores) ? scoresData.scores : []
+        );
+      } catch (e) {
+        console.error('Rubric load error:', e);
+      } finally {
+        if (!cancelled) setRubricLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [assignmentId, submission?.id]);
+
+  const useRubric = !rubricLoading && rubricCriteria.length > 0;
+
+  // Focus the grade input when in manual mode and the submission changes.
+  useEffect(() => {
+    if (useRubric) return;
+    const t = window.setTimeout(() => gradeInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(t);
+  }, [submission?.id, useRubric]);
+
+  const rubricTotal = useMemo(
+    () => rubricScores.reduce((sum, s) => sum + Number(s.points || 0), 0),
+    [rubricScores]
+  );
+
+  const submitRubric = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(
+          String(submission.id)
+        )}/rubric-scores`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scores: rubricScores, feedback }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const total = Number(data.total ?? rubricTotal);
+        setSaved(true);
+        onSaved?.({ grade: total, feedback, status: 'graded' });
+        onGraded?.();
+        window.setTimeout(() => setSaved(false), 1500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setError(err.error || 'Failed to save rubric');
+      }
+    } catch {
+      setError('Failed to save rubric. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [assignmentId, submission?.id, rubricScores, feedback, rubricTotal, onGraded, onSaved]);
+
+  const submitManualGrade = useCallback(async () => {
     if (grade === '' || grade === null || grade === undefined) {
       setError('Please enter a grade');
       return;
@@ -75,8 +184,6 @@ export default function GradingPanel({
         setSaved(true);
         onSaved?.({ grade: numericGrade, feedback, status: 'graded' });
         onGraded?.();
-        // Briefly flash "Saved" then auto-advance happens in the parent's
-        // onSaved handler.
         window.setTimeout(() => setSaved(false), 1500);
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -87,20 +194,20 @@ export default function GradingPanel({
     } finally {
       setLoading(false);
     }
-  }
+  }, [assignmentId, submission?.id, grade, feedback, maxPoints, onGraded, onSaved]);
+
+  const handleSave = useRubric ? submitRubric : submitManualGrade;
 
   // Cmd/Ctrl+Enter saves and advances. Wired via keydown on the form so
   // the shortcut works no matter which field has focus.
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      submitGrade();
+      handleSave();
     }
   };
 
   const isLate = (() => {
-    // The parent already knows whether a submission is late, but
-    // surfacing it here too gives the grader context without scrolling.
     const due = submission?.assignment?.due_date;
     if (!due || !submission?.submitted_at) return false;
     return new Date(submission.submitted_at) > new Date(due);
@@ -139,7 +246,7 @@ export default function GradingPanel({
         <div className="bg-slate-700 px-6 py-3 border-b border-gray-200">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2">
             <Icon icon="mdi:clipboard-check" className="w-5 h-5" aria-hidden="true" />
-            Grade &amp; Feedback
+            {useRubric ? 'Rubric' : 'Grade & Feedback'}
           </h3>
         </div>
         <div className="p-6 space-y-5">
@@ -156,55 +263,65 @@ export default function GradingPanel({
             </div>
           )}
 
-          {/* Grade Input */}
-          <div>
-            <label
-              htmlFor="assignment-grade"
-              className="block text-sm font-semibold text-gray-900 mb-2"
-            >
-              Grade <span className="text-red-500">*</span>
-              <span className="ml-2 font-normal text-gray-500">
-                (0–{maxPoints})
-              </span>
-            </label>
-            <div className="relative max-w-xs">
-              <input
-                id="assignment-grade"
-                ref={gradeInputRef}
-                type="number"
-                inputMode="decimal"
-                step="0.5"
-                className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-lg font-semibold tabular-nums focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                value={grade}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setGrade(val === '' ? '' : Number(val));
-                  setError(null);
-                }}
-                min={0}
-                max={maxPoints}
-                placeholder={`0–${maxPoints}`}
-                aria-describedby="assignment-grade-help"
-                required
-              />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold tabular-nums">
-                /{maxPoints}
+          {/* Rubric mode */}
+          {useRubric && (
+            <RubricGrader
+              criteria={rubricCriteria}
+              initialScores={rubricScores}
+              onChange={setRubricScores}
+              disabled={loading}
+            />
+          )}
+
+          {/* Manual grade input — only when there's no rubric */}
+          {!useRubric && !rubricLoading && (
+            <div>
+              <label
+                htmlFor="assignment-grade"
+                className="block text-sm font-semibold text-gray-900 mb-2"
+              >
+                Grade <span className="text-red-500">*</span>
+                <span className="ml-2 font-normal text-gray-500">(0–{maxPoints})</span>
+              </label>
+              <div className="relative max-w-xs">
+                <input
+                  id="assignment-grade"
+                  ref={gradeInputRef}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-lg font-semibold tabular-nums focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  value={grade}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setGrade(val === '' ? '' : Number(val));
+                    setError(null);
+                  }}
+                  min={0}
+                  max={maxPoints}
+                  placeholder={`0–${maxPoints}`}
+                  aria-describedby="assignment-grade-help"
+                  required
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold tabular-nums">
+                  /{maxPoints}
+                </div>
+              </div>
+              <div
+                id="assignment-grade-help"
+                className="mt-1.5 text-[11px] text-gray-500 flex items-center justify-between"
+              >
+                <span>Step size: 0.5 — type any decimal</span>
+                {typeof grade === 'number' && grade > 0 && (
+                  <span className="tabular-nums">
+                    {((grade / maxPoints) * 100).toFixed(1)}%
+                  </span>
+                )}
               </div>
             </div>
-            <div
-              id="assignment-grade-help"
-              className="mt-1.5 text-[11px] text-gray-500 flex items-center justify-between"
-            >
-              <span>Step size: 0.5 — type any decimal</span>
-              {typeof grade === 'number' && grade > 0 && (
-                <span className="tabular-nums">
-                  {((grade / maxPoints) * 100).toFixed(1)}%
-                </span>
-              )}
-            </div>
-          </div>
+          )}
 
-          {/* Feedback Input */}
+          {/* Feedback Input — shared between rubric and manual modes */}
           <div>
             <label
               htmlFor="assignment-feedback"
@@ -215,7 +332,7 @@ export default function GradingPanel({
             <textarea
               id="assignment-feedback"
               className="w-full rounded-lg border-2 border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-y"
-              rows={6}
+              rows={5}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Provide feedback for the student…"
@@ -230,7 +347,7 @@ export default function GradingPanel({
             <button
               type="button"
               className="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 text-white font-medium rounded-md transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={submitGrade}
+              onClick={handleSave}
               disabled={loading}
               aria-keyshortcuts="Control+Enter Meta+Enter"
             >
@@ -247,7 +364,7 @@ export default function GradingPanel({
               ) : (
                 <>
                   <Icon icon="mdi:check-circle" className="w-4 h-4" aria-hidden="true" />
-                  <span>Save &amp; next</span>
+                  <span>{useRubric ? `Save rubric (${rubricTotal} pts)` : 'Save & next'}</span>
                 </>
               )}
             </button>
@@ -256,7 +373,7 @@ export default function GradingPanel({
               <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">⌘↵</kbd>
               <span>or</span>
               <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">Ctrl+↵</kbd>
-              <span>to save without leaving the form</span>
+              <span>to save</span>
             </span>
 
             <span className="ml-auto text-[11px] text-gray-500">

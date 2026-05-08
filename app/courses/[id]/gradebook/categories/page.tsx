@@ -3,6 +3,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import RoleGuard from '@/app/components/RoleGuard';
 import Breadcrumb from '@/app/components/ui/Breadcrumb';
 
@@ -45,6 +62,7 @@ interface GradeItem {
   extra_credit: boolean;
   hidden: boolean;
   locked: boolean;
+  sort_order: number;
 }
 
 const AGGREGATIONS: { value: Aggregation; label: string; hint: string }[] = [
@@ -86,6 +104,12 @@ function GradebookCategoriesPageInner() {
   // Items mover state
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [moveTargetId, setMoveTargetId] = useState<string>('');
+
+  // dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const loadAll = async () => {
     setLoading(true);
@@ -253,6 +277,106 @@ function GradebookCategoriesPageInner() {
   const updateLetterBand = (i: number, patch: Partial<LetterBand>) =>
     setScale((s) => s.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
 
+  // ─── Drag-and-drop reordering ──────────────────────────────────────────
+
+  const persistCategoryOrder = async (
+    siblings: Category[]
+  ): Promise<void> => {
+    const order = siblings.map((c, idx) => ({ id: c.id, sort_order: idx }));
+    try {
+      const res = await fetch(
+        `/api/courses/${courseId}/gradebook/categories/reorder`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order }),
+        }
+      );
+      if (!res.ok) throw new Error('Reorder failed');
+    } catch (e) {
+      console.error('Reorder persist error:', e);
+      setError('Failed to save new order');
+      await loadAll();
+    }
+  };
+
+  const handleCategoryDragEnd = async (
+    event: DragEndEvent,
+    parentId: string | null
+  ) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const siblings =
+      parentId === null
+        ? categories.filter((c) => c.parent_id === null)
+        : categories.filter((c) => c.parent_id === parentId);
+    siblings.sort((a, b) => a.sort_order - b.sort_order);
+
+    const oldIndex = siblings.findIndex((c) => c.id === active.id);
+    const newIndex = siblings.findIndex((c) => c.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(siblings, oldIndex, newIndex);
+
+    // Optimistic local update so the row jumps immediately.
+    setCategories((prev) => {
+      const reorderedById = new Map(reordered.map((c, idx) => [c.id, idx]));
+      return prev.map((c) =>
+        reorderedById.has(c.id)
+          ? { ...c, sort_order: reorderedById.get(c.id)! }
+          : c
+      );
+    });
+
+    await persistCategoryOrder(reordered);
+  };
+
+  const persistItemOrder = async (siblings: GradeItem[]): Promise<void> => {
+    const order = siblings.map((it, idx) => ({ id: it.id, sort_order: idx }));
+    try {
+      const res = await fetch(
+        `/api/courses/${courseId}/gradebook/items/reorder`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order }),
+        }
+      );
+      if (!res.ok) throw new Error('Reorder failed');
+    } catch (e) {
+      console.error('Item reorder persist error:', e);
+      setError('Failed to save new item order');
+      await loadAll();
+    }
+  };
+
+  const handleItemDragEnd = async (
+    event: DragEndEvent,
+    categoryId: string | null
+  ) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const siblings = (itemsByCategory.get(categoryId) ?? []).slice();
+    const oldIndex = siblings.findIndex((it) => it.id === active.id);
+    const newIndex = siblings.findIndex((it) => it.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(siblings, oldIndex, newIndex);
+
+    setItems((prev) => {
+      const reorderedById = new Map(reordered.map((it, idx) => [it.id, idx]));
+      return prev.map((it) =>
+        reorderedById.has(it.id)
+          ? { ...it, sort_order: reorderedById.get(it.id)! }
+          : it
+      );
+    });
+
+    await persistItemOrder(reordered);
+  };
+
   // ─── Items mover ───────────────────────────────────────────────────────
 
   const itemsByCategory = useMemo(() => {
@@ -262,6 +386,9 @@ function GradebookCategoriesPageInner() {
       const list = groups.get(key) ?? [];
       list.push(it);
       groups.set(key, list);
+    }
+    for (const list of groups.values()) {
+      list.sort((a, b) => a.sort_order - b.sort_order);
     }
     return groups;
   }, [items]);
@@ -343,6 +470,59 @@ function GradebookCategoriesPageInner() {
   };
 
   // ─── Render helpers ────────────────────────────────────────────────────
+
+  /**
+   * Wraps a row's content in a draggable container. Adds a small drag
+   * handle on the left; clicking/typing on other parts of the row is
+   * unaffected (PointerSensor activationConstraint requires 5px movement
+   * before a drag starts, so accidental drags from button clicks are rare).
+   */
+  function SortableRow({
+    id,
+    disabled,
+    children,
+    className,
+    style,
+  }: {
+    id: string;
+    disabled?: boolean;
+    children: React.ReactNode;
+    className?: string;
+    style?: React.CSSProperties;
+  }) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id, disabled });
+
+    const composedStyle: React.CSSProperties = {
+      ...style,
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.6 : 1,
+      background: isDragging ? '#f0f9ff' : undefined,
+    };
+
+    return (
+      <div ref={setNodeRef} className={className} style={composedStyle}>
+        <button
+          type="button"
+          aria-label="Drag to reorder"
+          className="text-slate-300 hover:text-slate-600 cursor-grab active:cursor-grabbing select-none"
+          style={{ touchAction: 'none' }}
+          {...attributes}
+          {...listeners}
+        >
+          ⋮⋮
+        </button>
+        {children}
+      </div>
+    );
+  }
 
   const renderCategoryRow = (c: Category, depth: number) => {
     const isEditing = editingId === c.id && editingDraft;
@@ -496,9 +676,10 @@ function GradebookCategoriesPageInner() {
       AGGREGATIONS.find((a) => a.value === c.aggregation)?.label ?? c.aggregation;
 
     return (
-      <div
+      <SortableRow
         key={c.id}
-        className="px-5 py-3 border-b border-gray-100 hover:bg-gray-50/50 transition-colors flex items-center justify-between"
+        id={c.id}
+        className="px-5 py-3 border-b border-gray-100 hover:bg-gray-50/50 transition-colors flex items-center gap-3"
         style={indent}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -550,19 +731,33 @@ function GradebookCategoriesPageInner() {
             Delete
           </button>
         </div>
-      </div>
+      </SortableRow>
     );
   };
 
   const renderTree = (parentId: string | null, depth: number): React.ReactNode => {
     const nodes =
       parentId === null ? tree.roots : tree.childrenOf(parentId);
-    return nodes.map((c) => (
-      <React.Fragment key={c.id}>
-        {renderCategoryRow(c, depth)}
-        {renderTree(c.id, depth + 1)}
-      </React.Fragment>
-    ));
+    if (nodes.length === 0) return null;
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={(event) => handleCategoryDragEnd(event, parentId)}
+      >
+        <SortableContext
+          items={nodes.map((n) => n.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {nodes.map((c) => (
+            <React.Fragment key={c.id}>
+              {renderCategoryRow(c, depth)}
+              {renderTree(c.id, depth + 1)}
+            </React.Fragment>
+          ))}
+        </SortableContext>
+      </DndContext>
+    );
   };
 
   // ─── Page ──────────────────────────────────────────────────────────────
@@ -728,65 +923,77 @@ function GradebookCategoriesPageInner() {
                         </span>
                       )}
                     </div>
-                    {list.map((item) => {
-                      const checked = selectedItemIds.has(item.id);
-                      return (
-                        <div
-                          key={item.id}
-                          className="px-5 py-2.5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 flex items-center gap-3"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleItemSelect(item.id)}
-                          />
-                          <span className="text-sm text-slate-700 truncate flex-1">
-                            {item.title}
-                          </span>
-                          <span className="text-[11px] text-slate-400 capitalize">
-                            {item.type}
-                          </span>
-                          <span className="text-[11px] text-slate-400 tabular-nums w-12 text-right">
-                            {item.points} pts
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => toggleItemFlag(item, 'extra_credit')}
-                              className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                item.extra_credit
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                              }`}
-                              title="Toggle extra credit"
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(event) => handleItemDragEnd(event, catId)}
+                    >
+                      <SortableContext
+                        items={list.map((it) => it.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {list.map((item) => {
+                          const checked = selectedItemIds.has(item.id);
+                          return (
+                            <SortableRow
+                              key={item.id}
+                              id={item.id}
+                              className="px-5 py-2.5 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 flex items-center gap-3"
                             >
-                              EC
-                            </button>
-                            <button
-                              onClick={() => toggleItemFlag(item, 'hidden')}
-                              className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                item.hidden
-                                  ? 'bg-gray-200 text-gray-700'
-                                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                              }`}
-                              title="Toggle hidden"
-                            >
-                              hidden
-                            </button>
-                            <button
-                              onClick={() => toggleItemFlag(item, 'locked')}
-                              className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                item.locked
-                                  ? 'bg-amber-100 text-amber-700'
-                                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                              }`}
-                              title="Toggle locked"
-                            >
-                              locked
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleItemSelect(item.id)}
+                              />
+                              <span className="text-sm text-slate-700 truncate flex-1">
+                                {item.title}
+                              </span>
+                              <span className="text-[11px] text-slate-400 capitalize">
+                                {item.type}
+                              </span>
+                              <span className="text-[11px] text-slate-400 tabular-nums w-12 text-right">
+                                {item.points} pts
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => toggleItemFlag(item, 'extra_credit')}
+                                  className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                    item.extra_credit
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                                  }`}
+                                  title="Toggle extra credit"
+                                >
+                                  EC
+                                </button>
+                                <button
+                                  onClick={() => toggleItemFlag(item, 'hidden')}
+                                  className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                    item.hidden
+                                      ? 'bg-gray-200 text-gray-700'
+                                      : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                                  }`}
+                                  title="Toggle hidden"
+                                >
+                                  hidden
+                                </button>
+                                <button
+                                  onClick={() => toggleItemFlag(item, 'locked')}
+                                  className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                    item.locked
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                                  }`}
+                                  title="Toggle locked"
+                                >
+                                  locked
+                                </button>
+                              </div>
+                            </SortableRow>
+                          );
+                        })}
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 );
               })}

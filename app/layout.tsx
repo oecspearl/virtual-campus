@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import dynamic from "next/dynamic";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -12,16 +13,37 @@ import LogoHeader from "@/app/components/layout/LogoHeader";
 import { Footer } from "@/app/components/layout/Footer";
 import { SupabaseProvider } from "@/lib/supabase-provider";
 import { HelpProvider } from "@/app/components/help/HelpContext";
-import HelpButton from "@/app/components/help/HelpButton";
-import AIChatWidget from "@/app/components/ai/AIChatWidget";
 import ThemeProvider from "@/app/components/layout/ThemeProvider";
 import SkipToContent from "@/app/components/ui/SkipToContent";
 import PerformanceTracker from "@/app/components/pwa/PerformanceTracker";
 import PWARegistration from "@/app/components/pwa/PWARegistration";
-import PWAInstallPrompt from "@/app/components/pwa/PWAInstallPrompt";
-import OfflineIndicator from "@/app/components/pwa/OfflineIndicator";
 import BottomNavigation from "@/app/components/mobile/BottomNavigation";
 import MobileHeader from "@/app/components/mobile/MobileHeader";
+
+// Defer heavy / always-floating widgets out of the initial JS bundle so
+// they don't block FCP. They render after the page is interactive.
+//
+// AIChatWidget (~509 lines + framer-motion + react-markdown +
+// react-syntax-highlighter) was the single largest contributor to
+// critical-path JS. HelpButton, PWAInstallPrompt, and OfflineIndicator
+// are all "appears later" UI by nature — pushing them out of SSR is
+// safe and removes them from the initial render budget.
+const AIChatWidget = dynamic(
+  () => import("@/app/components/ai/AIChatWidget"),
+  { ssr: false }
+);
+const HelpButton = dynamic(
+  () => import("@/app/components/help/HelpButton"),
+  { ssr: false }
+);
+const PWAInstallPrompt = dynamic(
+  () => import("@/app/components/pwa/PWAInstallPrompt"),
+  { ssr: false }
+);
+const OfflineIndicator = dynamic(
+  () => import("@/app/components/pwa/OfflineIndicator"),
+  { ssr: false }
+);
 
 const primaryFont = Inter({
   weight: ["400", "500", "600", "700"],

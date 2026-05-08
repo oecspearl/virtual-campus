@@ -63,7 +63,7 @@ export async function GET(
 
     const { data: fileRecord, error: dbError } = await serviceSupabase
       .from('files')
-      .select('id, name, type, size, url, uploaded_by')
+      .select('id, name, type, size, url, uploaded_by, tenant_id')
       .eq('id', fileId)
       .single();
 
@@ -71,15 +71,39 @@ export async function GET(
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    // Access control: uploader or staff. This is the conservative gate
-    // — every other case (course members, peer reviewers) currently
-    // funnels through the same upload pipeline, so the uploader is
-    // typically the student who needs to read it back, plus staff.
-    // Tightening further (e.g. by submission_id context) is a follow-up.
-    const isOwner = fileRecord.uploaded_by === user.id;
+    // Access control:
+    //   - Same tenant required (the previous public-URL flow had no
+    //     tenant gate at all; this is a real upgrade).
+    //   - Staff role can always read.
+    //   - Uploader can always read.
+    //   - Otherwise, only allow when the file is NOT linked to an
+    //     assignment submission. Lesson images/PDFs and other
+    //     authored-by-instructor files fall through here so students
+    //     can render them in lessons they're enrolled in. Assignment
+    //     submissions stay gated to uploader + staff so graders'
+    //     content stays private.
     const isStaff = hasRole(user.role, [...STAFF_ROLES]);
-    if (!isOwner && !isStaff) {
+    const isOwner = fileRecord.uploaded_by === user.id;
+    const sameTenant =
+      !user.tenant_id || !fileRecord.tenant_id || fileRecord.tenant_id === user.tenant_id;
+
+    if (!sameTenant) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!isStaff && !isOwner) {
+      // Fall through only if this file isn't a submission attachment.
+      // assignment_submissions.files is stored as a JSON string; the
+      // file id is a UUID, so a textual `contains` check is precise
+      // enough — it can't collide with anything else.
+      const { data: submissionRefs } = await serviceSupabase
+        .from('assignment_submissions')
+        .select('id')
+        .ilike('files', `%${fileId}%`)
+        .limit(1);
+      if (Array.isArray(submissionRefs) && submissionRefs.length > 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     // The original implementation called .split('/').pop() on the

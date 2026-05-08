@@ -24,19 +24,25 @@ function DashboardSkeleton() {
   );
 }
 
-async function getUserRoleAndName() {
+async function getUserContext() {
   try {
     const user = await getCurrentUser();
-    if (!user) return { role: null as string | null, name: "" };
-    return { role: user.role || null, name: user.name || "" };
+    if (!user) {
+      return { id: null as string | null, role: null as string | null, name: '' };
+    }
+    return {
+      id: (user as { id?: string }).id ?? null,
+      role: user.role || null,
+      name: user.name || '',
+    };
   } catch (err) {
     console.error('Dashboard: Failed to get user:', err);
-    return { role: null as string | null, name: "" };
+    return { id: null as string | null, role: null as string | null, name: '' };
   }
 }
 
 export default async function DashboardPage() {
-  const { role, name } = await getUserRoleAndName();
+  const { id, role, name } = await getUserContext();
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -50,8 +56,8 @@ export default async function DashboardPage() {
         />
 
         <Suspense fallback={<DashboardSkeleton />}>
-          {role === 'student' && <StudentDashboard name={name} />}
-          {role === 'instructor' && <InstructorDashboard name={name} />}
+          {role === 'student' && id && <StudentDashboard userId={id} name={name} />}
+          {role === 'instructor' && id && <InstructorDashboard userId={id} name={name} />}
           {(role === 'admin' || role === 'super_admin' || role === 'tenant_admin') && (
             <AdminDashboard name={name} role={role!} />
           )}

@@ -26,7 +26,7 @@ async function getContinueLearningData(userId: string): Promise<ContinueLearning
     .limit(1)
     .single();
 
-  // If no in-progress lesson, find the first incomplete course and its next lesson
+  // ─── Cold path: no in-progress lesson, pick from active enrollments ───
   if (!recentProgress) {
     const { data: enrollments } = await supabase
       .from('enrollments')
@@ -40,28 +40,35 @@ async function getContinueLearningData(userId: string): Promise<ContinueLearning
 
     if (!enrollments) return null;
 
-    const course = enrollments.courses as any;
+    const course = enrollments.courses as unknown as
+      | { id: string; title: string; thumbnail: string | null }
+      | null;
 
-    // Get the first uncompleted lesson in this course
-    const { data: allLessons } = await supabase
-      .from('lessons')
-      .select('id, title, order')
-      .eq('course_id', enrollments.course_id)
-      .eq('published', true)
-      .order('order', { ascending: true });
+    // Lessons + completed-progress fetched in parallel — neither depends on
+    // the other beyond the shared course_id.
+    const [{ data: allLessons }, { data: completedProgress }] = await Promise.all([
+      supabase
+        .from('lessons')
+        .select('id, title, order')
+        .eq('course_id', enrollments.course_id)
+        .eq('published', true)
+        .order('order', { ascending: true }),
+      supabase
+        .from('lesson_progress')
+        .select('lesson_id')
+        .eq('student_id', userId)
+        .eq('status', 'completed'),
+    ]);
 
     if (!allLessons || allLessons.length === 0) return null;
 
-    // Get completed lesson IDs
-    const { data: completedProgress } = await supabase
-      .from('lesson_progress')
-      .select('lesson_id')
-      .eq('student_id', userId)
-      .in('lesson_id', allLessons.map(l => l.id))
-      .eq('status', 'completed');
-
-    const completedIds = new Set((completedProgress || []).map(p => p.lesson_id));
-    const nextLesson = allLessons.find(l => !completedIds.has(l.id)) || allLessons[0];
+    const lessonIdSet = new Set(allLessons.map((l) => l.id));
+    const completedIds = new Set(
+      (completedProgress || [])
+        .filter((p) => lessonIdSet.has(p.lesson_id))
+        .map((p) => p.lesson_id)
+    );
+    const nextLesson = allLessons.find((l) => !completedIds.has(l.id)) || allLessons[0];
 
     return {
       lessonId: nextLesson.id,
@@ -75,7 +82,7 @@ async function getContinueLearningData(userId: string): Promise<ContinueLearning
     };
   }
 
-  // We have a recently accessed in-progress lesson — get its course info
+  // ─── Warm path: in-progress lesson found ─────────────────────────────
   const { data: lesson } = await supabase
     .from('lessons')
     .select('id, title, course_id, order')
@@ -84,43 +91,43 @@ async function getContinueLearningData(userId: string): Promise<ContinueLearning
 
   if (!lesson) return null;
 
-  const { data: course } = await supabase
-    .from('courses')
-    .select('id, title, thumbnail')
-    .eq('id', lesson.course_id)
-    .single();
+  // Course, enrollment, and lesson list for this course can all be fetched
+  // in parallel — they only need lesson.course_id which we already have.
+  const [
+    { data: course },
+    { data: enrollment },
+    { data: allLessons },
+  ] = await Promise.all([
+    supabase
+      .from('courses')
+      .select('id, title, thumbnail')
+      .eq('id', lesson.course_id)
+      .single(),
+    supabase
+      .from('enrollments')
+      .select('progress_percentage')
+      .eq('student_id', userId)
+      .eq('course_id', lesson.course_id)
+      .eq('status', 'active')
+      .single(),
+    supabase
+      .from('lessons')
+      .select('id')
+      .eq('course_id', lesson.course_id)
+      .eq('published', true),
+  ]);
 
-  if (!course) return null;
+  if (!course || !enrollment || !allLessons || allLessons.length === 0) return null;
 
-  // Check enrollment is still active
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('progress_percentage')
-    .eq('student_id', userId)
-    .eq('course_id', course.id)
-    .eq('status', 'active')
-    .single();
-
-  if (!enrollment) return null;
-
-  // Get lesson counts for this course
-  const { count: totalLessons } = await supabase
-    .from('lessons')
-    .select('id', { count: 'exact', head: true })
-    .eq('course_id', course.id)
-    .eq('published', true);
-
-  const { data: allLessonIds } = await supabase
-    .from('lessons')
-    .select('id')
-    .eq('course_id', course.id)
-    .eq('published', true);
-
+  // Completed-count needs the lesson IDs from above; one final query.
+  // Combined into a single COUNT so we don't fetch progress rows for
+  // courses with hundreds of lessons.
+  const lessonIds = allLessons.map((l) => l.id);
   const { count: completedLessons } = await supabase
     .from('lesson_progress')
     .select('id', { count: 'exact', head: true })
     .eq('student_id', userId)
-    .in('lesson_id', (allLessonIds || []).map(l => l.id))
+    .in('lesson_id', lessonIds)
     .eq('status', 'completed');
 
   return {
@@ -130,7 +137,7 @@ async function getContinueLearningData(userId: string): Promise<ContinueLearning
     courseTitle: course.title,
     courseThumbnail: course.thumbnail,
     progressPercentage: enrollment.progress_percentage || 0,
-    totalLessons: totalLessons || 0,
+    totalLessons: lessonIds.length,
     completedLessons: completedLessons || 0,
   };
 }

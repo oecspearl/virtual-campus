@@ -1,5 +1,4 @@
-import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase-server';
-import { getCurrentUser } from '@/lib/database-helpers';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 import WelcomeHeader from './WelcomeHeader';
 import AnnouncementBar from './AnnouncementBar';
 import InstructorCourseCard from './InstructorCourseCard';
@@ -23,12 +22,14 @@ const COLLABORATION_LINKS = [
   { label: 'Staff Room', description: 'Chat with colleagues', icon: 'mdi:chat', href: '/lecturers/chat', color: '#8B5CF6' },
 ];
 
-export default async function InstructorDashboard({ name }: { name: string }) {
-  const user = await getCurrentUser();
-  if (!user) return null;
-
+export default async function InstructorDashboard({
+  userId,
+  name,
+}: {
+  userId: string;
+  name: string;
+}) {
   const supabase = await createServerSupabaseClient();
-  const serviceSupabase = createServiceSupabaseClient();
 
   // Fetch instructor's courses via course_instructors
   let courses: any[] = [];
@@ -40,7 +41,7 @@ export default async function InstructorDashboard({ name }: { name: string }) {
         course_instructors!inner(instructor_id),
         courses(*)
       `)
-      .eq('course_instructors.instructor_id', user.id);
+      .eq('course_instructors.instructor_id', userId);
 
     if (classes) {
       // Deduplicate courses and count students per course

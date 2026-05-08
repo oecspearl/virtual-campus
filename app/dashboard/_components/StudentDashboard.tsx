@@ -1,5 +1,5 @@
+import { Suspense } from 'react';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
-import { getCurrentUser } from '@/lib/database-helpers';
 import WelcomeHeader from './WelcomeHeader';
 import AnnouncementBar from './AnnouncementBar';
 import ContinueLearningCard from './ContinueLearningCard';
@@ -10,10 +10,26 @@ import Link from 'next/link';
 import { Icon } from '@iconify/react';
 import MyCoursesList from './MyCoursesList';
 
-export default async function StudentDashboard({ name }: { name: string }) {
-  const user = await getCurrentUser();
-  if (!user) return null;
+function ContinueLearningSkeleton() {
+  return (
+    <div className="rounded-xl border border-gray-200/80 p-4 sm:p-5 animate-pulse flex items-center gap-4">
+      <div className="hidden sm:block w-32 h-20 bg-gray-100 rounded-md flex-shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-24 bg-gray-100 rounded" />
+        <div className="h-4 w-2/3 bg-gray-100 rounded" />
+        <div className="h-2 w-1/2 bg-gray-100 rounded" />
+      </div>
+    </div>
+  );
+}
 
+export default async function StudentDashboard({
+  userId,
+  name,
+}: {
+  userId: string;
+  name: string;
+}) {
   const supabase = await createServiceSupabaseClient();
 
   // Fetch enrollments with course data
@@ -22,7 +38,7 @@ export default async function StudentDashboard({ name }: { name: string }) {
     const { data, error } = await supabase
       .from('enrollments')
       .select('*, courses(*), classes(id, name)')
-      .eq('student_id', user.id)
+      .eq('student_id', userId)
       .eq('status', 'active');
 
     if (!error && data) {
@@ -43,8 +59,13 @@ export default async function StudentDashboard({ name }: { name: string }) {
       {/* Announcement Bar */}
       <AnnouncementBar />
 
-      {/* Continue Learning — direct link to last lesson */}
-      {enrollments.length > 0 && <ContinueLearningCard userId={user.id} />}
+      {/* Continue Learning — streamed independently so its 5–6 sequential
+          queries don't gate the rest of the dashboard. */}
+      {enrollments.length > 0 && (
+        <Suspense fallback={<ContinueLearningSkeleton />}>
+          <ContinueLearningCard userId={userId} />
+        </Suspense>
+      )}
 
       {/* 2-Column Layout */}
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">

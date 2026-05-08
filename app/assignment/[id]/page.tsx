@@ -8,6 +8,8 @@ import Button from "@/app/components/ui/Button";
 import { Icon } from "@iconify/react";
 import Breadcrumb from "@/app/components/ui/Breadcrumb";
 import PeerReviewPanel from "@/app/components/assignment/PeerReviewPanel";
+import RubricBreakdownView from "@/app/components/assignment/RubricBreakdownView";
+import type { RubricScoreSelection } from "@/app/components/assignment/RubricGrader";
 import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function Page() {
@@ -22,6 +24,10 @@ export default function Page() {
   const [userRole, setUserRole] = React.useState<string | null>(null);
   const [mySubmission, setMySubmission] = React.useState<any | null>(null);
   const [showRubric, setShowRubric] = React.useState(true);
+  // Per-criterion rubric selections, fetched after the submission is
+  // graded. Empty when the assignment has no rubric or grading hasn't
+  // happened yet — the breakdown card hides in either case.
+  const [rubricBreakdown, setRubricBreakdown] = React.useState<RubricScoreSelection[]>([]);
 
   React.useEffect(() => {
     let active = true;
@@ -57,8 +63,8 @@ export default function Page() {
             if (submissionData.submission.content) setContent(submissionData.submission.content);
             if (submissionData.submission.files) {
               try {
-                const filesArray = typeof submissionData.submission.files === 'string' 
-                  ? JSON.parse(submissionData.submission.files) 
+                const filesArray = typeof submissionData.submission.files === 'string'
+                  ? JSON.parse(submissionData.submission.files)
                   : submissionData.submission.files;
                 if (Array.isArray(filesArray)) setFiles(filesArray);
               } catch (e) {
@@ -66,6 +72,31 @@ export default function Page() {
               }
             }
             if (submissionData.submission.submission_type) setSubmissionType(submissionData.submission.submission_type);
+
+            // If graded, fetch the per-criterion rubric scores so we can
+            // surface the breakdown to the student. RLS allows students
+            // to read their own scores; staff get them too.
+            if (
+              submissionData.submission.status === 'graded' &&
+              submissionData.submission.id
+            ) {
+              try {
+                const scoresRes = await fetch(
+                  `/api/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(
+                    submissionData.submission.id
+                  )}/rubric-scores`,
+                  { cache: 'no-store' }
+                );
+                if (scoresRes.ok) {
+                  const scoresData = await scoresRes.json();
+                  if (active && Array.isArray(scoresData?.scores)) {
+                    setRubricBreakdown(scoresData.scores);
+                  }
+                }
+              } catch (err) {
+                console.error('Error fetching rubric scores:', err);
+              }
+            }
           }
         }
       } catch (error) {
@@ -369,6 +400,19 @@ export default function Page() {
                     <div className="text-gray-700 whitespace-pre-wrap">{mySubmission.feedback}</div>
                   </div>
                 )}
+                {/* Per-criterion rubric breakdown — only shown when the
+                    assignment has a rubric AND the grader recorded
+                    scores for it. */}
+                {Array.isArray(assignment.rubric) &&
+                  assignment.rubric.length > 0 &&
+                  rubricBreakdown.length > 0 && (
+                    <div className="bg-white rounded-lg p-4 border border-blue-200">
+                      <RubricBreakdownView
+                        criteria={assignment.rubric}
+                        scores={rubricBreakdown}
+                      />
+                    </div>
+                  )}
                 {mySubmission.status === 'graded' && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-3">
                     <Icon icon="material-symbols:info" className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />

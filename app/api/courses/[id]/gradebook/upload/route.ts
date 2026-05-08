@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
 
 interface GradeRow {
   student_email: string;
@@ -206,6 +207,12 @@ export async function POST(
           }
         }
 
+        if (result.success > 0) {
+          recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
+            console.error('Grade summary recompute failed after bulk upload:', err)
+          );
+        }
+
         return NextResponse.json({
           success: true,
           message: `Processed ${grades.length} rows`,
@@ -214,6 +221,12 @@ export async function POST(
       }
 
       result.success = gradesToInsert.length;
+    }
+
+    if (gradesToInsert.length > 0) {
+      recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
+        console.error('Grade summary recompute failed after bulk upload:', err)
+      );
     }
 
     return NextResponse.json({

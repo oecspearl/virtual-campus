@@ -4,6 +4,8 @@ import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { generateAdaptiveRecommendations, updateCompetenciesFromQuiz } from "@/lib/adaptive-learning";
 import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extensions";
 import { syncCrossTenantGrade } from "@/lib/enrollment-check";
+import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
+import { recomputeCourseGradeSummary } from "@/lib/services/gradebook-summary";
 
 // Helper function to calculate quiz total points from questions
 async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<number> {
@@ -344,6 +346,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await syncQuizToGradebook(supabase, id, attempt.course_id, user.id);
       } catch (syncError) {
         console.error('Gradebook sync error:', syncError);
+      }
+
+      if (attempt.course_id) {
+        try {
+          const tenantId = getTenantIdFromRequest(request as any);
+          const tq = createTenantQuery(tenantId);
+          await recomputeCourseGradeSummary(tq, attempt.course_id, user.id);
+        } catch (recomputeErr) {
+          console.error('Grade summary recompute failed:', recomputeErr);
+        }
       }
 
       // Also sync to cross_tenant_grades if student is from another tenant

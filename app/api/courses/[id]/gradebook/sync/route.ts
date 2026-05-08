@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
 
 export async function POST(
   request: Request,
@@ -143,6 +144,12 @@ export async function POST(
           });
         }
       }
+    }
+
+    if (syncedResults.length > 0) {
+      recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
+        console.error('Grade summary recompute failed after quiz sync:', err)
+      );
     }
 
     return NextResponse.json({

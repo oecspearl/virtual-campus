@@ -149,12 +149,15 @@ export async function GET(
       }
     }
 
-    const { data: summary, error } = await tq
-      .from('course_grade_summary')
-      .select('percentage, letter, breakdown, computed_at')
-      .eq('course_id', courseId)
-      .eq('student_id', studentId)
-      .maybeSingle();
+    const fetchSingle = async () =>
+      tq
+        .from('course_grade_summary')
+        .select('percentage, letter, breakdown, computed_at')
+        .eq('course_id', courseId)
+        .eq('student_id', studentId)
+        .maybeSingle();
+
+    let { data: summary, error } = await fetchSingle();
 
     if (error) {
       console.error('Grade summary fetch error:', error);
@@ -164,11 +167,39 @@ export async function GET(
       );
     }
 
-    if (!summary) {
-      // No cached summary yet — compute on demand. Cheap, and avoids the
-      // chicken-and-egg case where a course has grades but the summary
-      // table was populated before this code shipped.
+    // Stale-cache check: belt-and-braces against any grade-write path that
+    // forgot to call recompute. Compare computed_at against the most
+    // recent grade write for this (course, student). One indexed query.
+    let staleCache = false;
+    if (summary) {
+      const { data: latestGrade } = await tq
+        .from('course_grades')
+        .select('updated_at')
+        .eq('course_id', courseId)
+        .eq('student_id', studentId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (
+        latestGrade?.updated_at &&
+        new Date(latestGrade.updated_at) > new Date(summary.computed_at)
+      ) {
+        staleCache = true;
+      }
+    }
+
+    if (!summary || staleCache) {
       const fresh = await recomputeCourseGradeSummary(tq, courseId, studentId);
+      // Refetch so we return the freshly written breakdown too.
+      const { data: refreshed } = await fetchSingle();
+      if (refreshed) {
+        return NextResponse.json({
+          course_id: courseId,
+          student_id: studentId,
+          ...refreshed,
+          computed_on_demand: true,
+        });
+      }
       return NextResponse.json({
         course_id: courseId,
         student_id: studentId,

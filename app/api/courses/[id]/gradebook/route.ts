@@ -3,6 +3,8 @@ import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/s
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { getAllEnrolledStudentIds } from "@/lib/enrollment-check";
+import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
+import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
 
 // Helper function to calculate quiz total points from questions
 async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<number> {
@@ -147,6 +149,7 @@ export async function GET(
 
     // Filter out grade items for deleted quizzes and assignments
     // Also update quiz grade items with correct points calculated from questions
+    let didRescale = false;
     if (gradeItems && gradeItems.length > 0) {
       // Get quiz IDs that need to be verified
       const quizIds = gradeItems
@@ -189,7 +192,7 @@ export async function GET(
                       updated_at: new Date().toISOString()
                     };
                   });
-                  
+
                   // Update all grades in batch
                   for (const update of gradeUpdates) {
                     await clientToUse
@@ -201,7 +204,8 @@ export async function GET(
                       })
                       .eq("id", update.id);
                   }
-                  
+
+                  didRescale = true;
                   console.log(`Updated ${gradeUpdates.length} existing grades for grade item ${item.id} with new max_score ${calculatedPoints}`);
                 }
               } else {
@@ -212,7 +216,17 @@ export async function GET(
         
         // Wait for all updates to complete (but don't fail if some fail)
         await Promise.allSettled(updatePromises);
-        
+
+        if (didRescale) {
+          try {
+            const tenantId = getTenantIdFromRequest(request as any);
+            const tq = createTenantQuery(tenantId);
+            await recomputeCourseGradeSummariesForCourse(tq, courseId);
+          } catch (recomputeErr) {
+            console.error('Grade summary recompute failed after rescale:', recomputeErr);
+          }
+        }
+
         // Re-fetch grade items to ensure we have the updated points values
         const { data: refreshedGradeItems, error: refreshError } = await clientToUse
           .from("course_grade_items")

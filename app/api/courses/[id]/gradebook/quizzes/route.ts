@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
 
 export async function POST(
   request: Request,
@@ -128,6 +129,10 @@ export async function POST(
             .eq("type", assessmentType)
             .then(res => res.data?.map(item => item.id) || [])
         );
+
+      recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
+        console.error('Grade summary recompute failed after deactivation:', err)
+      );
 
       return NextResponse.json({
         success: true,

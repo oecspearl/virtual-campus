@@ -199,7 +199,7 @@ export default function Home() {
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             className="mb-8"
@@ -211,7 +211,7 @@ export default function Home() {
           </motion.div>
 
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
             className="text-[2rem] leading-[1.1] sm:text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6 sm:leading-tight"
@@ -229,7 +229,7 @@ export default function Home() {
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             className="text-base sm:text-lg md:text-2xl text-white/90 mb-8 sm:mb-12 max-w-4xl mx-auto leading-relaxed"
@@ -238,7 +238,7 @@ export default function Home() {
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
@@ -264,7 +264,7 @@ export default function Home() {
 
           {/* Stats */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             className="grid grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto"
@@ -286,7 +286,7 @@ export default function Home() {
 
         {/* Scroll Indicator */}
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1 }}
           className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
@@ -307,7 +307,7 @@ export default function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
@@ -369,7 +369,7 @@ export default function Home() {
             ]).map((feature, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 30 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
@@ -408,7 +408,7 @@ export default function Home() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
@@ -473,7 +473,7 @@ export default function Home() {
               featuredCourses.map((course, index) => (
                 <motion.div
                   key={course.id}
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={false}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
@@ -584,7 +584,7 @@ export default function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
@@ -674,7 +674,7 @@ export default function Home() {
             ]).map((testimonial, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 30 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 viewport={{ once: true }}
@@ -729,7 +729,7 @@ export default function Home() {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={false}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}

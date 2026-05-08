@@ -12,6 +12,7 @@ import LibraryResourcePicker from '@/app/components/LibraryResourcePicker';
 import { Icon } from '@iconify/react';
 import ContentBlockEditor from './_components/ContentBlockEditor';
 import VideoModeEditor from './_components/VideoModeEditor';
+import { listActivities } from '@/lib/activities';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentItem = {
@@ -43,7 +44,19 @@ export default function EditLessonPage() {
   const [published, setPublished] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [courseId, setCourseId] = React.useState<string | null>(null);
-  const [contentType, setContentType] = React.useState<'rich_text' | 'scorm' | 'video' | 'quiz' | 'assignment'>('rich_text');
+  // String rather than a union literal: lesson types now come from the
+  // activity registry (lib/activities), which can grow without a code edit
+  // here. The conditional render branches below still compare against the
+  // 5 known ids — any registered type without bespoke UI falls through to
+  // the rich_text content-block editor.
+  const [contentType, setContentType] = React.useState<string>('rich_text');
+  const availableActivityTypes = React.useMemo(
+    () =>
+      // The legacy `text` alias is hidden from the picker (it's a back-compat
+      // synonym for rich_text); everything else is offered.
+      listActivities().filter((a) => a.id !== 'text'),
+    []
+  );
   const [scormPackage, setScormPackage] = React.useState<any>(null);
   const [uploadingSCORM, setUploadingSCORM] = React.useState(false);
   const [quizSelectorOpen, setQuizSelectorOpen] = React.useState(false);
@@ -304,7 +317,7 @@ export default function EditLessonPage() {
                     <select
                       value={contentType}
                       onChange={(e) => {
-                        const newType = e.target.value as typeof contentType;
+                        const newType = e.target.value;
                         if (newType !== contentType && newType !== 'rich_text') {
                           if (!confirm('Switching content type will clear existing content blocks. Continue?')) return;
                           setContent([]);
@@ -313,11 +326,11 @@ export default function EditLessonPage() {
                       }}
                       className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-56"
                     >
-                      <option value="rich_text">Rich Text Content</option>
-                      <option value="scorm">SCORM Package</option>
-                      <option value="video">Video Content</option>
-                      <option value="quiz">Quiz Only</option>
-                      <option value="assignment">Assignment Only</option>
+                      {availableActivityTypes.map((a) => (
+                        <option key={a.id} value={a.id} title={a.description}>
+                          {a.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

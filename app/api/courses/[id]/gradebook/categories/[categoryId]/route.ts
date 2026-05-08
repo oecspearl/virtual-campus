@@ -32,7 +32,10 @@ const EDITABLE_FIELDS = [
   'extra_credit',
   'hidden',
   'sort_order',
+  'display_color',
 ] as const;
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
 
 async function checkCourseInstructor(
   tq: ReturnType<typeof createTenantQuery>,
@@ -86,6 +89,17 @@ export async function PATCH(
     if ('parent_id' in updates && updates.parent_id === categoryId) {
       return NextResponse.json(
         { error: 'A category cannot be its own parent' },
+        { status: 400 }
+      );
+    }
+    if (
+      'display_color' in updates &&
+      updates.display_color !== null &&
+      typeof updates.display_color === 'string' &&
+      !HEX_COLOR_RE.test(updates.display_color)
+    ) {
+      return NextResponse.json(
+        { error: 'display_color must be a #RRGGBB hex string or null' },
         { status: 400 }
       );
     }

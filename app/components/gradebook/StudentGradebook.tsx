@@ -52,6 +52,7 @@ interface SummaryBreakdown {
   percentage: number | null;
   points: number;
   max_points: number;
+  display_color?: string | null;
 }
 
 interface GradeSummary {
@@ -397,14 +398,30 @@ export default function StudentGradebook({
                   key={b.category_id}
                   className="py-2 flex items-center justify-between text-sm"
                 >
-                  <span className="text-gray-700">{b.name}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {b.display_color && (
+                      <span
+                        aria-hidden="true"
+                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: b.display_color }}
+                      />
+                    )}
+                    <span className="text-gray-700 truncate">{b.name}</span>
+                  </div>
                   <div className="flex items-center gap-3">
                     {showPoints && (
                       <span className="text-xs text-gray-500 tabular-nums">
                         {b.points.toFixed(0)} / {b.max_points.toFixed(0)}
                       </span>
                     )}
-                    <span className="font-medium text-blue-700 tabular-nums w-14 text-right">
+                    <span
+                      className="font-medium tabular-nums w-14 text-right"
+                      style={
+                        b.display_color
+                          ? { color: b.display_color }
+                          : { color: 'rgb(29 78 216)' /* blue-700 */ }
+                      }
+                    >
                       {b.percentage != null
                         ? `${b.percentage.toFixed(1)}%`
                         : '—'}

@@ -44,6 +44,50 @@ interface Category {
   extra_credit: boolean;
   hidden: boolean;
   sort_order: number;
+  display_color: string | null;
+}
+
+const COLOR_PRESETS = [
+  null,
+  '#3B82F6', // blue
+  '#10B981', // green
+  '#F59E0B', // amber
+  '#EF4444', // red
+  '#8B5CF6', // violet
+  '#EC4899', // pink
+  '#14B8A6', // teal
+  '#64748B', // slate
+];
+
+function ColorSwatchPicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (next: string | null) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {COLOR_PRESETS.map((preset, i) => {
+        const isActive = (value ?? null) === (preset ?? null);
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onChange(preset)}
+            title={preset ?? 'No colour (use scale-driven tier)'}
+            aria-label={preset ?? 'No colour'}
+            className={`w-5 h-5 rounded-full border ${
+              isActive ? 'ring-2 ring-offset-1 ring-blue-500' : 'border-gray-200'
+            } ${preset ? '' : 'bg-white border-dashed'}`}
+            style={preset ? { backgroundColor: preset } : undefined}
+          >
+            {preset === null && <span className="text-[10px] text-slate-400">∅</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 interface LetterBand {
@@ -86,6 +130,7 @@ const DEFAULT_NEW_CATEGORY = {
   extra_credit: false,
   hidden: false,
   sort_order: 0,
+  display_color: null as string | null,
 };
 
 function GradebookCategoriesPageInner() {
@@ -652,6 +697,15 @@ function GradebookCategoriesPageInner() {
               />
               Hidden from students
             </label>
+            <div className="md:col-span-2 mt-1">
+              <div className="text-xs text-slate-500 mb-1.5">Display colour</div>
+              <ColorSwatchPicker
+                value={editingDraft.display_color}
+                onChange={(next) =>
+                  setEditingDraft({ ...editingDraft, display_color: next })
+                }
+              />
+            </div>
           </div>
           <div className="flex gap-2 mt-4">
             <button
@@ -683,6 +737,13 @@ function GradebookCategoriesPageInner() {
         style={indent}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          {c.display_color && (
+            <span
+              aria-hidden="true"
+              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: c.display_color }}
+            />
+          )}
           <span className="text-sm text-slate-700 truncate">
             {c.name}
             {c.parent_id === null && (
@@ -1125,6 +1186,15 @@ function GradebookCategoriesPageInner() {
               />
               Hidden from students
             </label>
+            <div className="md:col-span-2 mt-2">
+              <div className="text-xs text-slate-500 mb-1.5">Display colour</div>
+              <ColorSwatchPicker
+                value={newCategory.display_color}
+                onChange={(next) =>
+                  setNewCategory({ ...newCategory, display_color: next })
+                }
+              />
+            </div>
           </div>
           <div className="mt-4">
             <button

@@ -32,6 +32,8 @@ export interface GradeCategory {
   extra_credit: boolean;
   hidden: boolean;
   sort_order: number;
+  /** Optional CSS hex display colour (#RRGGBB). Null = scale-driven. */
+  display_color?: string | null;
 }
 
 export interface GradeItem {
@@ -71,6 +73,8 @@ export interface CategoryRollup {
   max_points: number;
   /** True when at least one descendant produced a value. */
   graded: boolean;
+  /** Display colour pulled from the category. Null = client falls back to scale-driven. */
+  display_color?: string | null;
 }
 
 export interface CourseGradeResult {
@@ -303,6 +307,7 @@ function rollupCategory(
       points: 0,
       max_points: 0,
       graded: false,
+      display_color: category.display_color ?? null,
     };
   }
 
@@ -327,6 +332,7 @@ function rollupCategory(
     points: result.points,
     max_points: result.maxPoints,
     graded: true,
+    display_color: category.display_color ?? null,
   };
 }
 

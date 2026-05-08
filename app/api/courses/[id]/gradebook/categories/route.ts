@@ -138,6 +138,7 @@ export async function POST(
       extra_credit = false,
       hidden = false,
       sort_order = 0,
+      display_color = null,
     } = body ?? {};
 
     if (!name || typeof name !== 'string') {
@@ -149,6 +150,16 @@ export async function POST(
     if (!VALID_AGGREGATIONS.includes(aggregation)) {
       return NextResponse.json(
         { error: `aggregation must be one of: ${VALID_AGGREGATIONS.join(', ')}` },
+        { status: 400 }
+      );
+    }
+    if (
+      display_color != null &&
+      (typeof display_color !== 'string' ||
+        !/^#[0-9A-Fa-f]{6}$/.test(display_color))
+    ) {
+      return NextResponse.json(
+        { error: 'display_color must be a #RRGGBB hex string or null' },
         { status: 400 }
       );
     }
@@ -167,6 +178,7 @@ export async function POST(
         extra_credit,
         hidden,
         sort_order,
+        display_color,
       })
       .select()
       .single();

@@ -27,6 +27,7 @@ interface BreakdownEntry {
   percentage: number | null;
   points: number;
   max_points: number;
+  display_color?: string | null;
 }
 
 interface GradeSummary {
@@ -210,12 +211,28 @@ export default function CourseGradesPage() {
                         key={b.category_id}
                         className="px-5 py-2.5 flex items-center justify-between text-sm"
                       >
-                        <span className="text-slate-600">{b.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {b.display_color && (
+                            <span
+                              aria-hidden="true"
+                              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: b.display_color }}
+                            />
+                          )}
+                          <span className="text-slate-600 truncate">{b.name}</span>
+                        </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-slate-400 tabular-nums">
                             {b.points.toFixed(0)} / {b.max_points.toFixed(0)}
                           </span>
-                          <span className="text-slate-700 tabular-nums w-14 text-right">
+                          <span
+                            className="tabular-nums w-14 text-right font-medium"
+                            style={
+                              b.display_color
+                                ? { color: b.display_color }
+                                : undefined
+                            }
+                          >
                             {b.percentage != null
                               ? `${b.percentage.toFixed(1)}%`
                               : '—'}

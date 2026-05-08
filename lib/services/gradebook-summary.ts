@@ -36,7 +36,7 @@ async function loadCourseSnapshot(
     tq
       .from('course_grade_categories')
       .select(
-        'id, parent_id, name, aggregation, drop_lowest, drop_highest, keep_highest, weight, extra_credit, hidden, sort_order'
+        'id, parent_id, name, aggregation, drop_lowest, drop_highest, keep_highest, weight, extra_credit, hidden, sort_order, display_color'
       )
       .eq('course_id', courseId),
     tq

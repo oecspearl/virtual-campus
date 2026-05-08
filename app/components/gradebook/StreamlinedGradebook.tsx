@@ -453,6 +453,14 @@ export default function StreamlinedGradebook({
             >
               Categories &amp; Aggregation
             </Link>
+            <a
+              href={`/api/courses/${courseId}/gradebook/export`}
+              download
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium border border-gray-200 text-slate-700 hover:bg-gray-50 rounded-md transition-colors"
+              title="Download CSV with per-item scores, totals, letter, and category breakdown"
+            >
+              Export CSV
+            </a>
             <BulkGradeUpload courseId={courseId} onSuccess={loadGradebook} />
             <Button
               onClick={syncQuizGrades}

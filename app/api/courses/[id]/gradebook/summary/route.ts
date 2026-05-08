@@ -7,6 +7,15 @@ import {
   recomputeCourseGradeSummariesForCourse,
 } from '@/lib/services/gradebook-summary';
 
+// Grade summaries change every time a grade is written. Force browsers,
+// CDNs, and Next's data cache to skip caching this endpoint so the
+// student-facing UI always sees fresh data.
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 /**
  * GET /api/courses/[id]/gradebook/summary
  *   ?student_id=<uuid>  (staff only — defaults to caller for students)
@@ -107,10 +116,10 @@ export async function GET(
         );
       }
 
-      // Warm if empty or partially populated — covers the post-migration
-      // "no writes yet" case and the "student enrolled after last
-      // recompute" case. We compare against the enrolled-student count
-      // rather than only checking for emptiness.
+      // Decide whether to warm: rebuild if the cached row count is behind
+      // the enrolled student count, OR if any grade has been written since
+      // the oldest cache row was computed. This catches both the cold-cache
+      // case AND the case where a write path forgot to call recompute.
       const { count: enrolledCount } = await tq
         .from('enrollments')
         .select('id', { count: 'exact', head: true })
@@ -118,7 +127,29 @@ export async function GET(
         .eq('status', 'active');
 
       const cachedCount = rows?.length ?? 0;
-      if ((enrolledCount ?? 0) > cachedCount) {
+
+      let cacheStale = false;
+      if (cachedCount > 0) {
+        const oldestComputedAt = (rows ?? [])
+          .map((r) => r.computed_at)
+          .sort()[0];
+        const { data: latestGrade } = await tq
+          .from('course_grades')
+          .select('updated_at')
+          .eq('course_id', courseId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (
+          latestGrade?.updated_at &&
+          oldestComputedAt &&
+          new Date(latestGrade.updated_at) > new Date(oldestComputedAt)
+        ) {
+          cacheStale = true;
+        }
+      }
+
+      if ((enrolledCount ?? 0) > cachedCount || cacheStale) {
         try {
           await recomputeCourseGradeSummariesForCourse(tq, courseId);
           ({ data: rows, error: listError } = await fetchSummaries());
@@ -134,7 +165,10 @@ export async function GET(
         }
       }
 
-      return NextResponse.json({ summaries: rows ?? [] });
+      return NextResponse.json(
+        { summaries: rows ?? [] },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
     const studentId = requestedStudentId ?? user.id;
@@ -157,7 +191,19 @@ export async function GET(
         .eq('student_id', studentId)
         .maybeSingle();
 
-    let { data: summary, error } = await fetchSingle();
+    // Always recompute on read. The cache row exists so other readers
+    // (admin ?all=1, programmatic consumers) see fresh-as-of-last-write
+    // data without round-tripping through the engine, but the canonical
+    // "what does this student see right now" path is the recompute.
+    // This costs a few extra indexed queries per read; cheap relative to
+    // the freshness win.
+    try {
+      await recomputeCourseGradeSummary(tq, courseId, studentId);
+    } catch (recomputeErr) {
+      console.error('Per-read recompute failed:', recomputeErr);
+    }
+
+    const { data: summary, error } = await fetchSingle();
 
     if (error) {
       console.error('Grade summary fetch error:', error);
@@ -167,55 +213,29 @@ export async function GET(
       );
     }
 
-    // Stale-cache check: belt-and-braces against any grade-write path that
-    // forgot to call recompute. Compare computed_at against the most
-    // recent grade write for this (course, student). One indexed query.
-    let staleCache = false;
-    if (summary) {
-      const { data: latestGrade } = await tq
-        .from('course_grades')
-        .select('updated_at')
-        .eq('course_id', courseId)
-        .eq('student_id', studentId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (
-        latestGrade?.updated_at &&
-        new Date(latestGrade.updated_at) > new Date(summary.computed_at)
-      ) {
-        staleCache = true;
-      }
-    }
-
-    if (!summary || staleCache) {
-      const fresh = await recomputeCourseGradeSummary(tq, courseId, studentId);
-      // Refetch so we return the freshly written breakdown too.
-      const { data: refreshed } = await fetchSingle();
-      if (refreshed) {
-        return NextResponse.json({
+    if (!summary) {
+      return NextResponse.json(
+        {
           course_id: courseId,
           student_id: studentId,
-          ...refreshed,
+          percentage: null,
+          letter: null,
+          breakdown: [],
+          computed_at: new Date().toISOString(),
           computed_on_demand: true,
-        });
-      }
-      return NextResponse.json({
-        course_id: courseId,
-        student_id: studentId,
-        percentage: fresh.percentage,
-        letter: fresh.letter,
-        breakdown: [],
-        computed_at: new Date().toISOString(),
-        computed_on_demand: true,
-      });
+        },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
-    return NextResponse.json({
-      course_id: courseId,
-      student_id: studentId,
-      ...summary,
-    });
+    return NextResponse.json(
+      {
+        course_id: courseId,
+        student_id: studentId,
+        ...summary,
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (e: unknown) {
     console.error('Grade summary GET error:', e);
     return NextResponse.json(

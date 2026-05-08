@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
 
@@ -30,6 +30,9 @@ const steps = [
 export default function OnboardingWizard({ userName }: { userName: string }) {
   const [visible, setVisible] = React.useState(false);
   const [step, setStep] = React.useState(0);
+  const titleId = useId();
+  const descriptionId = useId();
+  const initialFocusRef = useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -39,6 +42,28 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
       }
     }
   }, []);
+
+  // Escape-to-skip + focus the primary action when the wizard opens.
+  // This is a non-blocking onboarding tour, so Escape acts as "skip".
+  useEffect(() => {
+    if (!visible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        localStorage.setItem(STORAGE_KEY, 'true');
+        setVisible(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    // Defer focus until after the panel mounts.
+    const focusTimer = window.setTimeout(() => {
+      initialFocusRef.current?.focus();
+    }, 0);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      window.clearTimeout(focusTimer);
+    };
+  }, [visible]);
 
   const handleComplete = () => {
     localStorage.setItem(STORAGE_KEY, 'true');
@@ -63,7 +88,13 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
   const isLast = step === steps.length - 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+    >
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in duration-300">
         {/* Progress indicator */}
         <div className="flex gap-1.5 px-8 pt-6">
@@ -95,12 +126,12 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
             />
           </div>
 
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
+          <h2 id={titleId} className="text-xl font-bold text-gray-900 mb-2">
             {step === 0
               ? currentStep.title.replace('!', `, ${userName || 'Learner'}!`)
               : currentStep.title}
           </h2>
-          <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
+          <p id={descriptionId} className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
             {currentStep.description}
           </p>
         </div>
@@ -140,6 +171,8 @@ export default function OnboardingWizard({ userName }: { userName: string }) {
               </Link>
             ) : (
               <button
+                ref={initialFocusRef}
+                type="button"
                 onClick={handleNext}
                 className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
                 style={{ background: 'linear-gradient(135deg, var(--theme-primary), var(--theme-secondary, var(--theme-primary)))' }}

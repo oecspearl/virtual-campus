@@ -593,8 +593,22 @@ export default function StreamlinedGradebook({
                                 else if (e.key === 'Escape') cancelEditing();
                               }}
                             />
-                            <button onClick={handleScoreSubmit} className="p-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">✓</button>
-                            <button onClick={cancelEditing} className="p-1.5 text-xs bg-gray-600 text-white rounded hover:bg-gray-700">✕</button>
+                            <button
+                              type="button"
+                              onClick={handleScoreSubmit}
+                              aria-label="Save grade"
+                              className="p-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              <span aria-hidden="true">✓</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditing}
+                              aria-label="Cancel edit"
+                              className="p-1.5 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                            >
+                              <span aria-hidden="true">✕</span>
+                            </button>
                           </div>
                         ) : (
                           <button
@@ -627,11 +641,11 @@ export default function StreamlinedGradebook({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="sticky left-0 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider z-10">
+                <th scope="col" className="sticky left-0 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider z-10">
                   Student
                 </th>
                 {filteredItems.map((item) => (
-                  <th key={item.id} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={item.id} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <div className="flex flex-col">
                       <span className="truncate max-w-32" title={item.title}>
                         {item.title}
@@ -645,7 +659,7 @@ export default function StreamlinedGradebook({
                     </div>
                   </th>
                 ))}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total
                 </th>
               </tr>
@@ -655,7 +669,7 @@ export default function StreamlinedGradebook({
                 const total = studentTotals.get(student.id) || { points: 0, max: 0, percentage: 0, letter: null as string | null, fromEngine: false };
                 return (
                   <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="sticky left-0 bg-white px-6 py-4 whitespace-nowrap z-10">
+                    <th scope="row" className="sticky left-0 bg-white px-6 py-4 whitespace-nowrap z-10 text-left font-normal">
                       <div className="flex flex-col">
                         <div className="text-sm font-medium text-gray-900">
                           {student.name || student.id}
@@ -664,7 +678,7 @@ export default function StreamlinedGradebook({
                           {student.email}
                         </div>
                       </div>
-                    </td>
+                    </th>
                     {filteredItems.map((item) => {
                       const grade = gradeIndex.get(`${student.id}:${item.id}`);
                       const isEditing = editingGrade?.studentId === student.id && editingGrade?.itemId === item.id;

@@ -67,13 +67,19 @@ function ColorSwatchPicker({
   onChange: (next: string | null) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div
+      className="flex items-center gap-1.5 flex-wrap"
+      role="radiogroup"
+      aria-label="Display colour"
+    >
       {COLOR_PRESETS.map((preset, i) => {
         const isActive = (value ?? null) === (preset ?? null);
         return (
           <button
             key={i}
             type="button"
+            role="radio"
+            aria-checked={isActive}
             onClick={() => onChange(preset)}
             title={preset ?? 'No colour (use scale-driven tier)'}
             aria-label={preset ?? 'No colour'}
@@ -1005,6 +1011,7 @@ function GradebookCategoriesPageInner() {
                                 type="checkbox"
                                 checked={checked}
                                 onChange={() => toggleItemSelect(item.id)}
+                                aria-label={`Select ${item.title}`}
                               />
                               <span className="text-sm text-slate-700 truncate flex-1">
                                 {item.title}
@@ -1015,9 +1022,12 @@ function GradebookCategoriesPageInner() {
                               <span className="text-[11px] text-slate-400 tabular-nums w-12 text-right">
                                 {item.points} pts
                               </span>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1" role="group" aria-label="Item flags">
                                 <button
+                                  type="button"
                                   onClick={() => toggleItemFlag(item, 'extra_credit')}
+                                  aria-pressed={item.extra_credit}
+                                  aria-label={`Extra credit for ${item.title}`}
                                   className={`text-[10px] px-2 py-0.5 rounded-full ${
                                     item.extra_credit
                                       ? 'bg-green-100 text-green-700'
@@ -1028,7 +1038,10 @@ function GradebookCategoriesPageInner() {
                                   EC
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => toggleItemFlag(item, 'hidden')}
+                                  aria-pressed={item.hidden}
+                                  aria-label={`Hidden flag for ${item.title}`}
                                   className={`text-[10px] px-2 py-0.5 rounded-full ${
                                     item.hidden
                                       ? 'bg-gray-200 text-gray-700'
@@ -1039,7 +1052,10 @@ function GradebookCategoriesPageInner() {
                                   hidden
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => toggleItemFlag(item, 'locked')}
+                                  aria-pressed={item.locked}
+                                  aria-label={`Locked flag for ${item.title}`}
                                   className={`text-[10px] px-2 py-0.5 rounded-full ${
                                     item.locked
                                       ? 'bg-amber-100 text-amber-700'

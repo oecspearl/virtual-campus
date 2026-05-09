@@ -30,6 +30,11 @@ interface Course { id: string; title: string; description: string; published: bo
 interface Enrollment {
   id: string; course_id: string; student_id: string;
   status: string; enrolled_at: string; courses: Course;
+  // Denormalized columns from /api/admin/enrollments — used as the primary
+  // source for display in CourseEnrollmentsPanel so cross-tenant or otherwise
+  // unfound students still render their real name and email.
+  student_name?: string | null;
+  student_email?: string | null;
 }
 
 export default function UserManagementPage() {

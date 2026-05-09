@@ -136,13 +136,27 @@ export async function createOAuthSession(
       const shouldBackfillEmpty = !currentName && name;
       const shouldRefreshFromIdp = idpName && idpName !== currentName;
       if (shouldBackfillEmpty || shouldRefreshFromIdp) {
+        const newName = shouldRefreshFromIdp ? idpName : name;
         await serviceSupabase
           .from('users')
           .update({
-            name: shouldRefreshFromIdp ? idpName : name,
+            name: newName,
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId);
+
+        // Keep denormalized student fields on enrollments in sync so the
+        // admin "Course Enrollments" panel doesn't keep showing a stale
+        // value (or "Unknown User" for rows where it was never populated)
+        // after the user's display name changes.
+        await serviceSupabase
+          .from('enrollments')
+          .update({
+            student_name: newName,
+            student_email: email,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('student_id', userId);
       }
     }
 

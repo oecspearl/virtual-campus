@@ -6,7 +6,20 @@ import { Icon } from '@iconify/react';
 import Button from '@/app/components/ui/Button';
 
 interface Course { id: string; title: string; description: string; published: boolean; }
-interface Enrollment { id: string; course_id: string; student_id: string; status: string; enrolled_at: string; courses: Course; }
+interface Enrollment {
+  id: string;
+  course_id: string;
+  student_id: string;
+  status: string;
+  enrolled_at: string;
+  courses: Course;
+  // Denormalized at enrollment time. Used as the primary source for display
+  // so the panel stays correct even when the student lives in a different
+  // tenant than the admin (cross-tenant enrolment) or when the user lookup
+  // misses for any other reason.
+  student_name?: string | null;
+  student_email?: string | null;
+}
 interface User { id: string; email: string; name: string; role: string; }
 
 interface CourseEnrollmentsPanelProps {
@@ -98,10 +111,18 @@ export default function CourseEnrollmentsPanel({ enrollments, users, onUnenroll 
                       <tbody className="divide-y divide-gray-100">
                         {data.enrollments.map((enrollment) => {
                           const student = users.find(u => u.id === enrollment.student_id);
+                          // Prefer the denormalized fields on the enrollment row
+                          // (always populated for the tenant where the enrollment
+                          // lives), then fall back to the user lookup, then to a
+                          // visible placeholder.
+                          const displayName =
+                            enrollment.student_name || student?.name || 'Unknown User';
+                          const displayEmail =
+                            enrollment.student_email || student?.email || '-';
                           return (
                             <tr key={enrollment.id} className="text-sm">
-                              <td className="py-2 pr-4 font-medium text-gray-900">{student?.name || 'Unknown User'}</td>
-                              <td className="py-2 pr-4 text-gray-500">{student?.email || '-'}</td>
+                              <td className="py-2 pr-4 font-medium text-gray-900">{displayName}</td>
+                              <td className="py-2 pr-4 text-gray-500">{displayEmail}</td>
                               <td className="py-2 pr-4">
                                 <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
                                   enrollment.status === 'active' ? 'bg-green-100 text-green-700'
@@ -119,7 +140,7 @@ export default function CourseEnrollmentsPanel({ enrollments, users, onUnenroll 
                                     <Icon icon="material-symbols:history" className="w-3 h-3 mr-1" /> Activity
                                   </Link>
                                   <Button
-                                    onClick={() => onUnenroll(enrollment.id, student?.name || 'Unknown User', data.course.title)}
+                                    onClick={() => onUnenroll(enrollment.id, displayName, data.course.title)}
                                     variant="outline"
                                     className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 text-xs px-2 py-1"
                                   >

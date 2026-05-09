@@ -110,7 +110,10 @@ export async function getUserInfo(
   config: OAuthProviderConfig,
   tokens: OAuthTokenResponse,
 ): Promise<OAuthUserInfo> {
-  // Try to decode the ID token first (JWT payload is the middle segment)
+  // Try to decode the ID token first (JWT payload is the middle segment).
+  // Prefer the ID token over the userinfo endpoint: it's signed, has more
+  // claims, and Microsoft Graph's /oidc/userinfo can return a sparse
+  // response depending on the app's API permissions.
   if (tokens.id_token) {
     try {
       const parts = tokens.id_token.split('.');
@@ -123,15 +126,11 @@ export async function getUserInfo(
         if (payload.aud && payload.aud !== config.client_id) {
           console.error('OAuth: ID token audience mismatch');
           // Fall through to userinfo endpoint
-        } else if (payload.email) {
-          return {
-            sub: payload.sub || payload.oid || '',
-            email: payload.email || payload.preferred_username || '',
-            name: payload.name,
-            given_name: payload.given_name,
-            family_name: payload.family_name,
-            picture: payload.picture,
-          };
+        } else {
+          const claims = extractClaims(payload);
+          if (claims.sub && claims.email) {
+            return claims;
+          }
         }
       }
     } catch {
@@ -150,7 +149,33 @@ export async function getUserInfo(
     throw new Error(`Userinfo request failed: ${response.status}`);
   }
 
-  return response.json() as Promise<OAuthUserInfo>;
+  const data = (await response.json()) as Record<string, unknown>;
+  return extractClaims(data);
+}
+
+/**
+ * Normalise OIDC claims into our OAuthUserInfo shape. Microsoft Entra (Azure
+ * AD) work/school accounts often omit the `email` claim and put the
+ * email-like identifier in `preferred_username` (the UPN) or `upn` instead;
+ * accept either as the email so we don't end up provisioning users with no
+ * name (the email-prefix fallback in createOAuthSession depends on email).
+ */
+function extractClaims(payload: Record<string, unknown>): OAuthUserInfo {
+  const str = (v: unknown): string | undefined =>
+    typeof v === 'string' && v ? v : undefined;
+
+  return {
+    sub: str(payload.sub) || str(payload.oid) || '',
+    email:
+      str(payload.email) ||
+      str(payload.preferred_username) ||
+      str(payload.upn) ||
+      '',
+    name: str(payload.name),
+    given_name: str(payload.given_name),
+    family_name: str(payload.family_name),
+    picture: str(payload.picture),
+  };
 }
 
 /** Validate that the user's email matches the domain restriction (if set). */

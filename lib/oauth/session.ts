@@ -118,6 +118,25 @@ export async function createOAuthSession(
       return { success: false, error: 'Failed to provision user profile' };
     }
 
+    // Backfill empty name on existing rows. A users row matched in step 2
+    // (by email) may have been created earlier with an empty name — e.g.
+    // by a password signup that didn't capture full_name, or by an earlier
+    // OAuth login where the ID-token path was skipped and Graph's userinfo
+    // returned a sparse response. Without this update those users keep
+    // showing as "Unknown User" in /admin/users/manage even after a
+    // successful OAuth sign-in.
+    if (
+      !provisionResult.created &&
+      !provisionResult.userProfile.name &&
+      name
+    ) {
+      await serviceSupabase
+        .from('users')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+        .eq('name', '');
+    }
+
     // Apply defaultRole on first-time provision if it differs from the default.
     if (provisionResult.created && defaultRole && defaultRole !== 'student') {
       await serviceSupabase

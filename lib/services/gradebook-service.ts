@@ -6,11 +6,12 @@
 
 import type { TenantQuery } from '@/lib/tenant-query';
 
-export type AssessmentType = 'quiz' | 'assignment';
+export type AssessmentType = 'quiz' | 'assignment' | 'discussion';
 
 const DEFAULT_CATEGORY: Record<AssessmentType, string> = {
   quiz: 'Quizzes',
   assignment: 'Assignments',
+  discussion: 'Discussions',
 };
 
 export interface GradebookSyncInput {

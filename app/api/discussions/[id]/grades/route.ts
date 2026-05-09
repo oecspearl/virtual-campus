@@ -2,6 +2,100 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { getAllEnrolledStudentIds, syncCrossTenantGrade } from "@/lib/enrollment-check";
+import { syncAssessmentToGradebook } from "@/lib/services/gradebook-service";
+import { recomputeCourseGradeSummary } from "@/lib/services/gradebook-summary";
+
+/**
+ * Mirror a discussion grade into the course gradebook so it's
+ * included in the rolled-up grade calculation alongside quizzes and
+ * assignments. Idempotently creates the course_grade_items row,
+ * upserts course_grades, then triggers a summary recompute. Failures
+ * are logged but don't block the discussion-grade write — the
+ * gradebook stays slightly stale until the next read instead.
+ */
+async function syncDiscussionGradeToGradebook(opts: {
+  tq: ReturnType<typeof createTenantQuery>;
+  tenantId: string;
+  discussionId: string;
+  discussionTitle: string;
+  courseId: string;
+  studentId: string;
+  graderId: string;
+  score: number;
+  maxScore: number;
+  feedback: string | null;
+}) {
+  const {
+    tq,
+    tenantId,
+    discussionId,
+    discussionTitle,
+    courseId,
+    studentId,
+    graderId,
+    score,
+    maxScore,
+    feedback,
+  } = opts;
+  const now = new Date().toISOString();
+
+  // Ensure the course_grade_items row exists (idempotent).
+  try {
+    await syncAssessmentToGradebook(tq, {
+      courseId,
+      assessmentId: discussionId,
+      type: 'discussion',
+      title: discussionTitle,
+      points: maxScore,
+    });
+  } catch (err) {
+    console.error('[discussion-grade] Failed to sync grade item:', err);
+    return;
+  }
+
+  // Look up the (now guaranteed) grade item id.
+  const { data: gradeItem } = await tq
+    .from('course_grade_items')
+    .select('id')
+    .eq('course_id', courseId)
+    .eq('type', 'discussion')
+    .eq('assessment_id', discussionId)
+    .single();
+  if (!gradeItem) return;
+
+  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+  const { error } = await tq.raw
+    .from('course_grades')
+    .upsert(
+      [
+        {
+          tenant_id: tenantId,
+          course_id: courseId,
+          student_id: studentId,
+          grade_item_id: gradeItem.id,
+          score,
+          max_score: maxScore,
+          percentage: Number(percentage.toFixed(2)),
+          feedback,
+          graded_by: graderId,
+          graded_at: now,
+          created_at: now,
+          updated_at: now,
+        },
+      ],
+      { onConflict: 'student_id,grade_item_id' }
+    );
+  if (error) {
+    console.error('[discussion-grade] Failed to upsert course_grades:', error);
+    return;
+  }
+
+  try {
+    await recomputeCourseGradeSummary(tq, courseId, studentId);
+  } catch (recomputeErr) {
+    console.error('[discussion-grade] Recompute failed:', recomputeErr);
+  }
+}
 
 // GET /api/discussions/[id]/grades - Get all grades for a discussion (instructor) or own grade (student)
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -168,7 +262,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Get discussion to verify it's graded
     const { data: discussion, error: discussionError } = await tq
       .from('course_discussions')
-      .select('id, course_id, is_graded, points, rubric')
+      .select('id, title, course_id, is_graded, points, rubric')
       .eq('id', discussionId)
       .single();
 
@@ -268,6 +362,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       console.error('Cross-tenant grade sync error:', crossSyncError);
     }
 
+    // Sync into the in-tenant course gradebook so this discussion grade
+    // shows up in the student's overall course grade. Without this the
+    // gradebook engine has no idea the discussion was graded — the
+    // grade lives in discussion_grades only.
+    await syncDiscussionGradeToGradebook({
+      tq,
+      tenantId,
+      discussionId,
+      discussionTitle: discussion.title || 'Discussion',
+      courseId: discussion.course_id,
+      studentId: student_id,
+      graderId: user.id,
+      score,
+      maxScore,
+      feedback: feedback || null,
+    });
+
     // Fetch student and grader info separately to avoid FK naming issues
     const { data: student } = await tq
       .from('users')
@@ -312,7 +423,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     // Get discussion
     const { data: discussion, error: discussionError } = await tq
       .from('course_discussions')
-      .select('id, course_id, is_graded, points')
+      .select('id, title, course_id, is_graded, points')
       .eq('id', discussionId)
       .single();
 
@@ -383,6 +494,20 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         errors.push({ student_id, error: gradeError.message });
       } else {
         results.push(grade);
+        // Mirror into the course gradebook so this discussion grade
+        // counts toward the rolled-up course total.
+        await syncDiscussionGradeToGradebook({
+          tq,
+          tenantId,
+          discussionId,
+          discussionTitle: discussion.title || 'Discussion',
+          courseId: discussion.course_id,
+          studentId: student_id,
+          graderId: user.id,
+          score: Number(score),
+          maxScore,
+          feedback: feedback || null,
+        });
       }
     }
 

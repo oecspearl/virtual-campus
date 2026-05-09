@@ -1,0 +1,24 @@
+-- ============================================================================
+-- Part 52: Invalidate course_grade_summary cache after engine fix
+-- ============================================================================
+-- Depends on: 047 (course_grade_summary)
+-- ============================================================================
+-- Commit 5629c22 changed the aggregation engine so items with NULL
+-- category_id are defensively rebucketed under the single root
+-- category. Existing cached summaries computed before that fix
+-- silently exclude orphan quiz/assignment items from the rolled-up
+-- grade — the read-side staleness check (course_grades.updated_at >
+-- summary.computed_at) doesn't catch this because the underlying
+-- course_grades rows haven't changed; only the engine's logic has.
+--
+-- Wipe the cache so every read takes the "no cached row" fallback in
+-- the GET endpoint, which always recomputes via the current engine.
+-- More reliable than backdating computed_at — the staleness check
+-- compares against course_grades.updated_at, which would still skip
+-- recompute if no grades have changed for that student. The cache is
+-- lazily rebuilt; no data is lost.
+--
+-- Idempotent.
+-- ============================================================================
+
+DELETE FROM public.course_grade_summary;

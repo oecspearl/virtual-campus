@@ -6,6 +6,7 @@ import {
   recomputeCourseGradeSummary,
   recomputeCourseGradeSummariesForCourse,
 } from '@/lib/services/gradebook-summary';
+import { ENGINE_VERSION } from '@/lib/services/gradebook-aggregation';
 
 // Grade summaries change every time a grade is written. Force browsers,
 // CDNs, and Next's data cache to skip caching this endpoint so the
@@ -104,7 +105,9 @@ export async function GET(
       const fetchSummaries = async () =>
         tq
           .from('course_grade_summary')
-          .select('student_id, percentage, letter, breakdown, computed_at')
+          .select(
+            'student_id, percentage, letter, breakdown, computed_at, computed_version'
+          )
           .eq('course_id', courseId);
 
       let { data: rows, error: listError } = await fetchSummaries();
@@ -116,10 +119,12 @@ export async function GET(
         );
       }
 
-      // Decide whether to warm: rebuild if the cached row count is behind
-      // the enrolled student count, OR if any grade has been written since
-      // the oldest cache row was computed. This catches both the cold-cache
-      // case AND the case where a write path forgot to call recompute.
+      // Decide whether to warm. We rebuild when:
+      //   - cached row count is behind enrolled student count
+      //   - any cached row's computed_version differs from the current
+      //     engine (post-deploy stragglers)
+      //   - any grade has been written since the oldest cached row
+      //     was computed (a write path forgot to recompute)
       const { count: enrolledCount } = await tq
         .from('enrollments')
         .select('id', { count: 'exact', head: true })
@@ -128,8 +133,12 @@ export async function GET(
 
       const cachedCount = rows?.length ?? 0;
 
+      const versionMismatch = (rows ?? []).some(
+        (r) => r.computed_version !== ENGINE_VERSION
+      );
+
       let cacheStale = false;
-      if (cachedCount > 0) {
+      if (cachedCount > 0 && !versionMismatch) {
         const oldestComputedAt = (rows ?? [])
           .map((r) => r.computed_at)
           .sort()[0];
@@ -149,7 +158,11 @@ export async function GET(
         }
       }
 
-      if ((enrolledCount ?? 0) > cachedCount || cacheStale) {
+      if (
+        (enrolledCount ?? 0) > cachedCount ||
+        versionMismatch ||
+        cacheStale
+      ) {
         try {
           await recomputeCourseGradeSummariesForCourse(tq, courseId);
           ({ data: rows, error: listError } = await fetchSummaries());
@@ -186,7 +199,7 @@ export async function GET(
     const fetchSingle = async () =>
       tq
         .from('course_grade_summary')
-        .select('percentage, letter, breakdown, computed_at')
+        .select('percentage, letter, breakdown, computed_at, computed_version')
         .eq('course_id', courseId)
         .eq('student_id', studentId)
         .maybeSingle();
@@ -201,13 +214,22 @@ export async function GET(
       );
     }
 
+    // Engine version mismatch — the cached row was computed by an
+    // older engine that may have produced different math or breakdown
+    // shape. Cheaper than the full multi-table stale check; we do it
+    // first so an outdated row is recomputed without spending the four
+    // max(updated_at) queries.
+    let staleCache = false;
+    if (summary && summary.computed_version !== ENGINE_VERSION) {
+      staleCache = true;
+    }
+
     // Multi-table stale check: any of grades / items / categories /
     // letter-scale being touched after the cache was computed means the
     // summary may be wrong. Four parallel max() queries; fast on indexed
     // columns, far cheaper than recomputing on every read (which was
     // causing function timeouts).
-    let staleCache = false;
-    if (summary) {
+    if (summary && !staleCache) {
       const [latestGrade, latestItem, latestCat, latestLetter] =
         await Promise.all([
           tq

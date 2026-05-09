@@ -195,6 +195,26 @@ describe('orphan items (null category_id)', () => {
     expect(result.percentage).toBeCloseTo(90);
   });
 
+  it('surfaces orphans under root as a synthetic "Uncategorised" breakdown row', () => {
+    const result = computeCourseGrade({
+      categories: [
+        cat({ id: 'root', aggregation: 'weighted_mean' }),
+        cat({ id: 'a', parent_id: 'root', name: 'Assignments', aggregation: 'mean' }),
+      ],
+      items: [
+        item({ id: 'a1', category_id: 'a' }),
+        item({ id: 'a2', category_id: 'a' }),
+        // Orphan item — gets rebucketed to root and should appear in
+        // the breakdown alongside Assignments.
+        item({ id: 'orphan', category_id: null as unknown as string }),
+      ],
+      grades: [grade('a1', 80), grade('a2', 100), grade('orphan', 50)],
+    });
+    expect(result.breakdown).toHaveLength(2);
+    const names = result.breakdown.map((b) => b.name).sort();
+    expect(names).toEqual(['Assignments', 'Uncategorised']);
+  });
+
   it('falls through to the synthetic root when there are no categories at all', () => {
     const result = computeCourseGrade({
       categories: [],

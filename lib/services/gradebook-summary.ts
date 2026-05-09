@@ -16,6 +16,7 @@
 import type { TenantQuery } from '@/lib/tenant-query';
 import {
   computeCourseGrade,
+  ENGINE_VERSION,
   type GradeCategory,
   type GradeItem,
   type LetterBand,
@@ -100,6 +101,7 @@ async function upsertSummary(
     letter: result.letter,
     breakdown: result.breakdown,
     computed_at: new Date().toISOString(),
+    computed_version: ENGINE_VERSION,
   };
 
   // Tenant-query .upsert() goes through the wrapper's insert path; we use
@@ -212,6 +214,7 @@ export async function recomputeCourseGradeSummariesForCourse(
       letter: result.letter,
       breakdown: result.breakdown,
       computed_at: new Date().toISOString(),
+      computed_version: ENGINE_VERSION,
     });
   }
 

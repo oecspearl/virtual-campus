@@ -10,6 +10,20 @@
  *      breakdown — which the caller persists to course_grade_summary.
  */
 
+/**
+ * Engine version stamped on every cached summary. Bump this string
+ * whenever the engine's math (or breakdown shape) changes in a way
+ * that older cached rows would silently misrepresent. The read-side
+ * gradebook-summary GET treats version mismatches as stale and
+ * triggers a recompute; older rows get rebuilt on next read.
+ *
+ * History:
+ *   v1 — initial release (047, 048)
+ *   v2 — orphan rebucketing under root (5629c22)
+ *   v3 — synthetic "Uncategorised" breakdown row for orphans
+ */
+export const ENGINE_VERSION = 'v3';
+
 export type AggregationStrategy =
   | 'mean'
   | 'weighted_mean'
@@ -438,6 +452,47 @@ export function computeCourseGrade(
       if (sub.hidden) continue;
       breakdown.push(rollupCategory(sub, tree));
     }
+
+    // Surface any items rebucketed directly under root (orphans whose
+    // category_id was null) as a synthetic "Uncategorized" breakdown
+    // row. Without this the overall percentage and the breakdown
+    // disagree visibly — the user sees e.g. "56% overall" with only
+    // an "Assignments 73%" row and no explanation of where the rest
+    // came from. The synthetic entry makes the math add up on screen.
+    const directItems = (tree.childItems.get(root.id) ?? []).filter(
+      (i) => !i.hidden
+    );
+    const directGraded = directItems.filter((i) =>
+      tree.gradesByItem.has(i.id)
+    );
+    if (directGraded.length > 0) {
+      const synthetic: GradeCategory = {
+        id: `${root.id}::uncategorised`,
+        parent_id: root.id,
+        name: 'Uncategorised',
+        aggregation: root.aggregation,
+        drop_lowest: 0,
+        drop_highest: 0,
+        keep_highest: null,
+        weight: null,
+        extra_credit: false,
+        hidden: false,
+        sort_order: 999_999,
+      };
+      // Build a temporary tree where the synthetic owns the orphan items
+      // and rollupCategory can do its thing.
+      const adjustedItems = new Map(tree.childItems);
+      adjustedItems.set(synthetic.id, directGraded);
+      const adjustedCats = new Map(tree.childCategories);
+      adjustedCats.set(synthetic.id, []);
+      const synthRoll = rollupCategory(synthetic, {
+        ...tree,
+        childItems: adjustedItems,
+        childCategories: adjustedCats,
+      });
+      if (synthRoll.graded) breakdown.push(synthRoll);
+    }
+
     return {
       percentage: rootRoll.percentage,
       letter: assignLetter(rootRoll.percentage, input.letterScale ?? []),

@@ -3,6 +3,136 @@ import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
+import { syncAssessmentToGradebook } from "@/lib/services/gradebook-service";
+
+interface QuizRow {
+  id: string;
+  title: string | null;
+  course_id: string | null;
+  lesson_id: string | null;
+  points: number | null;
+  due_date: string | null;
+}
+
+/**
+ * Sum the points across questions for a quiz. Quiz `points` defaults
+ * to 0 in the schema; the question total is what attempts are scored
+ * against, so use it when the quiz row's own points field is empty.
+ */
+async function calculateQuizTotalPoints(
+  tq: ReturnType<typeof createTenantQuery>,
+  quizId: string
+): Promise<number> {
+  const { data: questions } = await tq
+    .from('questions')
+    .select('points')
+    .eq('quiz_id', quizId);
+  if (!questions) return 0;
+  return (questions as Array<{ points: number | null }>).reduce(
+    (sum, q) => sum + Number(q.points ?? 0),
+    0
+  );
+}
+
+/**
+ * Find every quiz in this course that has at least one graded attempt
+ * but no matching course_grade_items row, and create the missing row
+ * via syncAssessmentToGradebook. After this runs the per-attempt sync
+ * loop below picks up everything.
+ */
+async function backfillMissingQuizGradeItems(
+  tq: ReturnType<typeof createTenantQuery>,
+  courseId: string
+): Promise<{ created: number; skippedNoPoints: string[] }> {
+  // 1. Quizzes whose course_id matches the target.
+  const { data: courseQuizzes } = await tq
+    .from('quizzes')
+    .select('id, title, course_id, lesson_id, points, due_date')
+    .eq('course_id', courseId);
+
+  // 2. Quizzes attached to lessons that belong to this course (legacy
+  //    rows where quizzes.course_id is null but lessons.course_id is set).
+  const { data: courseLessons } = await tq
+    .from('lessons')
+    .select('id')
+    .eq('course_id', courseId);
+  const lessonIds = (courseLessons ?? []).map((l: { id: string }) => l.id);
+
+  const { data: lessonQuizzes } =
+    lessonIds.length > 0
+      ? await tq
+          .from('quizzes')
+          .select('id, title, course_id, lesson_id, points, due_date')
+          .in('lesson_id', lessonIds)
+      : { data: [] as QuizRow[] };
+
+  const allQuizzesById = new Map<string, QuizRow>();
+  for (const q of (courseQuizzes ?? []) as QuizRow[]) allQuizzesById.set(q.id, q);
+  for (const q of (lessonQuizzes ?? []) as QuizRow[]) allQuizzesById.set(q.id, q);
+
+  if (allQuizzesById.size === 0) return { created: 0, skippedNoPoints: [] };
+
+  const quizIds = Array.from(allQuizzesById.keys());
+
+  // 3. Existing grade items for these quizzes — anything in this set is
+  //    already covered by the main sync loop and doesn't need a backfill.
+  const { data: existingItems } = await tq
+    .from('course_grade_items')
+    .select('assessment_id')
+    .eq('course_id', courseId)
+    .eq('type', 'quiz')
+    .in('assessment_id', quizIds);
+  const haveItem = new Set(
+    (existingItems ?? []).map(
+      (i: { assessment_id: string | null }) => i.assessment_id
+    )
+  );
+
+  // 4. Quizzes that have at least one graded attempt — only those are
+  //    worth backfilling. A graded item on a quiz no one attempted
+  //    just clutters the gradebook.
+  const { data: gradedAttempts } = await tq
+    .from('quiz_attempts')
+    .select('quiz_id')
+    .in('quiz_id', quizIds)
+    .eq('status', 'graded');
+  const haveAttempts = new Set(
+    (gradedAttempts ?? []).map((a: { quiz_id: string }) => a.quiz_id)
+  );
+
+  let created = 0;
+  const skippedNoPoints: string[] = [];
+
+  for (const [quizId, quiz] of allQuizzesById) {
+    if (haveItem.has(quizId)) continue;
+    if (!haveAttempts.has(quizId)) continue;
+
+    let points = Number(quiz.points ?? 0);
+    if (points <= 0) points = await calculateQuizTotalPoints(tq, quizId);
+    if (points <= 0) {
+      // We can't honestly create a grade item with 0 max — skip and
+      // surface in the response so staff can fix the quiz.
+      skippedNoPoints.push(quiz.title || quizId);
+      continue;
+    }
+
+    try {
+      await syncAssessmentToGradebook(tq, {
+        courseId,
+        assessmentId: quizId,
+        type: 'quiz',
+        title: quiz.title || 'Quiz',
+        points,
+        dueDate: quiz.due_date,
+      });
+      created++;
+    } catch (err) {
+      console.error(`[Gradebook Sync] Failed to create grade item for quiz ${quizId}:`, err);
+    }
+  }
+
+  return { created, skippedNoPoints };
+}
 
 export async function POST(
   request: Request,
@@ -24,6 +154,13 @@ export async function POST(
     if (!isInstructor && !isAdmin) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
+
+    // First pass: backfill grade items for any quiz in this course that
+    // has graded attempts but no entry in the gradebook yet. Without
+    // this the sync loop below silently skips those quizzes — which is
+    // exactly the "the quiz was taken but the grade isn't counted"
+    // scenario.
+    const backfill = await backfillMissingQuizGradeItems(tq, courseId);
 
     // Get all activated quizzes for this course
     const { data: gradeItems, error: itemsError } = await tq
@@ -152,10 +289,22 @@ export async function POST(
       );
     }
 
+    const messageParts = [`Synced ${syncedResults.length} quiz scores`];
+    if (backfill.created > 0) {
+      messageParts.push(`backfilled ${backfill.created} missing grade item(s)`);
+    }
+    if (backfill.skippedNoPoints.length > 0) {
+      messageParts.push(
+        `skipped ${backfill.skippedNoPoints.length} quiz(zes) with 0 points`
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Synced ${syncedResults.length} quiz scores`,
-      results: syncedResults
+      message: messageParts.join('; '),
+      results: syncedResults,
+      backfilled: backfill.created,
+      skippedNoPoints: backfill.skippedNoPoints,
     });
 
   } catch (e: any) {

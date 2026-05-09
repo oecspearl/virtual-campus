@@ -180,6 +180,35 @@ describe('drop rules', () => {
   });
 });
 
+describe('orphan items (null category_id)', () => {
+  it('attaches orphan items to the single root when one exists', () => {
+    const result = computeCourseGrade({
+      categories: [cat({ id: 'root', aggregation: 'mean' })],
+      items: [
+        item({ id: 'in', category_id: 'root' }),
+        // Newly-synced item that hasn't been categorised yet.
+        item({ id: 'orphan', category_id: null as unknown as string }),
+      ],
+      grades: [grade('in', 80), grade('orphan', 100)],
+    });
+    // Both should count: mean(80, 100) = 90
+    expect(result.percentage).toBeCloseTo(90);
+  });
+
+  it('falls through to the synthetic root when there are no categories at all', () => {
+    const result = computeCourseGrade({
+      categories: [],
+      items: [
+        item({ id: 'a', category_id: null as unknown as string, points: 50 }),
+        item({ id: 'b', category_id: null as unknown as string, points: 50 }),
+      ],
+      grades: [grade('a', 40, 50), grade('b', 30, 50)],
+    });
+    // sum: 70/100 = 70
+    expect(result.percentage).toBeCloseTo(70);
+  });
+});
+
 describe('hierarchical categories', () => {
   it('rolls sub-categories up through the parent', () => {
     const result = computeCourseGrade({

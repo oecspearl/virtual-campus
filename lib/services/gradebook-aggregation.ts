@@ -249,10 +249,25 @@ function indexInputs(
   for (const list of childCategories.values()) {
     list.sort((a, b) => a.sort_order - b.sort_order);
   }
+
+  // When a course has categories defined, items with NULL category_id
+  // (e.g. just-synced quiz/assignment rows that haven't been organised
+  // into the tree yet) would otherwise be dropped from the calculation
+  // — `rollupCategory` only ever looks at items keyed by an existing
+  // category_id. Defensively re-bucket those orphans under the single
+  // root category so they still count toward the rolled-up grade.
+  // When there are zero or multiple roots, the existing
+  // synthetic-root / multi-root logic in computeCourseGrade handles it.
+  const rootCats = childCategories.get(null) ?? [];
+  const singleRootId =
+    rootCats.length === 1 && !rootCats[0].hidden ? rootCats[0].id : null;
+
   for (const i of items) {
-    const list = childItems.get(i.category_id) ?? [];
+    const bucketKey =
+      i.category_id ?? (singleRootId ? singleRootId : null);
+    const list = childItems.get(bucketKey) ?? [];
     list.push(i);
-    childItems.set(i.category_id, list);
+    childItems.set(bucketKey, list);
   }
   for (const g of grades) gradesByItem.set(g.grade_item_id, g);
 

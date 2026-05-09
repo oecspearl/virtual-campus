@@ -64,13 +64,38 @@ export async function syncAssessmentToGradebook(
 
   if (existing) return { synced: false, alreadyExists: true };
 
+  const categoryName = input.category ?? DEFAULT_CATEGORY[input.type];
+
+  // If the course has hierarchical categories (managed by the
+  // categories admin page), try to find one whose name matches and
+  // attach the new item to it. This way the gradebook engine includes
+  // the item in the rolled-up total — without this hint, it lands
+  // with category_id = null and is rebucketed defensively to the
+  // root, which works but loses the per-category breakdown.
+  let categoryId: string | null = null;
+  try {
+    const { data: matchingCat } = await tq
+      .from('course_grade_categories')
+      .select('id')
+      .eq('course_id', input.courseId)
+      .ilike('name', categoryName)
+      .limit(1)
+      .maybeSingle();
+    if (matchingCat?.id) categoryId = matchingCat.id;
+  } catch (e) {
+    // course_grade_categories may not exist yet (pre-migration 047)
+    // — that's fine, fall through with categoryId still null.
+    void e;
+  }
+
   const now = new Date().toISOString();
   const { error } = await tq.from('course_grade_items').insert([
     {
       course_id: input.courseId,
       title: input.title,
       type: input.type,
-      category: input.category ?? DEFAULT_CATEGORY[input.type],
+      category: categoryName,
+      category_id: categoryId,
       points: input.points,
       assessment_id: input.assessmentId,
       due_date: input.dueDate ?? null,

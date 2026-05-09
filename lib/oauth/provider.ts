@@ -114,27 +114,32 @@ export async function getUserInfo(
   // Prefer the ID token over the userinfo endpoint: it's signed, has more
   // claims, and Microsoft Graph's /oidc/userinfo can return a sparse
   // response depending on the app's API permissions.
+  //
+  // Audience mismatch is fatal: it means the IdP issued this token for a
+  // different application than what we have configured. Falling through to
+  // userinfo would mask the misconfiguration and silently provision users
+  // with email-prefix names (Graph userinfo is sparse without extra scopes).
   if (tokens.id_token) {
-    try {
-      const parts = tokens.id_token.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(
-          Buffer.from(parts[1], 'base64url').toString(),
-        );
+    const parts = tokens.id_token.split('.');
+    if (parts.length === 3) {
+      let payload: Record<string, unknown> | null = null;
+      try {
+        payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+      } catch {
+        payload = null;
+      }
 
-        // Validate essential OIDC claims
+      if (payload) {
         if (payload.aud && payload.aud !== config.client_id) {
-          console.error('OAuth: ID token audience mismatch');
-          // Fall through to userinfo endpoint
-        } else {
-          const claims = extractClaims(payload);
-          if (claims.sub && claims.email) {
-            return claims;
-          }
+          throw new Error(
+            `ID token audience mismatch: expected ${config.client_id}, got ${String(payload.aud)}`,
+          );
+        }
+        const claims = extractClaims(payload);
+        if (claims.sub && claims.email) {
+          return claims;
         }
       }
-    } catch {
-      // Fall through to userinfo endpoint
     }
   }
 
@@ -164,6 +169,13 @@ function extractClaims(payload: Record<string, unknown>): OAuthUserInfo {
   const str = (v: unknown): string | undefined =>
     typeof v === 'string' && v ? v : undefined;
 
+  const given = str(payload.given_name);
+  const family = str(payload.family_name);
+  // If the IdP omits `name` but returns given_name + family_name (some
+  // generic OIDC providers do), assemble a display name so we don't drop
+  // the surname downstream.
+  const composed = [given, family].filter(Boolean).join(' ') || undefined;
+
   return {
     sub: str(payload.sub) || str(payload.oid) || '',
     email:
@@ -171,9 +183,9 @@ function extractClaims(payload: Record<string, unknown>): OAuthUserInfo {
       str(payload.preferred_username) ||
       str(payload.upn) ||
       '',
-    name: str(payload.name),
-    given_name: str(payload.given_name),
-    family_name: str(payload.family_name),
+    name: str(payload.name) || composed,
+    given_name: given,
+    family_name: family,
     picture: str(payload.picture),
   };
 }

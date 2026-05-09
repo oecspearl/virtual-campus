@@ -38,7 +38,13 @@ export async function createOAuthSession(
   const { userInfo, tenantId, providerType, defaultRole = 'student', autoProvisionUsers = true } = options;
   const serviceSupabase = createServiceSupabaseClient();
   const email = userInfo.email.toLowerCase();
-  const name = userInfo.name || userInfo.given_name || email.split('@')[0];
+  // Track whether the name actually came from the IdP (vs. our email-prefix
+  // fallback). We only propagate IdP-sourced names to existing users so a
+  // missing name claim doesn't overwrite a manually edited display name with
+  // an email prefix on the user's next login.
+  const idpName = userInfo.name || userInfo.given_name || userInfo.family_name;
+  const name = idpName || email.split('@')[0];
+  const picture = userInfo.picture;
   const sub = userInfo.sub;
 
   if (!sub) {
@@ -118,23 +124,66 @@ export async function createOAuthSession(
       return { success: false, error: 'Failed to provision user profile' };
     }
 
-    // Backfill empty name on existing rows. A users row matched in step 2
-    // (by email) may have been created earlier with an empty name — e.g.
-    // by a password signup that didn't capture full_name, or by an earlier
-    // OAuth login where the ID-token path was skipped and Graph's userinfo
-    // returned a sparse response. Without this update those users keep
-    // showing as "Unknown User" in /admin/users/manage even after a
-    // successful OAuth sign-in.
-    if (
-      !provisionResult.created &&
-      !provisionResult.userProfile.name &&
-      name
-    ) {
-      await serviceSupabase
-        .from('users')
-        .update({ name, updated_at: new Date().toISOString() })
-        .eq('id', userId)
-        .eq('name', '');
+    // Refresh the name on existing rows when the IdP gave us a real one.
+    //   - Empty current name: always backfill (legacy "Unknown User" rows
+    //     from earlier provisioning paths that didn't capture full_name).
+    //   - Non-empty current name: only overwrite if the IdP returned a
+    //     value AND it differs. We never overwrite with the email-prefix
+    //     fallback, so a sparse Graph userinfo response can't clobber a
+    //     manually edited display name.
+    if (!provisionResult.created) {
+      const currentName = provisionResult.userProfile.name || '';
+      const shouldBackfillEmpty = !currentName && name;
+      const shouldRefreshFromIdp = idpName && idpName !== currentName;
+      if (shouldBackfillEmpty || shouldRefreshFromIdp) {
+        await serviceSupabase
+          .from('users')
+          .update({
+            name: shouldRefreshFromIdp ? idpName : name,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId);
+      }
+    }
+
+    // Persist the IdP-supplied avatar (`picture` claim) to user_profiles.
+    // We only fill in an empty avatar — never overwrite a user-uploaded one.
+    // user_profiles is upserted lazily by /api/auth/profile, so we use the
+    // same upsert shape here to avoid a missing-row edge case on first login.
+    if (picture) {
+      const { data: existingProfile } = await serviceSupabase
+        .from('user_profiles')
+        .select('avatar')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        await serviceSupabase
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            tenant_id: tenantId,
+            avatar: picture,
+            bio: '',
+            learning_preferences: {},
+          });
+      } else if (!existingProfile.avatar) {
+        await serviceSupabase
+          .from('user_profiles')
+          .update({ avatar: picture, updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+      }
+    }
+
+    // Keep Supabase auth user_metadata.full_name in sync. createUser sets it
+    // on the JIT path, but users matched by email (path 2) had their auth
+    // record created earlier (e.g. password signup) without full_name —
+    // anything reading session.user.user_metadata.full_name directly would
+    // see an empty value otherwise.
+    if (idpName) {
+      await serviceSupabase.auth.admin.updateUserById(userId, {
+        user_metadata: { full_name: idpName, oauth_provider: providerType },
+      });
     }
 
     // Apply defaultRole on first-time provision if it differs from the default.

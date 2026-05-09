@@ -3,6 +3,7 @@ import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/s
 import { authenticateUser, authorizeUser, createAuthResponse, checkAuthProfileRateLimit, checkRateLimit, getRateLimitHeaders } from "@/lib/api-auth";
 import { addSecurityHeaders, sanitizeInput, createSecureResponse } from "@/lib/security";
 import { isValidHttpUrl } from "@/lib/validations";
+import { createLogger } from "@/lib/logger";
 
 interface UserProfileDoc {
   email: string;
@@ -13,13 +14,14 @@ interface UserProfileDoc {
 }
 
 export async function GET(request: Request) {
+  const log = createLogger('api/auth/profile', request as any);
   try {
     // Rate limiting (more lenient for auth profile)
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
     if (!checkAuthProfileRateLimit(`profile-get-${clientIP}`)) {
       return NextResponse.json(
-        { error: "Too many requests" }, 
-        { 
+        { error: "Too many requests" },
+        {
           status: 429,
           headers: getRateLimitHeaders(`profile-get-${clientIP}`, 50, 60000)
         }
@@ -29,19 +31,16 @@ export async function GET(request: Request) {
     // Authenticate user
     const authResult = await authenticateUser(request as any);
     if (!authResult.success) {
-      console.error('Authentication failed:', authResult.error);
-      // Return a more specific error for debugging
+      log.warn('Authentication failed', { reason: authResult.error });
       return NextResponse.json(
-        { error: `Authentication failed: ${authResult.error}` }, 
+        { error: `Authentication failed: ${authResult.error}` },
         { status: authResult.status || 401 }
       );
     }
 
     const { user, userProfile } = authResult;
-    const supabase = await createServerSupabaseClient();
 
     // Fetch user_profiles separately using service role to bypass RLS
-    console.log("Fetching user_profiles for user_id:", user.id);
     const serviceSupabase = createServiceSupabaseClient();
     let { data: profileData, error: profileError } = await serviceSupabase
       .from("user_profiles")
@@ -49,17 +48,13 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    console.log("User profiles fetch result:", { profileData, profileError });
-
     if (profileError) {
-      console.error("Profile fetch error:", profileError);
+      log.error('user_profiles fetch failed', { userId: user.id }, profileError);
       // Continue even if user_profiles fetch fails
     }
 
     // If no user_profiles record exists, create one
     if (!profileData && !profileError) {
-      console.log("No user_profiles record found, creating one...");
-      
       const defaultProfile = {
         user_id: user.id,
         tenant_id: userProfile.tenant_id || '00000000-0000-0000-0000-000000000001',
@@ -69,7 +64,6 @@ export async function GET(request: Request) {
         updated_at: new Date().toISOString(),
       };
 
-      // Use service role client for user_profiles operations to bypass RLS
       const { data: createdProfile, error: createProfileError } = await serviceSupabase
         .from("user_profiles")
         .insert([defaultProfile])
@@ -77,9 +71,8 @@ export async function GET(request: Request) {
         .single();
 
       if (createProfileError) {
-        console.error("Failed to create user_profiles record:", createProfileError);
+        log.error('user_profiles create failed', { userId: user.id }, createProfileError);
       } else {
-        console.log("Created user_profiles record:", createdProfile);
         profileData = createdProfile;
       }
     }
@@ -94,19 +87,20 @@ export async function GET(request: Request) {
 
     return createSecureResponse(mergedProfile);
   } catch (error) {
-    console.error("Profile GET error:", error);
+    log.error('GET handler crashed', {}, error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
+  const log = createLogger('api/auth/profile', request as any);
   try {
     // Rate limiting (stricter for updates)
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
     if (!checkRateLimit(`profile-put-${clientIP}`, 10, 60000)) {
       return NextResponse.json(
-        { error: "Too many requests" }, 
-        { 
+        { error: "Too many requests" },
+        {
           status: 429,
           headers: getRateLimitHeaders(`profile-put-${clientIP}`, 10, 60000)
         }
@@ -116,10 +110,9 @@ export async function PUT(request: Request) {
     // Authenticate user
     const authResult = await authenticateUser(request as any);
     if (!authResult.success) {
-      console.error('Authentication failed:', authResult.error);
-      // Return a more specific error for debugging
+      log.warn('Authentication failed', { reason: authResult.error });
       return NextResponse.json(
-        { error: `Authentication failed: ${authResult.error}` }, 
+        { error: `Authentication failed: ${authResult.error}` },
         { status: authResult.status || 401 }
       );
     }
@@ -132,7 +125,7 @@ export async function PUT(request: Request) {
     try {
       body = await request.json();
     } catch (parseError) {
-      console.error('Profile PUT: Invalid JSON', parseError);
+      log.warn('Invalid JSON body', { error: String(parseError) });
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
@@ -166,7 +159,7 @@ export async function PUT(request: Request) {
       .single();
 
     if (userError) {
-      console.error("User profile update error:", userError);
+      log.error('users update failed', { userId: user.id }, userError);
       return NextResponse.json({ error: "Failed to update user profile" }, { status: 500 });
     }
 
@@ -185,8 +178,6 @@ export async function PUT(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    console.log("Attempting to upsert user_profiles with payload:", profilePayload);
-    
     // Use service role client for user_profiles operations to bypass RLS
     const serviceSupabase = createServiceSupabaseClient();
     const { data: profileResult, error: profileError } = await serviceSupabase
@@ -195,25 +186,20 @@ export async function PUT(request: Request) {
       .select("*")
       .single();
 
-    console.log("User profiles upsert result:", { profileResult, profileError });
-
     let finalProfileResult = profileResult;
 
     if (profileError) {
-      console.error("User profiles update error:", profileError);
-      console.log("Attempting to create new user_profiles record...");
-      
+      log.warn('user_profiles upsert failed, retrying as insert', { userId: user.id, error: profileError.message });
+
       // If user_profiles update fails, try to create
       const { data: createData, error: createError } = await serviceSupabase
         .from("user_profiles")
         .insert(profilePayload)
         .select("*")
         .single();
-      
-      console.log("User profiles create result:", { createData, createError });
-      
+
       if (createError) {
-        console.error("User profiles create error:", createError);
+        log.error('user_profiles insert fallback failed', { userId: user.id }, createError);
         // Return user data with empty profile fields if both fail
         return NextResponse.json({
           ...userResult,
@@ -236,7 +222,7 @@ export async function PUT(request: Request) {
 
     return createSecureResponse(mergedResult);
   } catch (error) {
-    console.error("Profile PUT error:", error);
+    log.error('PUT handler crashed', {}, error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import MetricCard from '@/components/analytics/MetricCard';
-import LineChart from '@/components/analytics/LineChart';
-import BarChart from '@/components/analytics/BarChart';
-import PieChart from '@/components/analytics/PieChart';
+import MetricCard from '@/app/components/analytics/MetricCard';
+import LineChart from '@/app/components/analytics/LineChart';
+import BarChart from '@/app/components/analytics/BarChart';
+import PieChart from '@/app/components/analytics/PieChart';
 import LoadingIndicator, { InlineLoader } from '@/app/components/ui/LoadingIndicator';
 
 interface MetricData {

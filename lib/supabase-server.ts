@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+// `Database` types are generated in `lib/database.types.ts` and re-exported
+// from `lib/supabase.ts`. They're available for opt-in typed access at
+// individual call sites — `createClient<Database>(url, key)` — but not yet
+// wired into the default clients here, because flipping the generic on
+// surfaces a long tail of pre-existing type-strict issues across the
+// codebase that are tracked separately.
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''

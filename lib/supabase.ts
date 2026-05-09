@@ -21,87 +21,9 @@ export function getSupabaseClient() {
 // For backward compatibility, export the client
 export const supabase = getSupabaseClient()
 
-// Database types (you can generate these with: npx supabase gen types typescript --project-id YOUR_PROJECT_ID)
-export type Database = {
-  public: {
-    Tables: {
-      users: {
-        Row: {
-          id: string
-          email: string
-          name: string
-          role: 'super_admin' | 'admin' | 'instructor' | 'curriculum_designer' | 'student' | 'parent'
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          email: string
-          name: string
-          role: 'super_admin' | 'admin' | 'instructor' | 'curriculum_designer' | 'student' | 'parent'
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          name?: string
-          role?: 'super_admin' | 'admin' | 'instructor' | 'curriculum_designer' | 'student' | 'parent'
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      courses: {
-        Row: {
-          id: string
-          title: string
-          description: string | null
-          thumbnail: string | null
-          grade_level: string | null
-          subject_area: string | null
-          difficulty: 'beginner' | 'intermediate' | 'advanced'
-          syllabus: string | null
-          published: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          title: string
-          description?: string | null
-          thumbnail?: string | null
-          grade_level?: string | null
-          subject_area?: string | null
-          difficulty?: 'beginner' | 'intermediate' | 'advanced'
-          syllabus?: string | null
-          published?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          title?: string
-          description?: string | null
-          thumbnail?: string | null
-          grade_level?: string | null
-          subject_area?: string | null
-          difficulty?: 'beginner' | 'intermediate' | 'advanced'
-          syllabus?: string | null
-          published?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      // Add more table types as needed...
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-  }
-}
+// Re-export the generated Database type so callers can opt into typed
+// access via `createClient<Database>(url, key)` at individual call sites.
+// The default clients above are intentionally untyped — wiring the
+// generic into them surfaces a long tail of pre-existing type-strict
+// issues that need their own cleanup pass.
+export type { Database, Json } from './database.types'

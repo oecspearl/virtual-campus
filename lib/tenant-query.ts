@@ -18,12 +18,16 @@ export type TenantQuery = ReturnType<typeof createTenantQuery>;
  *   const tenantId = getTenantIdFromRequest(request);
  *   const tq = createTenantQuery(tenantId);
  *   const { data } = await tq.from('courses').select('*');
- *   // Automatically filtered to tenant
  *
- * For stricter row typing, pass a row shape generic on individual methods:
- *   type Course = { id: string; title: string; tenant_id: string };
- *   const { data } = await tq.from('courses').select<Course>('*');
- *   // data is now Course[] | null
+ * The wrapper preserves the table-name generic so callers benefit from
+ * autocomplete on table names. Method return types are intentionally
+ * `any` because not every Database table has a `tenant_id` column —
+ * the runtime `.eq('tenant_id', ...)` is correct for tenant-scoped
+ * tables, but TypeScript can't prove that across the full schema.
+ *
+ * For typed access, opt in at the call site by typing the client
+ * yourself: `createClient<Database>(...)` using the generated `Database`
+ * type re-exported from `@/lib/supabase`.
  */
 export function createTenantQuery(tenantId: string) {
   if (!tenantId) {
@@ -45,6 +49,7 @@ export function createTenantQuery(tenantId: string) {
     /**
      * Raw service client for operations that don't need tenant scoping
      * (e.g., auth.admin.createUser, cross-tenant lookups by super_admin).
+     * Fully typed against the generated Database schema.
      */
     raw: serviceSupabase,
 
@@ -54,7 +59,6 @@ export function createTenantQuery(tenantId: string) {
 }
 
 class TenantFilteredQuery {
-  // Client is strongly typed — callers get autocomplete on Supabase methods.
   private supabase: ServiceClient;
   private table: string;
   private tenantId: string;
@@ -67,10 +71,6 @@ class TenantFilteredQuery {
 
   /**
    * SELECT with automatic tenant_id filter.
-   * Returns a Supabase query builder with .eq('tenant_id', tenantId) applied.
-   *
-   * The return is typed `any` by default so existing callers don't need a
-   * row shape. Pass a generic parameter for stricter typing.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   select<_T = any>(

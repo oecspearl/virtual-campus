@@ -28,6 +28,39 @@
     },
     "app/api/courses/restore/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/reports/generate/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/reports/custom/[id]/execute/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/analytics/export/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/crm/campaigns/[id]/send/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/plagiarism/check/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/certificates/generate/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/admin/users/[id]/progress/export/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/admin/tenants/[id]/export/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/admin/users/report/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/surveys/[id]/analytics/export/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/courses/[id]/gradebook/export/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

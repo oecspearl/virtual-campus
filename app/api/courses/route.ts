@@ -14,7 +14,29 @@ export async function GET(request: Request) {
   try {
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);
-    const authResult = await authenticateUser(request as any);
+
+    // Auth and the school/category filter fetches are independent — run them
+    // in parallel so the slowest one (rather than the sum) gates the response.
+    const authPromise = authenticateUser(request as any);
+
+    const schoolPromise: Promise<string[] | null> = schoolId
+      ? tq
+          .from('school_course_assignments')
+          .select('course_id')
+          .eq('school_id', schoolId)
+          .then(({ data }) => (data ?? []).map((a: any) => a.course_id))
+      : Promise.resolve(null);
+
+    const categoryPromise: Promise<string[] | null> = categoryId
+      ? tq
+          .from('course_category_assignments')
+          .select('course_id')
+          .eq('category_id', categoryId)
+          .then(({ data }) => (data ?? []).map((a: any) => a.course_id))
+      : Promise.resolve(null);
+
+    const [authResult, schoolFilteredCourseIds, categoryFilteredCourseIds] =
+      await Promise.all([authPromise, schoolPromise, categoryPromise]);
 
     let userRole = 'guest';
     let userId = null;
@@ -23,42 +45,6 @@ export async function GET(request: Request) {
       userRole = authResult.userProfile.role;
       userId = authResult.user.id;
     }
-
-    // Run school and category filters in parallel if needed
-    let schoolFilteredCourseIds: string[] | null = null;
-    let categoryFilteredCourseIds: string[] | null = null;
-
-    const filterPromises: Promise<void>[] = [];
-
-    if (schoolId) {
-      filterPromises.push(
-        (async () => {
-          const { data: schoolAssignments } = await tq
-            .from('school_course_assignments')
-            .select('course_id')
-            .eq('school_id', schoolId);
-          schoolFilteredCourseIds = schoolAssignments && schoolAssignments.length > 0
-            ? schoolAssignments.map(a => a.course_id)
-            : [];
-        })()
-      );
-    }
-
-    if (categoryId) {
-      filterPromises.push(
-        (async () => {
-          const { data: categoryAssignments } = await tq
-            .from('course_category_assignments')
-            .select('course_id')
-            .eq('category_id', categoryId);
-          categoryFilteredCourseIds = categoryAssignments && categoryAssignments.length > 0
-            ? categoryAssignments.map(a => a.course_id)
-            : [];
-        })()
-      );
-    }
-
-    if (filterPromises.length > 0) await Promise.all(filterPromises);
 
     // Early return if filters produced empty results
     if ((schoolId && schoolFilteredCourseIds?.length === 0) ||

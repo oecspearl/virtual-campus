@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { PRIVATE_SHORT } from '@/lib/cache-headers';
 
 /**
  * GET /api/student/bookmarks
@@ -121,10 +122,13 @@ export async function GET(request: NextRequest) {
 
     const uniqueFolders = [...new Set(folders?.map(f => f.folder).filter(Boolean))];
 
-    return NextResponse.json({
-      bookmarks: enrichedBookmarks,
-      folders: uniqueFolders,
-    });
+    return NextResponse.json(
+      {
+        bookmarks: enrichedBookmarks,
+        folders: uniqueFolders,
+      },
+      { headers: PRIVATE_SHORT },
+    );
   } catch (error) {
     console.error('Error in bookmarks GET:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

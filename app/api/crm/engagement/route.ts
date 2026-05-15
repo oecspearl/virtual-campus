@@ -3,6 +3,7 @@ import { authenticateUser } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { getEngagementTrend } from '@/lib/crm/engagement-engine';
+import { boundDateRange } from '@/lib/date-range';
 
 /**
  * GET /api/crm/engagement
@@ -22,12 +23,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const studentId = searchParams.get('student_id');
     const courseId = searchParams.get('course_id');
-    const from = searchParams.get('from');
-    const to = searchParams.get('to');
 
     if (!studentId) {
       return NextResponse.json({ error: 'student_id is required' }, { status: 400 });
     }
+
+    // Always bound the date range. Default = trailing 90 days (matches
+    // the existing .limit(90) shape — at most one score per day); cap at
+    // 365 days so a wide ?from= can't scan years of scores.
+    const range = boundDateRange(
+      searchParams.get('from'),
+      searchParams.get('to'),
+      { defaultDays: 90, maxDays: 365 },
+    );
 
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
@@ -35,16 +43,15 @@ export async function GET(request: NextRequest) {
     let query = tq
       .from('crm_engagement_scores')
       .select('*')
-      .eq('student_id', studentId);
+      .eq('student_id', studentId)
+      .gte('score_date', range.startIso)
+      .lte('score_date', range.endIso);
 
     if (courseId) {
       query = query.eq('course_id', courseId);
     } else {
       query = query.is('course_id', null);
     }
-
-    if (from) query = query.gte('score_date', from);
-    if (to) query = query.lte('score_date', to);
 
     const { data, error } = await query.order('score_date', { ascending: false }).limit(90);
 

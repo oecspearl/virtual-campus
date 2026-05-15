@@ -3,6 +3,10 @@ import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from '@/lib/rbac';
+import { boundDateRange } from '@/lib/date-range';
+
+const REPORT_MAX_DAYS = 365 * 2; // 2 years — admin reports legitimately span longer than analytics dashboards
+const REPORT_DEFAULT_DAYS = 365;
 
 export async function POST(request: NextRequest) {
   try {
@@ -112,13 +116,14 @@ async function generateUserReport(selectedFields: string[], filters: any, tq: an
     query = query.in('gender', filters.gender);
   }
   
-  if (filters.created_after) {
-    query = query.gte('created_at', filters.created_after);
-  }
-  
-  if (filters.created_before) {
-    query = query.lte('created_at', filters.created_before);
-  }
+  // Force a bounded window even when the admin omits both ends — otherwise
+  // we'd scan every user ever created. Default 365 days, hard cap 2 years.
+  const range = boundDateRange(
+    filters.created_after || null,
+    filters.created_before || null,
+    { defaultDays: REPORT_DEFAULT_DAYS, maxDays: REPORT_MAX_DAYS },
+  );
+  query = query.gte('created_at', range.startIso).lte('created_at', range.endIso);
 
   // Execute the main query
   const { data: users, error: usersError } = await query;

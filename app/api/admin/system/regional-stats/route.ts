@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
+import { boundDateRange } from '@/lib/date-range';
 
 /**
  * GET /api/admin/system/regional-stats
@@ -23,19 +24,21 @@ export async function GET(request: NextRequest) {
 
     const db = createServiceSupabaseClient();
 
-    // Optional ?since=YYYY-MM-DD&until=YYYY-MM-DD filters (ISO dates).
-    // If only one side is given, the other is unbounded.
+    // ?since=YYYY-MM-DD&until=YYYY-MM-DD filters (ISO dates). The window
+    // always has a bound now: default 365 days back from "until" if either
+    // side is omitted; hard cap at 365 days so the report never scans more
+    // than a year of cross-tenant aggregates.
     const url = new URL(request.url);
-    const sinceParam = url.searchParams.get('since');
-    const untilParam = url.searchParams.get('until');
-    const sinceIso = sinceParam ? `${sinceParam}T00:00:00Z` : null;
-    // Use end-of-day for until so the user's "until" date is inclusive.
-    const untilIso = untilParam ? `${untilParam}T23:59:59Z` : null;
+    const range = boundDateRange(
+      url.searchParams.get('since'),
+      url.searchParams.get('until'),
+      { defaultDays: 365, maxDays: 365 },
+    );
+    const sinceIso = range.startIso;
+    const untilIso = range.endIso;
 
     const applyRange = (q: any, column: string) => {
-      if (sinceIso) q = q.gte(column, sinceIso);
-      if (untilIso) q = q.lte(column, untilIso);
-      return q;
+      return q.gte(column, sinceIso).lte(column, untilIso);
     };
 
     // Tenants list isn't date-filtered — we always need the full set so the
@@ -161,7 +164,7 @@ export async function GET(request: NextRequest) {
     flows.sort((a, b) => b.record_count - a.record_count);
 
     return NextResponse.json({
-      range: { since: sinceParam, until: untilParam },
+      range: { since: range.startIso, until: range.endIso, capped: range.capped },
       totals: {
         tenants: tenants.length,
         active_shares: activeShares.length,

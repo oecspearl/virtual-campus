@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
+import { PRIVATE_SHORT } from '@/lib/cache-headers';
 
 /**
  * GET /api/shared-courses
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ courses: enrichedShares });
+    return NextResponse.json({ courses: enrichedShares }, { headers: PRIVATE_SHORT });
   } catch (error) {
     console.error('Error in shared courses listing:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

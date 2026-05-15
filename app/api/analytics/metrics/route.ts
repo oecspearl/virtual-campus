@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
+import { boundDateRange } from "@/lib/date-range";
 
 // Cache configuration (simple in-memory cache for development)
 // TODO: Replace with Redis for production
@@ -40,8 +41,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     
     const metricType = searchParams.get('type');
-    const startDate = searchParams.get('start_date') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
+    // Cap user-supplied date ranges so a wide ?start_date= can't scan years
+    // of activity_log / quiz_attempts. Default window is 30 days; hard
+    // ceiling is 365 days.
+    const range = boundDateRange(
+      searchParams.get('start_date'),
+      searchParams.get('end_date'),
+      { defaultDays: 30, maxDays: 365 },
+    );
+    const startDate = range.startIso.split('T')[0];
+    const endDate = range.endIso.split('T')[0];
     const courseId = searchParams.get('course_id');
 
     if (!metricType) {

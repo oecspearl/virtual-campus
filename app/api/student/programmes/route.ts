@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { PRIVATE_SHORT } from '@/lib/cache-headers';
 
 /**
  * GET /api/student/programmes
@@ -96,9 +97,10 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
-      programmes: programmesWithProgress.filter(Boolean)
-    });
+    return NextResponse.json(
+      { programmes: programmesWithProgress.filter(Boolean) },
+      { headers: PRIVATE_SHORT },
+    );
   } catch (error) {
     console.error('Student programmes GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { PRIVATE_SHORT } from '@/lib/cache-headers';
 
 /**
  * GET /api/learning-paths
@@ -103,10 +104,10 @@ export async function GET(request: NextRequest) {
         return { ...path, enrollment: null };
       });
 
-      return NextResponse.json({ paths: pathsWithProgress });
+      return NextResponse.json({ paths: pathsWithProgress }, { headers: PRIVATE_SHORT });
     }
 
-    return NextResponse.json({ paths: enrichedPaths || [] });
+    return NextResponse.json({ paths: enrichedPaths || [] }, { headers: PRIVATE_SHORT });
   } catch (error) {
     console.error('Error in learning paths GET:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

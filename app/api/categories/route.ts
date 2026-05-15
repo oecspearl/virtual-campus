@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
+import { CACHE_MEDIUM } from '@/lib/cache-headers';
 
 /**
  * GET /api/categories
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     // Return flat list or hierarchical structure
     if (flat) {
-      return NextResponse.json({ categories: categoriesWithCounts });
+      return NextResponse.json({ categories: categoriesWithCounts }, { headers: CACHE_MEDIUM });
     }
 
     // Build hierarchy
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ categories: rootCategories });
+    return NextResponse.json({ categories: rootCategories }, { headers: CACHE_MEDIUM });
   } catch (error) {
     console.error('Categories GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

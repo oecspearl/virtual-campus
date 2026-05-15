@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
+import { PRIVATE_MEDIUM } from '@/lib/cache-headers';
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ settings: settingsObj });
+    return NextResponse.json({ settings: settingsObj }, { headers: PRIVATE_MEDIUM });
   } catch (error) {
     console.error('Branding settings GET error:', error);
     // Return defaults on error

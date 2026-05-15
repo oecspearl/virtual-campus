@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { PRIVATE_SHORT } from '@/lib/cache-headers';
 
 /**
  * GET /api/student/calendar
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
     }
 
-    return NextResponse.json({ events: events || [] });
+    return NextResponse.json({ events: events || [] }, { headers: PRIVATE_SHORT });
   } catch (error) {
     console.error('Error in calendar GET:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

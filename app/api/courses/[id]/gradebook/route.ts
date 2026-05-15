@@ -5,6 +5,9 @@ import { hasRole } from "@/lib/rbac";
 import { getAllEnrolledStudentIds } from "@/lib/enrollment-check";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
+import { createLogger, logger } from "@/lib/logger";
+
+const GRADEBOOK_SOURCE = 'api/courses/[id]/gradebook';
 
 // Explicit column lists for the gradebook aggregation. UI consumers
 // (StreamlinedGradebook, StudentGradebook, CourseGradebook) only render
@@ -29,7 +32,7 @@ async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<
     .eq("quiz_id", quizId);
   
   if (error || !questions) {
-    console.error('Failed to fetch questions for quiz points calculation:', error);
+    logger.error('Failed to fetch questions for quiz points calculation', { source: GRADEBOOK_SOURCE, quizId }, error);
     return 0;
   }
   
@@ -42,6 +45,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger(GRADEBOOK_SOURCE, request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -55,18 +59,8 @@ export async function GET(
     const isAdmin = hasRole(user.role, ["admin", "super_admin", "curriculum_designer"]);
     const isEnrolled = await checkEnrollment(supabase, user.id, courseId);
 
-    // Log access check for debugging
-    console.log('[Gradebook API] Access check:', {
-      userId: user.id,
-      courseId,
-      isInstructor,
-      isAdmin,
-      isEnrolled,
-      userRole: user.role
-    });
-
     if (!isInstructor && !isAdmin && !isEnrolled) {
-      console.error('[Gradebook API] Access denied for user:', user.id, 'course:', courseId);
+      log.warn('Access denied', { userId: user.id, courseId, isInstructor, isAdmin, isEnrolled, userRole: user.role });
       return NextResponse.json({ 
         error: "Access denied. You must be enrolled in this course, be an instructor, or be an administrator to view the gradebook.",
         details: {
@@ -123,42 +117,36 @@ export async function GET(
 
     // If is_active column doesn't exist or table doesn't exist, try fallback approaches
     if (itemsError) {
-      console.log('Grade items query failed, trying fallback approaches:', itemsError);
-      
+      log.warn('Grade items query failed, trying fallback approaches', { courseId, code: itemsError.code });
+
       // Try 1: Get all items without is_active filter, then filter manually
       const fallback1 = await clientToUse
         .from("course_grade_items")
         .select("*")
         .eq("course_id", courseId)
         .order("created_at", { ascending: true });
-      
+
       if (!fallback1.error && fallback1.data && fallback1.data.length > 0) {
-        console.log('Fallback 1 successful: found items without is_active filter');
         gradeItems = fallback1.data;
         itemsError = null;
       } else {
-        console.log('Fallback 1 failed:', fallback1.error);
-        
         // Try 2: Check if table exists at all
         const tableCheck = await clientToUse
           .from("course_grade_items")
           .select("id")
           .limit(1);
-        
+
+        // Either way (table missing or empty), treat as empty rather than 500.
+        gradeItems = [];
+        itemsError = null;
         if (tableCheck.error) {
-          console.log('Table does not exist or has no data:', tableCheck.error);
-          gradeItems = [];
-          itemsError = null; // Don't treat this as an error, just empty result
-        } else {
-          console.log('Table exists but no items found for this course');
-          gradeItems = [];
-          itemsError = null;
+          log.warn('course_grade_items table not accessible', { courseId, code: tableCheck.error.code });
         }
       }
     }
 
     if (itemsError) {
-      console.error('Grade items fetch error:', itemsError);
+      log.error('Grade items fetch error', { courseId }, itemsError);
       return NextResponse.json({ error: "Failed to fetch grade items" }, { status: 500 });
     }
 
@@ -182,7 +170,6 @@ export async function GET(
             
             // Only update if calculated points are different and greater than 0
             if (calculatedPoints > 0 && currentPoints !== calculatedPoints) {
-              console.log(`Updating grade item ${item.id} points from ${currentPoints} to ${calculatedPoints} for quiz ${item.assessment_id}`);
               const { error: updateError } = await clientToUse
                 .from("course_grade_items")
                 .update({ points: calculatedPoints, updated_at: new Date().toISOString() })
@@ -221,10 +208,9 @@ export async function GET(
                   }
 
                   didRescale = true;
-                  console.log(`Updated ${gradeUpdates.length} existing grades for grade item ${item.id} with new max_score ${calculatedPoints}`);
                 }
               } else {
-                console.error(`Failed to update grade item ${item.id}:`, updateError);
+                log.error('Failed to update grade item', { gradeItemId: item.id }, updateError);
               }
             }
           });
@@ -238,7 +224,7 @@ export async function GET(
             const tq = createTenantQuery(tenantId);
             await recomputeCourseGradeSummariesForCourse(tq, courseId);
           } catch (recomputeErr) {
-            console.error('Grade summary recompute failed after rescale:', recomputeErr);
+            log.error('Grade summary recompute failed after rescale', { courseId }, recomputeErr);
           }
         }
 
@@ -275,11 +261,10 @@ export async function GET(
           .in("id", quizIds);
 
         if (quizQueryError) {
-          console.error('[Gradebook API] Quiz existence check failed:', quizQueryError);
+          log.error('Quiz existence check failed', { courseId }, quizQueryError);
           quizQueryFailed = true;
         } else if (existingQuizzes) {
           existingQuizzes.forEach(q => existingQuizIds.add(q.id));
-          console.log('[Gradebook API] Found', existingQuizzes.length, 'existing quizzes out of', quizIds.length, 'grade items');
         }
       }
 
@@ -290,11 +275,10 @@ export async function GET(
           .in("id", assignmentIds);
 
         if (assignmentQueryError) {
-          console.error('[Gradebook API] Assignment existence check failed:', assignmentQueryError);
+          log.error('Assignment existence check failed', { courseId }, assignmentQueryError);
           assignmentQueryFailed = true;
         } else if (existingAssignments) {
           existingAssignments.forEach(a => existingAssignmentIds.add(a.id));
-          console.log('[Gradebook API] Found', existingAssignments.length, 'existing assignments out of', assignmentIds.length, 'grade items');
         }
       }
 
@@ -314,11 +298,10 @@ export async function GET(
           .in("id", discussionIds);
 
         if (discussionQueryError) {
-          console.error('[Gradebook API] Discussion existence check failed:', discussionQueryError);
+          log.error('Discussion existence check failed', { courseId }, discussionQueryError);
           discussionQueryFailed = true;
         } else if (existingDiscussions) {
           existingDiscussions.forEach(d => existingDiscussionIds.add(d.id));
-          console.log('[Gradebook API] Found', existingDiscussions.length, 'existing discussions out of', discussionIds.length, 'grade items');
         }
       }
 
@@ -349,7 +332,7 @@ export async function GET(
       });
 
       if (gradeItems.length !== originalCount) {
-        console.log('[Gradebook API] Filtered out', originalCount - gradeItems.length, 'orphaned grade items');
+        log.info('Filtered out orphaned grade items', { courseId, removed: originalCount - gradeItems.length });
       }
     }
 
@@ -629,7 +612,7 @@ export async function GET(
             }
           }
         } else if (insertError) {
-          console.error('[Gradebook] Error auto-creating grade items for student:', insertError);
+          log.error('Error auto-creating grade items for student', { courseId, userId: user.id }, insertError);
           // Don't fail - just log the error
         }
       }
@@ -651,8 +634,8 @@ export async function GET(
       if (!statsError && statsData && statsData.length > 0) {
         stats = statsData[0];
       }
-    } catch (error) {
-      console.log('Stats function not available, using fallback calculation');
+    } catch {
+      // Stats function not available, using fallback calculation
       // Fallback calculation if function doesn't exist
       stats = {
         total_students: students.length,
@@ -682,7 +665,7 @@ export async function GET(
     });
 
   } catch (e: any) {
-    console.error('Course gradebook GET API error:', e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -714,13 +697,13 @@ async function checkEnrollment(supabase: any, userId: string, courseId: string):
       .maybeSingle();
     
     if (error) {
-      console.error('[Gradebook API] Enrollment check error (service client):', error);
+      logger.error('Enrollment check error (service client)', { source: GRADEBOOK_SOURCE, userId, courseId }, error);
       return false;
     }
-    
+
     return !!data;
   } catch (error) {
-    console.error('[Gradebook API] Enrollment check exception:', error);
+    logger.error('Enrollment check exception', { source: GRADEBOOK_SOURCE, userId, courseId }, error);
     return false;
   }
 }

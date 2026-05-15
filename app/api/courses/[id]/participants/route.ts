@@ -1,28 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase-server';
 import { authenticateUser } from '@/lib/api-auth';
+import { createLogger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/participants', request);
   const startTime = Date.now();
   let courseId: string | undefined;
-  
+
   try {
     const resolvedParams = await params;
     courseId = resolvedParams?.id;
-    
+
     // Validate course ID format
     if (!courseId || typeof courseId !== 'string') {
-      console.error('Invalid course ID:', { courseId, type: typeof courseId, params: resolvedParams });
-      return NextResponse.json({ 
-        error: 'Invalid course ID format' 
+      log.error('Invalid course ID', { courseId, type: typeof courseId });
+      return NextResponse.json({
+        error: 'Invalid course ID format'
       }, { status: 400 });
     }
 
-    console.log('Starting participants fetch for course:', courseId);
-    
     // Try to authenticate user; if it fails we still allow read-only fetch
     let user: any = null;
     let userProfile: any = null;
@@ -34,8 +34,8 @@ export async function GET(
         user = authResult.user;
         userProfile = authResult.userProfile;
       }
-    } catch (e) {
-      console.log('Participants GET: proceeding without auth (read-only)');
+    } catch {
+      // Proceed without auth (read-only)
     }
 
     // Initialize service client with error handling
@@ -46,8 +46,8 @@ export async function GET(
         throw new Error('Failed to create service Supabase client');
       }
     } catch (clientError) {
-      console.error('Error creating service Supabase client:', clientError);
-      return NextResponse.json({ 
+      log.error('Error creating service Supabase client', { courseId }, clientError);
+      return NextResponse.json({
         error: 'Failed to initialize database connection',
         details: process.env.NODE_ENV === 'development' ? (clientError instanceof Error ? clientError.message : 'Unknown error') : undefined
       }, { status: 500 });
@@ -55,11 +55,7 @@ export async function GET(
 
     // Allow read for anyone hitting this endpoint; UI governs management actions client-side
 
-    console.log('User has access, fetching participants...');
-
     // Get course participants with enhanced columns using service client (bypass RLS)
-    console.log('Fetching participants with enhanced columns for course:', courseId);
-    
     // First try with all columns, if that fails, try with just basic columns
     let participants, participantsError;
     try {
@@ -85,36 +81,33 @@ export async function GET(
         `)
         .eq('course_id', courseId)
         .order('enrolled_at', { ascending: false });
-      
+
       participants = result.data;
       participantsError = result.error;
-      
-      // If we got an error, try a simpler query to see if it's a column issue
+
+      // If we got a column error, retry with a wider selector
       if (participantsError && participantsError.code === '42703') {
-        console.log('Column error detected, trying simpler query...');
         const simpleResult = await serviceSupabase
           .from('enrollments')
           .select('*')
           .eq('course_id', courseId)
           .order('enrolled_at', { ascending: false });
-        
+
         if (!simpleResult.error) {
-          console.log('Simple query succeeded, using that data');
           participants = simpleResult.data;
           participantsError = null;
         }
       }
     } catch (queryError) {
-      console.error('Exception during participants query:', queryError);
+      log.error('Exception during participants query', { courseId }, queryError);
       // Try a simple fallback query
       try {
-        console.log('Attempting fallback query with * selector...');
         const fallbackResult = await serviceSupabase
           .from('enrollments')
           .select('*')
           .eq('course_id', courseId)
           .order('enrolled_at', { ascending: false });
-        
+
         if (!fallbackResult.error) {
           participants = fallbackResult.data;
           participantsError = null;
@@ -138,22 +131,13 @@ export async function GET(
       }
     }
 
-    console.log('Basic participants query result:', {
-      count: participants?.length || 0,
-      error: participantsError,
-      errorCode: participantsError?.code,
-      errorMessage: participantsError?.message
-    });
-
     if (participantsError) {
-      console.error('Database error fetching participants:', {
-        error: participantsError,
+      log.error('Database error fetching participants', {
         courseId,
         code: participantsError.code,
-        message: participantsError.message,
-        details: participantsError.details
-      });
-      return NextResponse.json({ 
+        details: participantsError.details,
+      }, participantsError);
+      return NextResponse.json({
         error: 'Failed to fetch participants',
         details: process.env.NODE_ENV === 'development' ? participantsError.message : undefined
       }, { status: 500 });
@@ -161,21 +145,18 @@ export async function GET(
 
     // Validate participants data
     let safeParticipants = Array.isArray(participants) ? participants : [];
-    console.log(`Found ${safeParticipants.length} participants for course ${courseId}`);
-    
+
     // Enrich participants with user data if denormalized fields are missing
     const participantsNeedingEnrichment = safeParticipants.filter(
       p => !p.student_name || !p.student_email
     );
-    
+
     if (participantsNeedingEnrichment.length > 0) {
-      console.log(`Enriching ${participantsNeedingEnrichment.length} participants with missing user data`);
-      
       // Get user IDs that need enrichment
       const studentIds = participantsNeedingEnrichment
         .map(p => p.student_id)
         .filter((id): id is string => !!id);
-      
+
       if (studentIds.length > 0) {
         try {
           // Fetch user data from users table
@@ -183,21 +164,21 @@ export async function GET(
             .from('users')
             .select('id, name, email, role, created_at')
             .in('id', studentIds);
-          
+
           if (!usersError && users && users.length > 0) {
             // Create a map of user data by ID
             const userMap = new Map(users.map(u => [u.id, u]));
-            
+
             // Get user profiles for avatar and bio
             const { data: profiles } = await serviceSupabase
               .from('user_profiles')
               .select('user_id, bio, avatar, learning_preferences, created_at')
               .in('user_id', studentIds);
-            
+
             const profileMap = new Map(
               (profiles || []).map(p => [p.user_id, p])
             );
-            
+
             // Enrich participants with user data
             safeParticipants = safeParticipants.map(participant => {
               const user = userMap.get(participant.student_id) as any;
@@ -218,13 +199,11 @@ export async function GET(
               }
               return participant;
             });
-            
-            console.log(`Successfully enriched ${participantsNeedingEnrichment.length} participants`);
           } else if (usersError) {
-            console.error('Error fetching user data for enrichment:', usersError);
+            log.error('Error fetching user data for enrichment', { courseId, studentIds }, usersError);
           }
         } catch (enrichmentError) {
-          console.error('Exception during participant enrichment:', enrichmentError);
+          log.error('Exception during participant enrichment', { courseId }, enrichmentError);
           // Continue with participants even if enrichment fails
         }
       }
@@ -238,21 +217,19 @@ export async function GET(
         .select('id, title, description, instructor_id')
         .eq('id', courseId)
         .single();
-      
+
       course = courseResult.data;
       courseError = courseResult.error;
-      
+
       // If the detailed query fails, try a simpler query
       if (courseError) {
-        console.log('Course query with specific columns failed, trying with *...');
         const simpleCourseResult = await serviceSupabase
           .from('courses')
           .select('*')
           .eq('id', courseId)
           .single();
-        
+
         if (!simpleCourseResult.error) {
-          console.log('Simple course query succeeded');
           course = {
             id: simpleCourseResult.data.id,
             title: simpleCourseResult.data.title,
@@ -263,7 +240,7 @@ export async function GET(
         }
       }
     } catch (courseQueryError) {
-      console.error('Exception during course query:', courseQueryError);
+      log.error('Exception during course query', { courseId }, courseQueryError);
       courseError = {
         code: 'COURSE_QUERY_EXCEPTION',
         message: courseQueryError instanceof Error ? courseQueryError.message : 'Unknown course query error',
@@ -273,14 +250,12 @@ export async function GET(
 
     // If course query fails, still return participants but with minimal course info
     if (courseError) {
-      console.error('Database error fetching course:', {
-        error: courseError,
+      log.error('Database error fetching course', {
         courseId,
         code: courseError.code,
-        message: courseError.message,
-        details: courseError.details
-      });
-      
+        details: courseError.details,
+      }, courseError);
+
       // Instead of failing completely, provide minimal course info
       course = {
         id: courseId,
@@ -288,12 +263,10 @@ export async function GET(
         description: null,
         instructor_id: null
       };
-      
-      console.log('Using fallback course info due to query error');
     }
 
     if (!course) {
-      console.error('Course not found:', courseId);
+      log.warn('Course not found', { courseId });
       // Provide minimal course info instead of failing
       course = {
         id: courseId,
@@ -301,11 +274,9 @@ export async function GET(
         description: null,
         instructor_id: null
       };
-      console.log('Using minimal course info as course was not found');
     }
 
     const responseTime = Date.now() - startTime;
-    console.log(`Participants fetch completed in ${responseTime}ms for course ${courseId}`);
 
     return NextResponse.json({
       course,
@@ -318,23 +289,10 @@ export async function GET(
 
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    console.error('Course Participants API Error:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      courseId,
-      responseTime: `${responseTime}ms`,
-      timestamp: new Date().toISOString(),
-      errorType: typeof error,
-      errorConstructor: error?.constructor?.name,
-      errorDetails: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        cause: error.cause
-      } : error
-    });
-    
+    log.error('GET handler crashed', { courseId, durationMs: responseTime }, error);
+
     // Return more detailed error information for debugging
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? {
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -350,67 +308,66 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/participants', request);
   const startTime = Date.now();
   const { id: courseId } = await params;
-  
+
   // Validate course ID format
   if (!courseId || typeof courseId !== 'string') {
-    console.error('Invalid course ID for POST:', { courseId, type: typeof courseId });
-    return NextResponse.json({ 
-      error: 'Invalid course ID format' 
+    log.error('Invalid course ID for POST', { courseId, type: typeof courseId });
+    return NextResponse.json({
+      error: 'Invalid course ID format'
     }, { status: 400 });
   }
 
   try {
-    console.log('Starting add participant for course:', courseId);
-    
     // Parse and validate request body
     let requestBody;
     try {
       requestBody = await request.json();
     } catch (parseError) {
-      console.error('Invalid JSON in request body:', parseError);
-      return NextResponse.json({ 
-        error: 'Invalid JSON in request body' 
+      log.error('Invalid JSON in request body', { courseId }, parseError);
+      return NextResponse.json({
+        error: 'Invalid JSON in request body'
       }, { status: 400 });
     }
 
     const { studentEmail } = requestBody;
 
     if (!studentEmail || typeof studentEmail !== 'string') {
-      console.error('Invalid student email:', { studentEmail, type: typeof studentEmail });
-      return NextResponse.json({ 
-        error: 'Student email is required and must be a string' 
+      log.error('Invalid student email', { courseId, type: typeof studentEmail });
+      return NextResponse.json({
+        error: 'Student email is required and must be a string'
       }, { status: 400 });
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(studentEmail)) {
-      console.error('Invalid email format:', studentEmail);
-      return NextResponse.json({ 
-        error: 'Invalid email format' 
+      log.warn('Invalid email format', { courseId });
+      return NextResponse.json({
+        error: 'Invalid email format'
       }, { status: 400 });
     }
 
     // Authenticate user with timeout
     const authPromise = authenticateUser(request);
-    const authTimeout = new Promise((_, reject) => 
+    const authTimeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Authentication timeout')), 5000)
     );
-    
+
     const authResult = await Promise.race([authPromise, authTimeout]) as any;
 
     if (!authResult.success) {
-      console.error('Authentication failed for POST:', authResult.error);
+      log.warn('Authentication failed for POST', { courseId, reason: authResult.error });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { user, userProfile } = authResult;
-    
+
     // Validate user data
     if (!user || !userProfile) {
-      console.error('Invalid user data for POST:', { user: !!user, userProfile: !!userProfile });
+      log.error('Invalid user data for POST', { courseId, hasUser: !!user, hasProfile: !!userProfile });
       return NextResponse.json({ error: 'Invalid user data' }, { status: 401 });
     }
 
@@ -418,9 +375,8 @@ export async function POST(
 
     // Check if user has access to this course (admin or course instructor)
     const isAdmin = ['admin', 'super_admin', 'curriculum_designer'].includes(userProfile.role);
-    
+
     if (!isAdmin) {
-      console.log('User is not admin, checking course instructor status for POST');
       try {
         const { data: courseInstructor, error: instructorError } = await serviceSupabase
           .from('course_instructors')
@@ -430,25 +386,22 @@ export async function POST(
           .single();
 
         if (instructorError) {
-          console.error('Error checking course instructor for POST:', instructorError);
-          return NextResponse.json({ 
-            error: 'Failed to verify course access' 
+          log.error('Error checking course instructor for POST', { courseId, userId: user.id }, instructorError);
+          return NextResponse.json({
+            error: 'Failed to verify course access'
           }, { status: 500 });
         }
 
         if (!courseInstructor) {
-          console.log('Access denied for POST - user is not course instructor');
           return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }
       } catch (error) {
-        console.error('Course instructor check failed for POST:', error);
-        return NextResponse.json({ 
-          error: 'Failed to verify course access' 
+        log.error('Course instructor check failed for POST', { courseId, userId: user.id }, error);
+        return NextResponse.json({
+          error: 'Failed to verify course access'
         }, { status: 500 });
       }
     }
-
-    console.log('User has access, looking up student by email:', studentEmail);
 
     // Find user by email with detailed error handling
     // Use service client to bypass RLS on users table (prevents infinite recursion)
@@ -459,34 +412,24 @@ export async function POST(
       .single();
 
     if (studentError) {
-      console.error('Database error finding student:', {
-        error: studentError,
-        studentEmail,
-        courseId,
-        code: studentError.code,
-        message: studentError.message
-      });
-      
+      // PGRST116 is "no rows found" — expected when the email isn't a known user
       if (studentError.code === 'PGRST116') {
-        return NextResponse.json({ 
-          error: 'Student not found. Please make sure the student has an account in the system.' 
+        return NextResponse.json({
+          error: 'Student not found. Please make sure the student has an account in the system.'
         }, { status: 404 });
       }
-      
-      return NextResponse.json({ 
+      log.error('Database error finding student', { courseId, code: studentError.code }, studentError);
+      return NextResponse.json({
         error: 'Failed to lookup student',
         details: process.env.NODE_ENV === 'development' ? studentError.message : undefined
       }, { status: 500 });
     }
 
     if (!student) {
-      console.error('Student not found:', studentEmail);
-      return NextResponse.json({ 
-        error: 'Student not found. Please make sure the student has an account in the system.' 
+      return NextResponse.json({
+        error: 'Student not found. Please make sure the student has an account in the system.'
       }, { status: 404 });
     }
-
-    console.log('Student found, checking for existing enrollment:', student.id);
 
     // Check if student is already enrolled (use service client to bypass RLS)
     const { data: existingEnrollment, error: existingError } = await serviceSupabase
@@ -497,24 +440,18 @@ export async function POST(
       .single();
 
     if (existingError && existingError.code !== 'PGRST116') {
-      console.error('Error checking existing enrollment:', existingError);
-      return NextResponse.json({ 
+      log.error('Error checking existing enrollment', { courseId, studentId: student.id }, existingError);
+      return NextResponse.json({
         error: 'Failed to check existing enrollment',
         details: process.env.NODE_ENV === 'development' ? existingError.message : undefined
       }, { status: 500 });
     }
 
     if (existingEnrollment) {
-      console.log('Student already enrolled:', { 
-        enrollmentId: existingEnrollment.id, 
-        status: existingEnrollment.status 
-      });
-      return NextResponse.json({ 
-        error: 'Student is already enrolled in this course' 
+      return NextResponse.json({
+        error: 'Student is already enrolled in this course'
       }, { status: 400 });
     }
-
-    console.log('Enrolling student:', { studentId: student.id, courseId });
 
     // Get student profile information for denormalization
     // Use service client to bypass RLS
@@ -564,34 +501,26 @@ export async function POST(
       .single();
 
     if (enrollmentError) {
-      console.error('Database error enrolling student:', {
-        error: enrollmentError,
-        enrollmentData,
+      log.error('Database error enrolling student', {
         courseId,
         studentId: student.id,
         code: enrollmentError.code,
-        message: enrollmentError.message,
-        details: enrollmentError.details
-      });
-      return NextResponse.json({ 
+        details: enrollmentError.details,
+      }, enrollmentError);
+      return NextResponse.json({
         error: 'Failed to enroll student',
         details: process.env.NODE_ENV === 'development' ? enrollmentError.message : undefined
       }, { status: 500 });
     }
 
     if (!enrollment) {
-      console.error('Enrollment creation returned no data:', enrollmentData);
-      return NextResponse.json({ 
-        error: 'Failed to create enrollment - no data returned' 
+      log.error('Enrollment creation returned no data', { courseId, studentId: student.id });
+      return NextResponse.json({
+        error: 'Failed to create enrollment - no data returned'
       }, { status: 500 });
     }
 
     const responseTime = Date.now() - startTime;
-    console.log(`Student enrolled successfully in ${responseTime}ms:`, {
-      enrollmentId: enrollment.id,
-      studentEmail,
-      courseId
-    });
 
     return NextResponse.json({
       message: 'Student enrolled successfully',
@@ -603,17 +532,11 @@ export async function POST(
 
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    console.error('Add Participant API Error:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      courseId,
-      responseTime: `${responseTime}ms`,
-      timestamp: new Date().toISOString()
-    });
-    
-    return NextResponse.json({ 
+    log.error('POST handler crashed', { courseId, durationMs: responseTime }, error);
+
+    return NextResponse.json({
       error: 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? 
+      details: process.env.NODE_ENV === 'development' ?
         (error instanceof Error ? error.message : 'Unknown error') : undefined
     }, { status: 500 });
   }

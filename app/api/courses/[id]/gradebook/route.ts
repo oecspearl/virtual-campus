@@ -6,6 +6,21 @@ import { getAllEnrolledStudentIds } from "@/lib/enrollment-check";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
 
+// Explicit column lists for the gradebook aggregation. UI consumers
+// (StreamlinedGradebook, StudentGradebook, CourseGradebook) only render
+// id / title / lesson_title / points / due_date / published / is_activated.
+// Dropping the JSONB columns (rubric, peer_review_rubric, proctor_settings)
+// and the unrelated quiz/assignment configuration shrinks the gradebook
+// response substantially — especially for courses with many activities.
+const QUIZ_GRADEBOOK_COLUMNS =
+  "id, title, lesson_id, course_id, points, due_date, published";
+const ASSIGNMENT_GRADEBOOK_COLUMNS =
+  "id, title, lesson_id, course_id, points, due_date, published";
+const DISCUSSION_GRADEBOOK_COLUMNS =
+  "id, title, course_id, is_graded, due_date, points, created_at";
+const GRADEBOOK_SETTINGS_COLUMNS =
+  "id, course_id, grading_scheme, categories, total_points, created_at, updated_at";
+
 // Helper function to calculate quiz total points from questions
 async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<number> {
   const { data: questions, error } = await supabase
@@ -355,7 +370,7 @@ export async function GET(
       // Get quizzes from lessons
       const { data: lessonQuizzes, error: lessonQuizzesError } = await clientToUse
         .from("quizzes")
-        .select("*")
+        .select(QUIZ_GRADEBOOK_COLUMNS)
         .in("lesson_id", lessonIds)
         .order("created_at", { ascending: true });
 
@@ -376,7 +391,7 @@ export async function GET(
     // Get quizzes with direct course_id
     const { data: directQuizzes, error: directQuizzesError } = await clientToUse
       .from("quizzes")
-      .select("*")
+      .select(QUIZ_GRADEBOOK_COLUMNS)
       .eq("course_id", courseId)
       .order("created_at", { ascending: true });
 
@@ -405,7 +420,7 @@ export async function GET(
       
       const { data: lessonAssignments, error: lessonAssignmentsError } = await clientToUse
         .from("assignments")
-        .select("*")
+        .select(ASSIGNMENT_GRADEBOOK_COLUMNS)
         .in("lesson_id", lessonIds)
         .order("created_at", { ascending: true });
 
@@ -426,7 +441,7 @@ export async function GET(
     // Get assignments with direct course_id
     const { data: directAssignments, error: directAssignmentsError } = await clientToUse
       .from("assignments")
-      .select("*")
+      .select(ASSIGNMENT_GRADEBOOK_COLUMNS)
       .eq("course_id", courseId)
       .order("created_at", { ascending: true });
 
@@ -453,7 +468,7 @@ export async function GET(
     let courseDiscussions: any[] = [];
     const { data: gradedDiscussions, error: discussionsError } = await clientToUse
       .from("course_discussions")
-      .select("*")
+      .select(DISCUSSION_GRADEBOOK_COLUMNS)
       .eq("course_id", courseId)
       .eq("is_graded", true)
       .order("created_at", { ascending: true });
@@ -623,7 +638,7 @@ export async function GET(
     // Get gradebook settings
     const { data: settings, error: settingsError } = await supabase
       .from("course_gradebook_settings")
-      .select("*")
+      .select(GRADEBOOK_SETTINGS_COLUMNS)
       .eq("course_id", courseId)
       .single();
 

@@ -6,8 +6,13 @@ const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverActions: {
-    bodySizeLimit: '50mb',
+  experimental: {
+    // In Next.js 15 the serverActions config moved under `experimental`.
+    // 50mb covers the largest course-material uploads that go through
+    // server actions (PDFs, video transcripts, bulk-import payloads).
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
   },
   eslint: {
     ignoreDuringBuilds: true,

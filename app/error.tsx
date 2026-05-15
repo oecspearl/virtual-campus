@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
+import * as Sentry from '@sentry/nextjs';
 
 export default function GlobalError({
   error,
@@ -12,7 +13,9 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Unhandled error:', error);
+    // Sentry.captureException is a no-op when no DSN is configured, so
+    // local/preview deploys without SENTRY_DSN don't trigger network noise.
+    Sentry.captureException(error);
   }, [error]);
 
   return (

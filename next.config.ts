@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from 'next-intl/plugin';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
@@ -107,4 +108,32 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['app-cosmic.com', '*.app-cosmic.com', 'vibecode.net', '*.vibecode.net'],
 };
 
-export default withNextIntl(nextConfig);
+// Compose plugins: next-intl wraps the base config, Sentry wraps the result.
+// withSentryConfig is a no-op at runtime when SENTRY_AUTH_TOKEN is unset;
+// it just won't upload source maps in that case.
+const composed = withNextIntl(nextConfig);
+
+export default withSentryConfig(composed, {
+  // Used for source-map upload at build time. Both must be set in the
+  // Vercel build env (Production at minimum). If SENTRY_AUTH_TOKEN is
+  // missing, withSentryConfig silently skips source-map upload and the
+  // build still succeeds — stack traces will just be obfuscated in
+  // Sentry until you add the token.
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Hide source-map upload logs unless the build is failing.
+  silent: !process.env.CI,
+
+  // Tunnel Sentry requests through /monitoring to bypass ad-blockers that
+  // block requests to *.sentry.io. Adds one route but stops you losing
+  // ~10% of client errors on adblock users.
+  tunnelRoute: '/monitoring',
+
+  // Don't send Sentry's own initial telemetry pings during build.
+  telemetry: false,
+
+  // Strip Sentry SDK debug logs from the production bundle.
+  disableLogger: true,
+});

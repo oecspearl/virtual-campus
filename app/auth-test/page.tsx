@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createBrowserSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import LoadingIndicator from '@/app/components/ui/LoadingIndicator'
 
@@ -9,7 +9,7 @@ export default function AuthTestPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const supabase = createBrowserSupabaseClient()
+  const supabase = getSupabaseClient()
   const router = useRouter()
 
   useEffect(() => {

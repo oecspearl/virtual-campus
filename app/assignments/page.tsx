@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from "next/link";
 import { Icon } from '@iconify/react';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase';
 import Breadcrumb from '@/app/components/ui/Breadcrumb';
 
 interface Assignment {
@@ -38,10 +38,7 @@ export default function AssignmentsPage() {
 
   const fetchUserRole = async () => {
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const supabase = getSupabaseClient();
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -63,10 +60,7 @@ export default function AssignmentsPage() {
   const fetchAssignments = async () => {
     try {
       setLoading(true);
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const supabase = getSupabaseClient();
 
       const { data, error } = await supabase
         .from('assignments')

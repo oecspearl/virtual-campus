@@ -108,32 +108,39 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['app-cosmic.com', '*.app-cosmic.com', 'vibecode.net', '*.vibecode.net'],
 };
 
-// Compose plugins: next-intl wraps the base config, Sentry wraps the result.
-// withSentryConfig is a no-op at runtime when SENTRY_AUTH_TOKEN is unset;
-// it just won't upload source maps in that case.
+// Compose plugins: next-intl wraps the base config, Sentry wraps the result —
+// but ONLY when SENTRY_DSN is present at build time.
+//
+// The Sentry webpack plugin transforms every chunk and generates source maps
+// in memory, which pushed the Vercel default 8 GB build container into OOM
+// (SIGKILL) when wired up unconditionally. Gating on SENTRY_DSN means: no
+// DSN env var → no Sentry plugin in the build pipeline → exact pre-Sentry
+// build cost. When you set SENTRY_DSN in Vercel (Production only), Sentry
+// wraps the build; if memory becomes an issue then, enable Enhanced Builds
+// or pass `widenClientFileUpload: false` here to narrow source-map scope.
 const composed = withNextIntl(nextConfig);
 
-export default withSentryConfig(composed, {
-  // Used for source-map upload at build time. Both must be set in the
-  // Vercel build env (Production at minimum). If SENTRY_AUTH_TOKEN is
-  // missing, withSentryConfig silently skips source-map upload and the
-  // build still succeeds — stack traces will just be obfuscated in
-  // Sentry until you add the token.
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
+const config = process.env.SENTRY_DSN
+  ? withSentryConfig(composed, {
+      // Used for source-map upload at build time. All three must be set
+      // in the Vercel build env. If SENTRY_AUTH_TOKEN is missing, the
+      // plugin still generates source maps but does not upload them —
+      // stack traces in Sentry stay minified until the token is set.
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
 
-  // Hide source-map upload logs unless the build is failing.
-  silent: !process.env.CI,
+      // Hide source-map upload logs unless the build is failing.
+      silent: !process.env.CI,
 
-  // Tunnel Sentry requests through /monitoring to bypass ad-blockers that
-  // block requests to *.sentry.io. Adds one route but stops you losing
-  // ~10% of client errors on adblock users.
-  tunnelRoute: '/monitoring',
+      // Tunnel Sentry requests through /monitoring to bypass ad-blockers
+      // that block requests to *.sentry.io. Stops you losing ~10% of
+      // client errors on adblock users.
+      tunnelRoute: '/monitoring',
 
-  // Don't send Sentry's own initial telemetry pings during build.
-  telemetry: false,
+      // Don't send Sentry's own initial telemetry pings during build.
+      telemetry: false,
+    })
+  : composed;
 
-  // Strip Sentry SDK debug logs from the production bundle.
-  disableLogger: true,
-});
+export default config;

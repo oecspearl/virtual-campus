@@ -21,6 +21,12 @@ export async function GET(request: NextRequest) {
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
 
+    // Event-style tables (lifecycle transitions, risk scores, engagement
+    // scores) only need the last 365 days for a "current state" dashboard
+    // — older events have already been superseded by newer ones for any
+    // active student. The dedup loop below keeps the latest-per-student.
+    const sinceIso = new Date(Date.now() - 365 * 86400000).toISOString();
+
     // Run all queries in parallel
     const [
       studentsRes,
@@ -36,23 +42,34 @@ export async function GET(request: NextRequest) {
       // Total students
       tq.from('users').select('id', { count: 'exact', head: true }).eq('role', 'student'),
 
-      // Lifecycle stage counts (latest stage per student)
-      tq.from('crm_student_lifecycle').select('student_id, stage').order('stage_changed_at', { ascending: false }),
+      // Lifecycle stage counts (latest stage per student, trailing 365d)
+      tq.from('crm_student_lifecycle')
+        .select('student_id, stage')
+        .gte('stage_changed_at', sinceIso)
+        .order('stage_changed_at', { ascending: false }),
 
-      // Risk level breakdown
-      tq.from('student_risk_scores').select('student_id, risk_level').order('calculated_at', { ascending: false }),
+      // Risk level breakdown (trailing 365d)
+      tq.from('student_risk_scores')
+        .select('student_id, risk_level')
+        .gte('calculated_at', sinceIso)
+        .order('calculated_at', { ascending: false }),
 
-      // Engagement score stats
-      tq.from('crm_engagement_scores').select('student_id, score').is('course_id', null).order('score_date', { ascending: false }),
+      // Engagement score stats (trailing 365d)
+      tq.from('crm_engagement_scores')
+        .select('student_id, score')
+        .is('course_id', null)
+        .gte('score_date', sinceIso.split('T')[0])
+        .order('score_date', { ascending: false }),
 
-      // Recent interactions
+      // Recent interactions (already limited to 10)
       tq.from('crm_interactions')
         .select('id, student_id, interaction_type, subject, created_at, users!crm_interactions_created_by_fkey(name)')
         .order('created_at', { ascending: false })
         .limit(10),
 
-      // Task stats
-      tq.from('crm_tasks').select('id, status, priority, due_date'),
+      // Task stats — pending/overdue are inherently current; no date filter
+      // but cap rows so a runaway backlog can't OOM the request.
+      tq.from('crm_tasks').select('id, status, priority, due_date').limit(10_000),
 
       // Active campaigns
       tq.from('crm_campaigns').select('id, name, status, stats, sent_at').order('created_at', { ascending: false }).limit(5),

@@ -56,12 +56,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .eq('survey_id', surveyId)
       .single();
 
-    // Get responses
+    // Cap responses loaded into memory. Survey aggregation needs every
+    // row, but loading 100k+ at once will OOM the function. At the limit
+    // we surface a `truncated` flag so the UI can warn that stats are
+    // computed from a sample; the proper long-term answer is a
+    // materialized survey_response_aggregates table updated by trigger.
+    const RESPONSES_HARD_LIMIT = 10_000;
     const { data: responses, error: responsesError } = await tq
       .from('survey_responses')
       .select('*')
       .eq('survey_id', surveyId)
-      .eq('status', 'submitted');
+      .eq('status', 'submitted')
+      .order('submitted_at', { ascending: false })
+      .limit(RESPONSES_HARD_LIMIT);
 
     if (responsesError) {
       console.error('Error fetching responses:', responsesError);
@@ -69,6 +76,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const allResponses = responses || [];
     const totalResponses = allResponses.length;
+    const responsesTruncated = totalResponses >= RESPONSES_HARD_LIMIT;
 
     // Calculate in-progress count
     const { count: inProgressCount } = await tq
@@ -232,7 +240,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         total_responses: totalResponses,
         in_progress: inProgressCount || 0,
         completion_rate: completionRate,
-        avg_completion_time: avgCompletionTime
+        avg_completion_time: avgCompletionTime,
+        truncated: responsesTruncated
       },
       question_stats: questionStats,
       cached_analytics: cachedAnalytics,

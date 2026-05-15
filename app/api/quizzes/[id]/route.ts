@@ -3,6 +3,7 @@ import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { updateAssessmentInGradebook } from '@/lib/services/gradebook-service';
+import { createLogger, logger } from "@/lib/logger";
 
 // Quizzes don't store total points directly — they're the sum of question
 // points. Mirror the calculation used by the legacy /gradebook/quiz-sync
@@ -25,6 +26,7 @@ async function calculateQuizTotalPoints(
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]', request as any);
   try {
     const { id } = await params;
     const authResult = await authenticateUser(request as any);
@@ -39,42 +41,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .select("*")
       .eq("id", id)
       .maybeSingle(); // Use maybeSingle() to return null instead of error when not found
-    
+
     if (error) {
-      console.error('[Quiz GET] Quiz fetch error:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        quizId: id
-      });
-      return NextResponse.json({
-        error: "Quiz not found"
-      }, { status: 404 });
+      log.error('Quiz fetch error', { quizId: id, code: error.code, details: error.details, hint: error.hint }, error);
+      return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
-    
+
     if (!quiz) {
-      console.warn('[Quiz GET] Quiz not found (no data returned). Quiz ID:', id);
-      return NextResponse.json({
-        error: "Quiz not found"
-      }, { status: 404 });
+      log.warn('Quiz not found (no data returned)', { quizId: id });
+      return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
-    
-    console.log('[Quiz GET] Quiz found:', { id: quiz.id, title: quiz.title });
+
     return NextResponse.json(quiz);
   } catch (e: any) {
-    console.error('[Quiz GET] Unexpected error:', {
-      message: e.message,
-      stack: e.stack,
-      name: e.name
-    });
-    return NextResponse.json({
-      error: "Internal server error"
-    }, { status: 500 });
+    log.error('GET handler crashed', undefined, e);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]', request as any);
   try {
     const { id } = await params;
     const authResult = await authenticateUser(request as any);
@@ -85,16 +71,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const data = await request.json();
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
-    
+
     // Use service client to fetch existing quiz (bypasses RLS for read)
     const { data: existingQuiz, error: fetchError } = await tq
       .from("quizzes")
       .select("creator_id, course_id")
       .eq("id", id)
       .single();
-    
+
     if (fetchError || !existingQuiz) {
-      console.error('Quiz fetch error in PUT:', fetchError);
+      log.error('Quiz fetch error in PUT', { quizId: id }, fetchError);
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
     
@@ -160,14 +146,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .single();
 
     if (error) {
-      console.error('Quiz update error:', error);
-      return NextResponse.json({
-        error: "Failed to update quiz"
-      }, { status: 500 });
+      log.error('Quiz update error', { quizId: id }, error);
+      return NextResponse.json({ error: "Failed to update quiz" }, { status: 500 });
     }
 
     if (!quiz) {
-      console.error('Quiz update returned no data');
+      log.error('Quiz update returned no data', { quizId: id });
       return NextResponse.json({ error: "Failed to update quiz - no data returned" }, { status: 500 });
     }
 
@@ -188,14 +172,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
               points,
             });
           } catch (syncError) {
-            console.error('Gradebook sync error:', syncError);
+            log.error('Gradebook sync error', { quizId: id, courseId: quiz.course_id }, syncError);
             // Don't fail the quiz update if sync fails.
           }
         }
 
         return NextResponse.json(quiz);
   } catch (e: any) {
-    console.error('Quiz PUT API error:', e);
+    log.error('PUT handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -208,16 +192,19 @@ async function checkCourseInstructor(supabase: any, userId: string, courseId: st
     .eq("course_id", courseId)
     .eq("instructor_id", userId)
     .maybeSingle();
-  
+
   if (error) {
-    console.error('Error checking course instructor:', error);
+    // Standalone logger — this helper is called from multiple handlers
+    // and isn't aware of the request context. Errors here are rare.
+    logger.error('Error checking course instructor', { source: 'api/quizzes/[id]', userId, courseId }, error);
     return false;
   }
-  
+
   return !!data;
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]', request as any);
   try {
     const { id } = await params;
     const authResult = await authenticateUser(request as any);
@@ -236,17 +223,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       .maybeSingle();
 
     if (fetchError) {
-      console.error('[Quiz DELETE] Error fetching quiz:', fetchError);
-      return NextResponse.json({
-        error: "Failed to fetch quiz"
-      }, { status: 500 });
+      log.error('Error fetching quiz', { quizId: id }, fetchError);
+      return NextResponse.json({ error: "Failed to fetch quiz" }, { status: 500 });
     }
 
     if (!quizToDelete) {
-      console.warn('[Quiz DELETE] Quiz not found:', id);
-      return NextResponse.json({
-        error: "Quiz not found"
-      }, { status: 404 });
+      log.warn('Quiz not found', { quizId: id });
+      return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
     // Check authorization: only creator or admin can delete
@@ -261,8 +244,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       }, { status: 403 });
     }
 
-    console.log('[Quiz DELETE] Deleting quiz:', { id, user: user.id, isCreator, isAdmin });
-
     // Explicitly delete related records first (in case CASCADE isn't working)
     // Delete quiz attempts
     const { error: attemptsError } = await tq
@@ -271,7 +252,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       .eq("quiz_id", id);
 
     if (attemptsError) {
-      console.error('[Quiz DELETE] Error deleting quiz attempts:', attemptsError);
+      log.error('Error deleting quiz attempts', { quizId: id }, attemptsError);
       // Continue anyway - the CASCADE should handle this
     }
 
@@ -282,7 +263,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       .eq("quiz_id", id);
 
     if (questionsError) {
-      console.error('[Quiz DELETE] Error deleting questions:', questionsError);
+      log.error('Error deleting questions', { quizId: id }, questionsError);
       // Continue anyway - the CASCADE should handle this
     }
 
@@ -293,10 +274,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       .eq("id", id);
 
     if (error) {
-      console.error('[Quiz DELETE] Quiz delete error:', error);
-      return NextResponse.json({
-        error: "Failed to delete quiz"
-      }, { status: 500 });
+      log.error('Quiz delete error', { quizId: id }, error);
+      return NextResponse.json({ error: "Failed to delete quiz" }, { status: 500 });
     }
 
     // Verify deletion by trying to fetch the quiz
@@ -307,14 +286,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       .maybeSingle();
 
     if (verifyQuiz) {
-      console.error('[Quiz DELETE] Warning: Quiz still exists after deletion attempt:', id);
-      return NextResponse.json({ 
+      log.error('Quiz still exists after deletion attempt', { quizId: id });
+      return NextResponse.json({
         error: "Quiz deletion may have failed. Please verify the quiz was deleted.",
         warning: "Quiz still exists in database"
       }, { status: 500 });
     }
-
-    console.log('[Quiz DELETE] Successfully deleted quiz:', id);
 
     // Clean up gradebook items and student grades associated with this quiz
     try {
@@ -326,21 +303,18 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         .eq("assessment_id", id);
 
       if (gradeItemsFetchError) {
-        console.error('[Quiz DELETE] Error fetching grade items:', gradeItemsFetchError);
+        log.error('Error fetching grade items', { quizId: id }, gradeItemsFetchError);
       } else if (gradeItems && gradeItems.length > 0) {
         const gradeItemIds = gradeItems.map(item => item.id);
-        console.log('[Quiz DELETE] Found grade items to clean up:', gradeItemIds);
 
         // Delete all student grades (scores) associated with these grade items
-        const { error: gradesDeleteError, count: deletedGradesCount } = await tq
+        const { error: gradesDeleteError } = await tq
           .from("course_grades")
           .delete()
           .in("grade_item_id", gradeItemIds);
 
         if (gradesDeleteError) {
-          console.error('[Quiz DELETE] Error deleting student grades:', gradesDeleteError);
-        } else {
-          console.log('[Quiz DELETE] Successfully deleted student grades for quiz:', id, 'count:', deletedGradesCount);
+          log.error('Error deleting student grades', { quizId: id, gradeItemIds }, gradesDeleteError);
         }
 
         // Now delete the grade items themselves (not just mark as inactive)
@@ -350,7 +324,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
           .in("id", gradeItemIds);
 
         if (gradeItemsDeleteError) {
-          console.error('[Quiz DELETE] Error deleting grade items:', gradeItemsDeleteError);
+          log.error('Error deleting grade items', { quizId: id, gradeItemIds }, gradeItemsDeleteError);
           // Fallback: mark as inactive if delete fails
           const { error: gradebookUpdateError } = await tq
             .from("course_grade_items")
@@ -361,16 +335,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
             .in("id", gradeItemIds);
 
           if (gradebookUpdateError) {
-            console.error('[Quiz DELETE] Fallback gradebook update also failed:', gradebookUpdateError);
+            log.error('Fallback gradebook update also failed', { quizId: id }, gradebookUpdateError);
           }
-        } else {
-          console.log('[Quiz DELETE] Successfully deleted grade items for quiz:', id);
         }
-      } else {
-        console.log('[Quiz DELETE] No grade items found for quiz:', id);
       }
     } catch (cleanupError) {
-      console.error('[Quiz DELETE] Error during gradebook cleanup:', cleanupError);
+      log.error('Error during gradebook cleanup', { quizId: id }, cleanupError);
       // Don't fail the deletion - quiz is already deleted
     }
 
@@ -405,21 +375,19 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
               .eq("id", quizToDelete.lesson_id);
 
             if (lessonUpdateError) {
-              console.error('[Quiz DELETE] Lesson content cleanup error:', lessonUpdateError);
-            } else {
-              console.log('[Quiz DELETE] Successfully removed quiz reference from lesson content:', id);
+              log.error('Lesson content cleanup error', { quizId: id, lessonId: quizToDelete.lesson_id }, lessonUpdateError);
             }
           }
         }
       }
     } catch (lessonCleanupError) {
-      console.error('[Quiz DELETE] Error during lesson content cleanup:', lessonCleanupError);
+      log.error('Error during lesson content cleanup', { quizId: id }, lessonCleanupError);
       // Don't fail the deletion - quiz is already deleted
     }
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    console.error('[Quiz DELETE] Unexpected error:', e);
+    log.error('DELETE handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

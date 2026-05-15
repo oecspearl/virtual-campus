@@ -5,6 +5,15 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { useSupabase } from '@/lib/supabase-provider';
 
+/**
+ * Presence broadcasts fan out to every subscriber on the channel, so a
+ * 500-student course produces 500x message traffic on every join/leave.
+ * We probe the active enrollment count first and skip the subscription
+ * entirely above this threshold. The (tenant_id, course_id) index added
+ * in migration 056 keeps the probe under 20ms even at scale.
+ */
+const PRESENCE_MAX_ACTIVE_ENROLLMENT = 200;
+
 interface OnlinePresence {
   user_id: string;
   name: string;
@@ -54,6 +63,9 @@ export default function CourseOnlineUsers({
   const [isOpen, setIsOpen] = useState(true);
   const [messagingId, setMessagingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // null = still probing; true = subscribed; false = skipped because the
+  // course has too many enrolled students for presence to be cheap.
+  const [presenceEnabled, setPresenceEnabled] = useState<boolean | null>(null);
 
   // Stable refs for values used inside the realtime callback so the channel
   // is only set up once per courseId/userId.
@@ -73,38 +85,73 @@ export default function CourseOnlineUsers({
   useEffect(() => {
     if (!courseId || !currentUserId) return;
 
-    const channel = supabase.channel(`course-presence:${courseId}`, {
-      config: { presence: { key: currentUserId } },
-    });
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const syncUsers = () => {
-      const state = channel.presenceState() as Record<string, OnlinePresence[]>;
-      const seen = new Map<string, OnlinePresence>();
-      for (const presences of Object.values(state)) {
-        for (const p of presences) {
-          if (!p.user_id || p.user_id === currentUserId) continue;
-          if (!seen.has(p.user_id)) seen.set(p.user_id, p);
-        }
+    (async () => {
+      // Probe the active enrollment count BEFORE subscribing. A COUNT
+      // query against (tenant_id, course_id) is cheap; the realtime
+      // fan-out for a 500-student channel is not.
+      const { count, error: countErr } = await supabase
+        .from('enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('course_id', courseId)
+        .eq('status', 'active');
+
+      if (cancelled) return;
+
+      if (countErr) {
+        // Fail closed: if we can't measure the course size, skip presence
+        // rather than risk a flood on a large class.
+        console.warn('CourseOnlineUsers: enrollment probe failed, skipping presence', countErr);
+        setPresenceEnabled(false);
+        return;
       }
-      setUsers(Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name)));
-    };
 
-    channel
-      .on('presence', { event: 'sync' }, syncUsers)
-      .on('presence', { event: 'join' }, syncUsers)
-      .on('presence', { event: 'leave' }, syncUsers)
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            ...userPayloadRef.current,
-            online_at: new Date().toISOString(),
-          });
-        }
+      if ((count ?? 0) > PRESENCE_MAX_ACTIVE_ENROLLMENT) {
+        setPresenceEnabled(false);
+        return;
+      }
+
+      setPresenceEnabled(true);
+
+      channel = supabase.channel(`course-presence:${courseId}`, {
+        config: { presence: { key: currentUserId } },
       });
 
+      const syncUsers = () => {
+        if (!channel) return;
+        const state = channel.presenceState() as Record<string, OnlinePresence[]>;
+        const seen = new Map<string, OnlinePresence>();
+        for (const presences of Object.values(state)) {
+          for (const p of presences) {
+            if (!p.user_id || p.user_id === currentUserId) continue;
+            if (!seen.has(p.user_id)) seen.set(p.user_id, p);
+          }
+        }
+        setUsers(Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name)));
+      };
+
+      channel
+        .on('presence', { event: 'sync' }, syncUsers)
+        .on('presence', { event: 'join' }, syncUsers)
+        .on('presence', { event: 'leave' }, syncUsers)
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED' && channel) {
+            await channel.track({
+              ...userPayloadRef.current,
+              online_at: new Date().toISOString(),
+            });
+          }
+        });
+    })();
+
     return () => {
-      channel.untrack();
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) {
+        channel.untrack();
+        supabase.removeChannel(channel);
+      }
     };
   }, [courseId, currentUserId, supabase]);
 
@@ -133,6 +180,19 @@ export default function CourseOnlineUsers({
       setMessagingId(null);
     }
   };
+
+  // While probing, render nothing — the widget appears once we know it's safe.
+  if (presenceEnabled === null) return null;
+
+  // Course is over the cap: hide presence entirely. Realtime fan-out
+  // becomes too expensive to keep "who's online" continuously updated.
+  if (presenceEnabled === false) {
+    return (
+      <div className="rounded-lg border border-gray-200/60 px-4 py-3 text-xs text-gray-500">
+        Online status is hidden in large classes.
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-gray-200/60 overflow-hidden">

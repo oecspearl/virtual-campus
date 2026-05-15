@@ -6,6 +6,12 @@ import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extens
 import { syncCrossTenantGrade } from "@/lib/enrollment-check";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { recomputeCourseGradeSummary } from "@/lib/services/gradebook-summary";
+import { createLogger, logger } from "@/lib/logger";
+
+// Source tag used by the standalone logger inside this file's helpers
+// (they have no request context, so they can't use the request-scoped
+// createLogger).
+const HELPER_SOURCE = 'api/quizzes/[id]/attempts/[attemptId]/submit';
 
 // Helper function to calculate quiz total points from questions
 async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<number> {
@@ -15,7 +21,7 @@ async function calculateQuizTotalPoints(supabase: any, quizId: string): Promise<
     .eq("quiz_id", quizId);
   
   if (error || !questions) {
-    console.error('Failed to fetch questions for quiz points calculation:', error);
+    logger.error('Failed to fetch questions for quiz points calculation', { source: HELPER_SOURCE, quizId }, error);
     return 0;
   }
   
@@ -37,8 +43,6 @@ async function syncQuizToGradebook(supabase: any, quizId: string, courseId: stri
 
   // If no grade item exists, create one automatically
   if (itemError || !gradeItem) {
-    console.log('No grade item found for quiz, creating one:', quizId);
-    
     // Get quiz details
     const { data: quiz, error: quizError } = await supabase
       .from("quizzes")
@@ -47,7 +51,7 @@ async function syncQuizToGradebook(supabase: any, quizId: string, courseId: stri
       .single();
 
     if (quizError || !quiz) {
-      console.error('Failed to fetch quiz details:', quizError);
+      logger.error('Failed to fetch quiz details', { source: HELPER_SOURCE, quizId }, quizError);
       return;
     }
 
@@ -74,7 +78,7 @@ async function syncQuizToGradebook(supabase: any, quizId: string, courseId: stri
       .single();
 
     if (createError || !newGradeItem) {
-      console.error('Failed to create grade item:', createError);
+      logger.error('Failed to create grade item', { source: HELPER_SOURCE, quizId }, createError);
       return;
     }
 
@@ -83,9 +87,8 @@ async function syncQuizToGradebook(supabase: any, quizId: string, courseId: stri
     // Update existing grade item if points don't match calculated total
     const totalPoints = await calculateQuizTotalPoints(supabase, quizId);
     const currentPoints = Number(gradeItem.points || 0);
-    
+
     if (totalPoints > 0 && currentPoints !== totalPoints) {
-      console.log(`Updating grade item points from ${currentPoints} to ${totalPoints} for quiz ${quizId}`);
       const { error: updateError } = await supabase
         .from("course_grade_items")
         .update({ points: totalPoints, updated_at: new Date().toISOString() })
@@ -122,8 +125,6 @@ async function syncQuizToGradebook(supabase: any, quizId: string, courseId: stri
               })
               .eq("id", update.id);
           }
-          
-          console.log(`Updated ${gradeUpdates.length} existing grades with new max_score ${totalPoints}`);
         }
       }
     }
@@ -142,7 +143,6 @@ async function syncQuizToGradebook(supabase: any, quizId: string, courseId: stri
     .single();
 
   if (attemptError || !attempt) {
-    console.log('No graded attempt found for quiz:', quizId);
     return;
   }
 
@@ -252,27 +252,28 @@ function grade(quiz: any, questions: any[], attemptAnswers: { question_id: strin
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
+  const log = createLogger(HELPER_SOURCE, request as any);
   try {
     const { id, attemptId } = await params;
     const authResult = await authenticateUser(request as any);
     if (!authResult.success) return createAuthResponse(authResult.error!, authResult.status!);
     const user = authResult.userProfile!;
-    
+
     // Use service client to bypass RLS for all database reads
     const supabase = createServiceSupabaseClient();
-    
+
     // Get attempt
     const { data: attempt, error: attemptError } = await supabase
       .from("quiz_attempts")
       .select("*")
       .eq("id", attemptId)
       .single();
-    
+
     if (attemptError || !attempt) {
-      console.error('Quiz attempt fetch error:', attemptError);
+      log.error('Quiz attempt fetch error', { attemptId }, attemptError);
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
-    
+
     if (attempt.student_id !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -283,9 +284,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .select("*")
       .eq("id", id)
       .single();
-    
+
     if (quizError || !quiz) {
-      console.error('Quiz fetch error:', quizError);
+      log.error('Quiz fetch error', { quizId: id }, quizError);
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
@@ -304,7 +305,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .limit(300);
     
     if (questionsError) {
-      console.error('Questions fetch error:', questionsError);
+      log.error('Questions fetch error', { quizId: id }, questionsError);
       return NextResponse.json({ error: "Failed to fetch questions" }, { status: 500 });
     }
 
@@ -336,7 +337,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .eq("id", attemptId);
 
     if (updateError) {
-      console.error('Quiz attempt update error:', updateError);
+      log.error('Quiz attempt update error', { attemptId }, updateError);
       return NextResponse.json({ error: "Failed to submit quiz attempt" }, { status: 500 });
     }
 
@@ -345,7 +346,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       try {
         await syncQuizToGradebook(supabase, id, attempt.course_id, user.id);
       } catch (syncError) {
-        console.error('Gradebook sync error:', syncError);
+        log.error('Gradebook sync error', { quizId: id, courseId: attempt.course_id }, syncError);
       }
 
       if (attempt.course_id) {
@@ -354,7 +355,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           const tq = createTenantQuery(tenantId);
           await recomputeCourseGradeSummary(tq, attempt.course_id, user.id);
         } catch (recomputeErr) {
-          console.error('Grade summary recompute failed:', recomputeErr);
+          log.error('Grade summary recompute failed', { courseId: attempt.course_id, userId: user.id }, recomputeErr);
         }
       }
 
@@ -371,36 +372,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             percentage,
           });
         } catch (crossSyncError) {
-          console.error('Cross-tenant grade sync error:', crossSyncError);
+          log.error('Cross-tenant grade sync error', { quizId: id }, crossSyncError);
         }
       }
     }
 
     // Generate adaptive learning recommendations based on quiz performance
     try {
-      const recResult = await generateAdaptiveRecommendations(attemptId, user.id);
-      if (recResult.count > 0) {
-        console.log(`Generated ${recResult.count} adaptive recommendations for attempt ${attemptId}`);
-      }
+      await generateAdaptiveRecommendations(attemptId, user.id);
     } catch (recError) {
-      console.error('Adaptive recommendations error:', recError);
+      log.error('Adaptive recommendations error', { attemptId }, recError);
       // Don't fail quiz submission if recommendations fail
     }
 
     // Update student competencies based on quiz performance
     try {
-      const compResult = await updateCompetenciesFromQuiz(id, user.id, percentage);
-      if (compResult.updated > 0) {
-        console.log(`Updated ${compResult.updated} competencies for student ${user.id}`);
-      }
+      await updateCompetenciesFromQuiz(id, user.id, percentage);
     } catch (compError) {
-      console.error('Competency update error:', compError);
+      log.error('Competency update error', { quizId: id, userId: user.id }, compError);
       // Don't fail quiz submission if competency update fails
     }
 
     return NextResponse.json({ score, max_score: max, percentage, status: hasManual ? "submitted" : "graded" });
   } catch (e: any) {
-    console.error('Quiz submit API error:', e);
+    log.error('POST handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

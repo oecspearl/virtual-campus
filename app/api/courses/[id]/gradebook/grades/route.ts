@@ -3,11 +3,13 @@ import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { recomputeCourseGradeSummary } from "@/lib/services/gradebook-summary";
+import { createLogger } from "@/lib/logger";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/gradebook/grades', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -49,20 +51,14 @@ export async function GET(
     const { data: grades, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
-      console.error('Grades fetch error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Query details - courseId:', courseId, 'studentId:', studentId, 'isInstructor:', isInstructor, 'isAdmin:', isAdmin);
-      return NextResponse.json({
-        error: "Failed to fetch grades"
-      }, { status: 500 });
+      log.error('Grades fetch error', { courseId, studentId, isInstructor, isAdmin, code: error.code }, error);
+      return NextResponse.json({ error: "Failed to fetch grades" }, { status: 500 });
     }
 
-    console.log(`Fetched ${grades?.length || 0} grades for course ${courseId}`);
     return NextResponse.json({ grades: grades || [] });
 
   } catch (e: any) {
-    console.error('Grades GET API error:', e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -71,6 +67,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/gradebook/grades', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -102,7 +99,7 @@ export async function POST(
       const { grade_item_id, student_id, score, feedback } = entry;
 
       if (!grade_item_id || !student_id || score === undefined) {
-        console.error('Missing required fields:', { grade_item_id, student_id, score });
+        log.error('Missing required fields in grade entry', { grade_item_id, student_id, score });
         throw new Error("Missing required fields in grade entry");
       }
 
@@ -115,13 +112,12 @@ export async function POST(
         .single();
 
       if (itemError) {
-        console.error('Grade item lookup error:', itemError);
-        console.error('Looking for grade_item_id:', grade_item_id, 'in course:', courseId);
+        log.error('Grade item lookup error', { grade_item_id, courseId }, itemError);
         throw new Error(`Grade item not found: ${itemError.message || 'Item does not exist'}`);
       }
 
       if (!item) {
-        console.error('Grade item is null for id:', grade_item_id);
+        log.error('Grade item is null', { grade_item_id });
         throw new Error("Grade item not found");
       }
 
@@ -152,14 +148,8 @@ export async function POST(
       .select();
 
     if (error) {
-      console.error('Grades creation error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      console.error('Error hint:', error.hint);
-      return NextResponse.json({
-        error: "Failed to create grades"
-      }, { status: 500 });
+      log.error('Grades creation error', { courseId, code: error.code, details: error.details, hint: error.hint }, error);
+      return NextResponse.json({ error: "Failed to create grades" }, { status: 500 });
     }
 
     // Refresh cached summary for every student touched. Failures here are
@@ -171,7 +161,7 @@ export async function POST(
     await Promise.all(
       studentsTouched.map((sid) =>
         recomputeCourseGradeSummary(tq, courseId, sid).catch((err) => {
-          console.error('Grade summary recompute failed for', sid, err);
+          log.error('Grade summary recompute failed', { studentId: sid, courseId }, err);
         })
       )
     );
@@ -179,11 +169,8 @@ export async function POST(
     return NextResponse.json({ grades: grades || [] });
 
   } catch (e: any) {
-    console.error('Grades POST API error:', e);
-    console.error('Error stack:', e.stack);
-    return NextResponse.json({
-      error: "Internal server error"
-    }, { status: 500 });
+    log.error('POST handler crashed', undefined, e);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -191,6 +178,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/gradebook/grades', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -246,20 +234,20 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error('Grade update error:', error);
+      log.error('Grade update error', { gradeId, courseId }, error);
       return NextResponse.json({ error: "Failed to update grade" }, { status: 500 });
     }
 
     if (grade?.student_id) {
       await recomputeCourseGradeSummary(tq, courseId, grade.student_id).catch(
-        (err) => console.error('Grade summary recompute failed:', err)
+        (err) => log.error('Grade summary recompute failed', { studentId: grade.student_id, courseId }, err)
       );
     }
 
     return NextResponse.json(grade);
 
   } catch (e: any) {
-    console.error('Grade PUT API error:', e);
+    log.error('PUT handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

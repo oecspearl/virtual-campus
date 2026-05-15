@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 
+// Explicit column list for student_chat_rooms responses. Excludes
+// tenant_id (RLS internal — never expose to clients) and any future
+// columns that get added without the route author thinking about
+// whether they're safe to ship over the wire.
+const ROOM_COLUMNS =
+  "id, name, description, avatar_url, room_type, course_id, created_by, is_archived, last_message_at, created_at";
+
 // GET /api/messages/rooms - Get all chat rooms for the current user
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +47,7 @@ export async function GET(request: NextRequest) {
       .from("student_chat_rooms")
       .select(
         `
-        *,
+        ${ROOM_COLUMNS},
         created_by_user:users!student_chat_rooms_created_by_fkey(id, name, email)
       `
       )
@@ -196,7 +203,7 @@ export async function POST(request: NextRequest) {
         // Return existing room
         const { data: roomData } = await tq
           .from("student_chat_rooms")
-          .select("*")
+          .select(ROOM_COLUMNS)
           .eq("id", existingDM.id)
           .single();
 
@@ -215,7 +222,7 @@ export async function POST(request: NextRequest) {
           created_by: user.id,
         },
       ])
-      .select("*")
+      .select(ROOM_COLUMNS)
       .single();
 
     if (roomError) {

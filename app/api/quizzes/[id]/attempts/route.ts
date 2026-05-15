@@ -28,10 +28,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     // Use service client for GET requests to bypass RLS and ensure students can access their attempts
     const supabase = createServiceSupabaseClient();
 
-    // When fetching all students (instructor view), join users table for name/email
+    // Explicit column list — drops `answers` (JSONB) and tenant_id from
+    // the list response. Per-attempt answer detail is shipped only by
+    // /api/quizzes/[id]/attempts/[attemptId], which is what the review
+    // page actually loads. Verified against QuizPlayer, QuizStatusButton,
+    // and the grade/quiz/[quizId] table consumers.
+    const ATTEMPT_LIST_COLUMNS =
+      "id, quiz_id, student_id, course_id, attempt_number, started_at, submitted_at, score, max_score, percentage, time_taken, status, created_at";
+
     const selectFields = allStudents
-      ? "*, student:users!quiz_attempts_student_id_fkey(id, name, email)"
-      : "*";
+      ? `${ATTEMPT_LIST_COLUMNS}, student:users!quiz_attempts_student_id_fkey(id, name, email)`
+      : ATTEMPT_LIST_COLUMNS;
 
     let query = supabase
       .from("quiz_attempts")
@@ -145,10 +152,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       }
     }
 
-    // Check existing attempts
+    // Check existing attempts — we only need the count, not the full rows
     const { data: existingAttempts, error: attemptsError } = await supabase
       .from("quiz_attempts")
-      .select("*")
+      .select("id")
       .eq("quiz_id", id)
       .eq("student_id", user.id);
 

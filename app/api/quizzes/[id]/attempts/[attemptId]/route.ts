@@ -12,9 +12,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const supabase = await createServerSupabaseClient();
 
+    // Full attempt detail — the answers JSONB IS the intended payload
+    // (the review/grading UI renders each question's response). The only
+    // safe drop is tenant_id (RLS internal, never expose to clients).
+    const ATTEMPT_DETAIL_COLUMNS =
+      "id, quiz_id, student_id, course_id, attempt_number, started_at, submitted_at, score, max_score, percentage, time_taken, status, answers, created_at, updated_at";
     const { data: attempt, error } = await supabase
       .from("quiz_attempts")
-      .select("*")
+      .select(ATTEMPT_DETAIL_COLUMNS)
       .eq("id", attemptId)
       .single();
     
@@ -45,10 +50,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const supabase = await createServerSupabaseClient();
 
-    // Get current attempt
+    // Get current attempt — only need student_id + status to check
+    // permissions; the response shape on PUT returns the updated row.
     const { data: currentAttempt, error: fetchError } = await supabase
       .from("quiz_attempts")
-      .select("*")
+      .select("id, student_id, status")
       .eq("id", attemptId)
       .single();
     

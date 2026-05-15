@@ -3,6 +3,12 @@ import { shouldDropEvent, getEnvironmentName } from '@/lib/sentry-shared';
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
+// Session Replay is intentionally NOT added here. It's the largest single
+// Sentry bundle contributor (~100 KB minified) and a meaningful chunk of
+// the build's memory cost. If a future debugging session genuinely needs
+// the seconds-before-error video, re-enable it via Sentry.replayIntegration
+// and add `excludeReplay*: false` in next.config.ts's bundleSizeOptimizations.
+
 if (dsn) {
   Sentry.init({
     dsn,
@@ -12,20 +18,8 @@ if (dsn) {
     // for a single-app setup; drop below 1.0 only if quota becomes tight.
     sampleRate: 1.0,
 
-    // Performance & Session Replay sampled lower — they generate more
-    // events than errors do and chew through quota faster.
+    // 10% of transactions get full performance tracing.
     tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 1.0,
-
-    integrations: [
-      // Replay only when an error fires — gives you a video of the seconds
-      // leading up to a bug without recording every session.
-      Sentry.replayIntegration({
-        maskAllText: true,
-        blockAllMedia: true,
-      }),
-    ],
 
     beforeSend(event) {
       return shouldDropEvent(event) ? null : event;

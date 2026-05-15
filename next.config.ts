@@ -145,6 +145,34 @@ const config = process.env.SENTRY_DSN
 
       // Don't send Sentry's own initial telemetry pings during build.
       telemetry: false,
+
+      // === Memory-budget knobs for the default 8 GB Vercel container ===
+      // This app has 174 tables and 346+ routes; without these knobs the
+      // Sentry webpack plugin OOMs the build container during chunk
+      // transform + source-map generation.
+
+      // Skip source-map generation entirely when no auth token is set.
+      // Without an auth token we couldn't upload them anyway, so the
+      // in-memory work was wasted. Once you add SENTRY_AUTH_TOKEN,
+      // upload (and the memory cost) re-enables automatically.
+      sourcemaps: {
+        disable: !process.env.SENTRY_AUTH_TOKEN,
+      },
+
+      // Don't widen the source-map upload glob beyond default chunks.
+      // The default `true` includes vendor + framework chunks which
+      // are large and rarely produce actionable stack traces.
+      widenClientFileUpload: false,
+
+      // Strip Sentry SDK features we're not using from the production
+      // bundle. Each `excludeReplay*` shaves a few hundred KB off the
+      // client bundle and proportionally less work for the build.
+      bundleSizeOptimizations: {
+        excludeReplayShadowDom: true,
+        excludeReplayIframe: true,
+        excludeReplayWorker: true,
+        excludeDebugStatements: true,
+      },
     })
   : composed;
 

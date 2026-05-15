@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const user = authResult.user;
 
     // Rate limit: 3 bulk email sends per minute
-    if (!checkRateLimit(`bulk-email:${user.id}`, 3, 60000)) {
+    if (!(await checkRateLimit(`bulk-email:${user.id}`, 3, 60000))) {
       return NextResponse.json({ error: 'Too many bulk email requests. Please wait.' }, { status: 429 });
     }
 

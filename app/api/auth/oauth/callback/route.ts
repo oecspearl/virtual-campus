@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     // Rate limit: 10 callbacks per minute per IP
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (!checkRateLimit(`oauth-callback:${ip}`, 10, 60000)) {
+    if (!(await checkRateLimit(`oauth-callback:${ip}`, 10, 60000))) {
       signinUrl.searchParams.set('error', 'too_many_requests');
       return NextResponse.redirect(signinUrl);
     }

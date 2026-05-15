@@ -129,8 +129,8 @@ export async function PUT(
     }
 
     // Invalidate cache for old and new slugs
-    if (currentTenant?.slug) invalidateTenantCache(currentTenant.slug);
-    if (slug) invalidateTenantCache(slug);
+    if (currentTenant?.slug) await invalidateTenantCache(currentTenant.slug);
+    if (slug) await invalidateTenantCache(slug);
 
     return NextResponse.json({ tenant });
   } catch (error) {
@@ -176,7 +176,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete tenant' }, { status: 500 });
     }
 
-    if (tenant?.slug) invalidateTenantCache(tenant.slug);
+    if (tenant?.slug) await invalidateTenantCache(tenant.slug);
 
     return NextResponse.json({ message: 'Tenant deleted successfully' });
   } catch (error) {

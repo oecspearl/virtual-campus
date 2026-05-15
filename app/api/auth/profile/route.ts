@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
-import { authenticateUser, authorizeUser, createAuthResponse, checkAuthProfileRateLimit, checkRateLimit, getRateLimitHeaders } from "@/lib/api-auth";
+import { authenticateUser, authorizeUser, createAuthResponse, checkRateLimitWithMeta, getRateLimitHeaders } from "@/lib/api-auth";
 import { addSecurityHeaders, sanitizeInput, createSecureResponse } from "@/lib/security";
 import { isValidHttpUrl } from "@/lib/validations";
 import { createLogger } from "@/lib/logger";
@@ -18,12 +18,13 @@ export async function GET(request: Request) {
   try {
     // Rate limiting (more lenient for auth profile)
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
-    if (!checkAuthProfileRateLimit(`profile-get-${clientIP}`)) {
+    const rl = await checkRateLimitWithMeta(`profile-get-${clientIP}`, 200, 60000);
+    if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },
         {
           status: 429,
-          headers: getRateLimitHeaders(`profile-get-${clientIP}`, 50, 60000)
+          headers: getRateLimitHeaders(rl)
         }
       );
     }
@@ -97,12 +98,13 @@ export async function PUT(request: Request) {
   try {
     // Rate limiting (stricter for updates)
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
-    if (!checkRateLimit(`profile-put-${clientIP}`, 10, 60000)) {
+    const rl = await checkRateLimitWithMeta(`profile-put-${clientIP}`, 10, 60000);
+    if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },
         {
           status: 429,
-          headers: getRateLimitHeaders(`profile-put-${clientIP}`, 10, 60000)
+          headers: getRateLimitHeaders(rl)
         }
       );
     }

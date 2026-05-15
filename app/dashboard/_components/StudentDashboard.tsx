@@ -35,11 +35,16 @@ export default async function StudentDashboard({
   // Fetch enrollments with course data
   let enrollments: any[] = [];
   try {
+    // Only the columns MyCoursesList / ContinueLearningCard actually render.
+    // Capped at 50 — dashboards never need every enrollment a student has;
+    // the "View All" link goes to /my-courses for the full paginated list.
     const { data, error } = await supabase
       .from('enrollments')
-      .select('*, courses(*), classes(id, name)')
+      .select('id, course_id, progress_percentage, courses(title, description, thumbnail), classes(id, name)')
       .eq('student_id', userId)
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false })
+      .limit(50);
 
     if (!error && data) {
       enrollments = data;

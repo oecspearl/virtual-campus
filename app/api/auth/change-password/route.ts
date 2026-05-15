@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { authenticateUser, createAuthResponse, checkAuthProfileRateLimit, getRateLimitHeaders } from "@/lib/api-auth";
+import { authenticateUser, createAuthResponse, checkRateLimitWithMeta, getRateLimitHeaders } from "@/lib/api-auth";
 import { addSecurityHeaders, sanitizeInput, createSecureResponse } from "@/lib/security";
 
 export async function POST(request: Request) {
   try {
     // Rate limiting for password changes (stricter)
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
-    if (!checkAuthProfileRateLimit(`password-change-${clientIP}`)) { // 5 attempts per 5 minutes
+    // 5 attempts per 5 minutes
+    const rl = await checkRateLimitWithMeta(`password-change-${clientIP}`, 5, 300000);
+    if (!rl.allowed) {
       return NextResponse.json(
-        { error: "Too many password change attempts. Please try again later." }, 
-        { 
+        { error: "Too many password change attempts. Please try again later." },
+        {
           status: 429,
-          headers: getRateLimitHeaders(`password-change-${clientIP}`, 5, 300000)
+          headers: getRateLimitHeaders(rl)
         }
       );
     }

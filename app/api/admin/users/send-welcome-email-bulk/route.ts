@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceSupabaseClient } from "@/lib/supabase-server";
-import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
+import { getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from '@/lib/rbac';
-import { notifyStudentWelcome } from "@/lib/notifications";
+import { enqueueJob } from '@/lib/qstash';
 
 /**
  * POST /api/admin/users/send-welcome-email-bulk
- * Send welcome emails to multiple users
- * 
- * Body: { userIds: string[] }
+ * Enqueue welcome-email jobs for multiple users.
+ *
+ * Each user is processed asynchronously by /api/jobs/send-welcome-email
+ * via QStash. We return 202 immediately so the request never times out,
+ * even for hundreds of users.
+ *
+ * Body: { userIds: string[] }   (cap: 100 per request)
  */
+
+const MAX_USERS_PER_REQUEST = 100;
+
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
     const authResult = await authenticateUser(request);
     if (!authResult.success) {
       return createAuthResponse(authResult.error!, authResult.status!);
     }
     const { userProfile } = authResult;
 
-    // Check if user has admin privileges
     if (!hasRole(userProfile.role, ['admin', 'super_admin'])) {
       return createAuthResponse("Forbidden: Admin access required", 403);
     }
@@ -32,117 +36,53 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User IDs array is required" }, { status: 400 });
     }
 
-    const tenantId = getTenantIdFromRequest(request);
-    const tq = createTenantQuery(tenantId);
-
-    // Generate a temporary password that meets requirements
-    const generateTempPassword = () => {
-      const length = 12;
-      const lowercase = "abcdefghijklmnopqrstuvwxyz";
-      const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      const numbers = "0123456789";
-      const special = "!@#$%^&*";
-      const allChars = lowercase + uppercase + numbers + special;
-      
-      // Ensure password meets requirements: at least one of each type
-      let password = "";
-      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-      password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-      password += special.charAt(Math.floor(Math.random() * special.length));
-      
-      // Fill the rest randomly
-      for (let i = password.length; i < length; i++) {
-        password += allChars.charAt(Math.floor(Math.random() * allChars.length));
-      }
-      
-      // Shuffle the password to avoid predictable patterns
-      return password.split('').sort(() => Math.random() - 0.5).join('');
-    };
-
-    const results = [];
-
-    // Process each user
-    for (const userId of userIds) {
-      try {
-        // Get user information
-        const { data: user, error: userError } = await tq
-          .from('users')
-          .select('id, email, name, role')
-          .eq('id', userId)
-          .single();
-
-        if (userError || !user) {
-          results.push({
-            userId,
-            success: false,
-            error: 'User not found',
-            email: null,
-          });
-          continue;
-        }
-
-        // Generate a temporary password
-        const tempPassword = generateTempPassword();
-
-        // Update user's password and ensure email is confirmed
-        const { error: passwordError } = await tq.raw.auth.admin.updateUserById(
-          userId,
-          { 
-            password: tempPassword,
-            email_confirm: true // Ensure email is confirmed so user can log in
-          }
-        );
-
-        if (passwordError) {
-          results.push({
-            userId,
-            success: false,
-            error: `Failed to set password: ${passwordError.message}`,
-            email: user.email,
-          });
-          continue;
-        }
-
-        // Send welcome email
-        const emailResult = await notifyStudentWelcome(userId, {
-          temporaryPassword: tempPassword,
-        });
-
-        results.push({
-          userId,
-          success: emailResult.success,
-          error: emailResult.error || null,
-          email: user.email,
-          name: user.name,
-        });
-
-      } catch (error: any) {
-        results.push({
-          userId,
-          success: false,
-          error: error.message || 'Failed to process user',
-          email: null,
-        });
-      }
+    if (userIds.length > MAX_USERS_PER_REQUEST) {
+      return NextResponse.json(
+        {
+          error: `Too many users in one request. Maximum is ${MAX_USERS_PER_REQUEST}. Split the list and submit in batches.`,
+          limit: MAX_USERS_PER_REQUEST,
+          provided: userIds.length,
+        },
+        { status: 400 },
+      );
     }
 
-    // Calculate summary
-    const successful = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
+    const tenantId = getTenantIdFromRequest(request);
 
-    return NextResponse.json({
-      success: true,
-      message: `Processed ${userIds.length} user(s): ${successful} successful, ${failed} failed`,
-      total: userIds.length,
-      successful,
-      failed,
-      results,
-    });
+    const enqueueResults = await Promise.all(
+      userIds.map(async (userId: string) => {
+        try {
+          // Deterministic dedupe key: same admin double-clicking won't double-enqueue.
+          const deduplicationId = `welcome-email:${tenantId}:${userId}`;
+          const messageId = await enqueueJob({
+            path: '/api/jobs/send-welcome-email',
+            body: { userId, tenantId },
+            deduplicationId,
+            retries: 3,
+          });
+          return { userId, queued: messageId !== null, messageId };
+        } catch (err: any) {
+          return { userId, queued: false, error: err?.message || 'Enqueue failed' };
+        }
+      }),
+    );
 
+    const queued = enqueueResults.filter((r) => r.queued).length;
+    const failed = enqueueResults.length - queued;
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Queued ${queued} welcome email(s); ${failed} failed to enqueue.`,
+        total: userIds.length,
+        queued,
+        failed,
+        results: enqueueResults,
+      },
+      { status: 202 },
+    );
   } catch (error: any) {
     console.error('Bulk send welcome email API error:', error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

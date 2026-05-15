@@ -17,7 +17,7 @@ export async function POST(
   const { user } = authResult;
 
   // Rate limit: 5 enrollment attempts per minute
-  if (!checkRateLimit(`enroll:${user.id}`, 5, 60000)) {
+  if (!(await checkRateLimit(`enroll:${user.id}`, 5, 60000))) {
     return NextResponse.json({ error: 'Too many enrollment attempts. Please try again later.' }, { status: 429 });
   }
 

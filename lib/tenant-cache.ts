@@ -1,84 +1,143 @@
 import { createServiceSupabaseClient } from './supabase-server';
+import { getRedis } from './redis';
 import type { Tenant } from './tenant';
 
-const CACHE_TTL = 300_000; // 5 minutes
+/**
+ * Two-tier tenant cache:
+ *   L1 — per-instance in-memory map (5s TTL). Absorbs the high-frequency
+ *        middleware hits without hammering Redis.
+ *   L2 — Upstash Redis (5min TTL). Shared across all Vercel instances so
+ *        a tenant update from one instance is visible to the others
+ *        within a few seconds (after L1 expires).
+ *
+ * Invalidations write through to both L1 and L2.
+ */
 
-interface CacheEntry {
+const L1_TTL_MS = 5_000;
+const L2_TTL_SEC = 300;
+
+interface L1Entry {
   tenant: Tenant;
   expiresAt: number;
 }
 
-// Keyed by slug
-const slugCache = new Map<string, CacheEntry>();
-// Keyed by custom_domain
-const domainCache = new Map<string, CacheEntry>();
+const slugL1 = new Map<string, L1Entry>();
+const domainL1 = new Map<string, L1Entry>();
 
-/**
- * Fetches and caches a tenant by slug.
- */
-export async function getCachedTenant(slug: string): Promise<Tenant | null> {
-  const now = Date.now();
-  const cached = slugCache.get(slug);
-  if (cached && cached.expiresAt > now) return cached.tenant;
+const slugKey = (slug: string) => `tenant:slug:${slug}`;
+const domainKey = (domain: string) => `tenant:domain:${domain}`;
 
+async function fetchAndCache(
+  predicate: { column: 'slug' | 'custom_domain'; value: string },
+): Promise<Tenant | null> {
   const serviceSupabase = createServiceSupabaseClient();
   const { data } = await serviceSupabase
     .from('tenants')
     .select('*')
-    .eq('slug', slug)
+    .eq(predicate.column, predicate.value)
     .single();
 
-  if (data) {
-    const entry: CacheEntry = { tenant: data as Tenant, expiresAt: now + CACHE_TTL };
-    slugCache.set(slug, entry);
-    if (data.custom_domain) {
-      domainCache.set(data.custom_domain, entry);
+  if (!data) return null;
+  const tenant = data as Tenant;
+  setCaches(tenant);
+  return tenant;
+}
+
+function setCaches(tenant: Tenant) {
+  const expiresAt = Date.now() + L1_TTL_MS;
+  slugL1.set(tenant.slug, { tenant, expiresAt });
+  if (tenant.custom_domain) {
+    domainL1.set(tenant.custom_domain, { tenant, expiresAt });
+  }
+  const redis = getRedis();
+  if (redis) {
+    // Fire and forget — L1 already serves this request.
+    redis.set(slugKey(tenant.slug), tenant, { ex: L2_TTL_SEC }).catch(() => {});
+    if (tenant.custom_domain) {
+      redis.set(domainKey(tenant.custom_domain), tenant, { ex: L2_TTL_SEC }).catch(() => {});
     }
   }
-
-  return (data as Tenant) || null;
 }
 
-/**
- * Fetches and caches a tenant by custom domain.
- */
+async function readL2BySlug(slug: string): Promise<Tenant | null> {
+  const redis = getRedis();
+  if (!redis) return null;
+  try {
+    const v = await redis.get<Tenant>(slugKey(slug));
+    return v ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function readL2ByDomain(domain: string): Promise<Tenant | null> {
+  const redis = getRedis();
+  if (!redis) return null;
+  try {
+    const v = await redis.get<Tenant>(domainKey(domain));
+    return v ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getCachedTenant(slug: string): Promise<Tenant | null> {
+  const now = Date.now();
+  const l1 = slugL1.get(slug);
+  if (l1 && l1.expiresAt > now) return l1.tenant;
+
+  const l2 = await readL2BySlug(slug);
+  if (l2) {
+    slugL1.set(slug, { tenant: l2, expiresAt: now + L1_TTL_MS });
+    if (l2.custom_domain) {
+      domainL1.set(l2.custom_domain, { tenant: l2, expiresAt: now + L1_TTL_MS });
+    }
+    return l2;
+  }
+
+  return fetchAndCache({ column: 'slug', value: slug });
+}
+
 export async function getCachedTenantByDomain(domain: string): Promise<Tenant | null> {
   const now = Date.now();
-  const cached = domainCache.get(domain);
-  if (cached && cached.expiresAt > now) return cached.tenant;
+  const l1 = domainL1.get(domain);
+  if (l1 && l1.expiresAt > now) return l1.tenant;
 
-  const serviceSupabase = createServiceSupabaseClient();
-  const { data } = await serviceSupabase
-    .from('tenants')
-    .select('*')
-    .eq('custom_domain', domain)
-    .single();
-
-  if (data) {
-    const entry: CacheEntry = { tenant: data as Tenant, expiresAt: now + CACHE_TTL };
-    domainCache.set(domain, entry);
-    slugCache.set(data.slug, entry);
+  const l2 = await readL2ByDomain(domain);
+  if (l2) {
+    domainL1.set(domain, { tenant: l2, expiresAt: now + L1_TTL_MS });
+    slugL1.set(l2.slug, { tenant: l2, expiresAt: now + L1_TTL_MS });
+    return l2;
   }
 
-  return (data as Tenant) || null;
+  return fetchAndCache({ column: 'custom_domain', value: domain });
 }
 
 /**
- * Invalidates cache for a specific tenant slug.
+ * Invalidates cache for a specific tenant slug across all instances.
  * Call after tenant updates from admin routes.
  */
-export function invalidateTenantCache(slug: string): void {
-  const cached = slugCache.get(slug);
-  if (cached?.tenant.custom_domain) {
-    domainCache.delete(cached.tenant.custom_domain);
+export async function invalidateTenantCache(slug: string): Promise<void> {
+  const l1 = slugL1.get(slug);
+  const customDomain = l1?.tenant.custom_domain;
+  slugL1.delete(slug);
+  if (customDomain) domainL1.delete(customDomain);
+
+  const redis = getRedis();
+  if (!redis) return;
+  try {
+    await redis.del(slugKey(slug));
+    if (customDomain) await redis.del(domainKey(customDomain));
+  } catch (err) {
+    console.warn('[tenant-cache] Redis del failed:', err);
   }
-  slugCache.delete(slug);
 }
 
 /**
- * Invalidates all cached tenants.
+ * Invalidates all cached tenants on this instance (L1) and best-effort L2.
+ * Note: clearing all L2 keys requires a SCAN; we leave them to expire naturally.
  */
 export function invalidateAllTenantCaches(): void {
-  slugCache.clear();
-  domainCache.clear();
+  slugL1.clear();
+  domainL1.clear();
 }

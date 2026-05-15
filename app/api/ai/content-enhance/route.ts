@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     const { user } = authResult;
 
     // Rate limit: 10 AI requests per minute
-    if (!checkRateLimit(`ai:${user.id}`, 10, 60000)) {
+    if (!(await checkRateLimit(`ai:${user.id}`, 10, 60000))) {
       return NextResponse.json({ error: 'Too many AI requests. Please wait a moment.' }, { status: 429 });
     }
 

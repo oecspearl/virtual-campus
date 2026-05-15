@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     // Rate limit: 10 attempts per minute per IP
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    if (!checkRateLimit(`oauth-authorize:${ip}`, 10, 60000)) {
+    if (!(await checkRateLimit(`oauth-authorize:${ip}`, 10, 60000))) {
       return NextResponse.redirect(new URL('/auth/signin?error=too_many_requests', request.url));
     }
 

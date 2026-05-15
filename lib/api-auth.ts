@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createClient, type User } from '@supabase/supabase-js';
 import { ensureUserExists } from "@/lib/user-provisioning";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+/**
+ * Global per-authenticated-user rate limit applied inside authenticateUser.
+ * 240 req/min = 4 req/sec average. Real users (even fast clickers) stay well
+ * under this; abuse scripts get cut off. Routes with stricter needs (AI,
+ * email, enroll) layer their own tighter check on top.
+ */
+const GLOBAL_USER_RATE_LIMIT = 240;
+const GLOBAL_USER_RATE_WINDOW_MS = 60_000;
 
 export interface UserProfile {
   id: string;
@@ -99,6 +109,21 @@ export async function authenticateUser(request: NextRequest): Promise<AuthResult
         success: false,
         error: "Authentication required",
         status: 401
+      };
+    }
+
+    // Per-authenticated-user rate limit. Runs BEFORE provisioning so a hot
+    // loop can't hammer the users table either.
+    const allowed = await checkRateLimit(
+      `user:${user.id}`,
+      GLOBAL_USER_RATE_LIMIT,
+      GLOBAL_USER_RATE_WINDOW_MS,
+    );
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Too many requests. Please slow down.",
+        status: 429,
       };
     }
 

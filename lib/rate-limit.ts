@@ -1,15 +1,15 @@
-import { createServiceSupabaseClient } from '@/lib/supabase-server';
+import { getRedis } from './redis';
 
 /**
- * Distributed rate limiting using Supabase as the backing store.
- * Falls back to in-memory limiting if the database is unavailable.
+ * Distributed rate limiting backed by Upstash Redis.
  *
- * Uses a sliding window algorithm: each request increments a counter
- * stored in a lightweight table. Expired windows are cleaned up lazily.
+ * Each identifier maps to a key `rl:{identifier}` storing a counter that
+ * expires when the window ends. Increment is atomic via INCR; on the first
+ * hit we also set EXPIRE so the window slides correctly.
+ *
+ * If Redis is not configured, falls back to an in-memory map (single-instance
+ * only — fine for local dev, not safe for production at scale).
  */
-
-// In-memory fallback for when DB is unavailable
-const memoryStore = new Map<string, { count: number; resetTime: number }>();
 
 interface RateLimitResult {
   allowed: boolean;
@@ -18,11 +18,9 @@ interface RateLimitResult {
   resetAt: Date;
 }
 
-/**
- * Check rate limit using in-memory store with improved cleanup.
- * This is the primary implementation — simple, fast, and sufficient
- * for single-instance deployments or as a fallback.
- */
+// --- In-memory fallback (per-instance) ---
+const memoryStore = new Map<string, { count: number; resetTime: number }>();
+
 function checkMemoryRateLimit(
   identifier: string,
   limit: number,
@@ -30,116 +28,107 @@ function checkMemoryRateLimit(
 ): RateLimitResult {
   const now = Date.now();
 
-  // Lazy cleanup — only when store grows large
   if (memoryStore.size > 5000) {
     for (const [k, v] of memoryStore.entries()) {
-      if (now > v.resetTime) {
-        memoryStore.delete(k);
-      }
+      if (now > v.resetTime) memoryStore.delete(k);
     }
   }
 
   const record = memoryStore.get(identifier);
-
   if (!record || now > record.resetTime) {
     const resetTime = now + windowMs;
     memoryStore.set(identifier, { count: 1, resetTime });
-    return {
-      allowed: true,
-      remaining: limit - 1,
-      limit,
-      resetAt: new Date(resetTime),
-    };
+    return { allowed: true, remaining: limit - 1, limit, resetAt: new Date(resetTime) };
   }
-
   if (record.count >= limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-      limit,
-      resetAt: new Date(record.resetTime),
-    };
+    return { allowed: false, remaining: 0, limit, resetAt: new Date(record.resetTime) };
   }
-
   record.count++;
-  return {
-    allowed: true,
-    remaining: limit - record.count,
-    limit,
-    resetAt: new Date(record.resetTime),
-  };
+  return { allowed: true, remaining: limit - record.count, limit, resetAt: new Date(record.resetTime) };
 }
 
-/**
- * Primary rate limit check.
- * Returns true if the request is allowed, false if rate limited.
- */
-export function checkRateLimit(
+// --- Redis-backed primary path ---
+async function checkRedisRateLimit(
   identifier: string,
-  limit: number = 10,
-  windowMs: number = 60000
-): boolean {
-  return checkMemoryRateLimit(identifier, limit, windowMs).allowed;
-}
+  limit: number,
+  windowMs: number
+): Promise<RateLimitResult> {
+  const redis = getRedis();
+  if (!redis) return checkMemoryRateLimit(identifier, limit, windowMs);
 
-/**
- * Rate limit check that returns full metadata for response headers.
- */
-export function checkRateLimitWithMeta(
-  identifier: string,
-  limit: number = 10,
-  windowMs: number = 60000
-): RateLimitResult {
-  return checkMemoryRateLimit(identifier, limit, windowMs);
-}
+  const key = `rl:${identifier}`;
+  const windowSec = Math.max(1, Math.ceil(windowMs / 1000));
 
-/**
- * Lenient rate limit for auth profile endpoint.
- * RoleGuard calls this frequently so we allow 200 req/min.
- */
-export function checkAuthProfileRateLimit(identifier: string): boolean {
-  return checkRateLimit(identifier, 200, 60000);
-}
-
-/**
- * Rate limit headers for HTTP responses.
- * Supports two call signatures for backward compatibility:
- * - getRateLimitHeaders(result: RateLimitResult)
- * - getRateLimitHeaders(identifier: string, limit?: number, windowMs?: number)
- */
-export function getRateLimitHeaders(
-  resultOrIdentifier: RateLimitResult | string,
-  limit?: number,
-  windowMs?: number
-): Record<string, string> {
-  if (typeof resultOrIdentifier === 'string') {
-    // Legacy signature: (identifier, limit, windowMs)
-    const result = checkMemoryRateLimit(resultOrIdentifier, limit ?? 10, windowMs ?? 60000);
+  try {
+    const count = await redis.incr(key);
+    if (count === 1) {
+      await redis.expire(key, windowSec);
+    }
+    // Best-effort TTL fetch for the reset header; if it's -1 (no TTL), set one.
+    let ttl = await redis.ttl(key);
+    if (ttl < 0) {
+      await redis.expire(key, windowSec);
+      ttl = windowSec;
+    }
+    const resetAt = new Date(Date.now() + ttl * 1000);
     return {
-      'X-RateLimit-Limit': result.limit.toString(),
-      'X-RateLimit-Remaining': result.remaining.toString(),
-      'X-RateLimit-Reset': result.resetAt.toISOString(),
+      allowed: count <= limit,
+      remaining: Math.max(0, limit - count),
+      limit,
+      resetAt,
     };
+  } catch (err) {
+    console.warn('[rate-limit] Redis check failed, falling back to memory:', err);
+    return checkMemoryRateLimit(identifier, limit, windowMs);
   }
-
-  // New signature: (RateLimitResult)
-  return {
-    'X-RateLimit-Limit': resultOrIdentifier.limit.toString(),
-    'X-RateLimit-Remaining': resultOrIdentifier.remaining.toString(),
-    'X-RateLimit-Reset': resultOrIdentifier.resetAt.toISOString(),
-  };
 }
 
-/**
- * Strict rate limit for sensitive endpoints (AI, email sending).
- * Uses IP + user ID composite key for better accuracy.
- */
-export function checkStrictRateLimit(
+// --- Public async API ---
+
+/** Returns true if the request is allowed. */
+export async function checkRateLimit(
+  identifier: string,
+  limit: number = 10,
+  windowMs: number = 60_000
+): Promise<boolean> {
+  const result = await checkRedisRateLimit(identifier, limit, windowMs);
+  return result.allowed;
+}
+
+/** Full metadata for HTTP response headers. */
+export async function checkRateLimitWithMeta(
+  identifier: string,
+  limit: number = 10,
+  windowMs: number = 60_000
+): Promise<RateLimitResult> {
+  return checkRedisRateLimit(identifier, limit, windowMs);
+}
+
+/** Lenient limit for the auth profile endpoint (RoleGuard polls it). */
+export async function checkAuthProfileRateLimit(identifier: string): Promise<boolean> {
+  return checkRateLimit(identifier, 200, 60_000);
+}
+
+/** Strict limit for sensitive endpoints (AI, email). Composite key (ip+user). */
+export async function checkStrictRateLimit(
   ip: string,
   userId: string,
   limit: number = 5,
-  windowMs: number = 60000
-): RateLimitResult {
-  const identifier = `strict:${ip}:${userId}`;
-  return checkMemoryRateLimit(identifier, limit, windowMs);
+  windowMs: number = 60_000
+): Promise<RateLimitResult> {
+  return checkRedisRateLimit(`strict:${ip}:${userId}`, limit, windowMs);
+}
+
+/**
+ * Format an X-RateLimit-* header block from a RateLimitResult.
+ * The legacy `(identifier, limit, windowMs)` signature was removed — it
+ * silently double-counted the request (one for the check, one for the
+ * header), so callers should pass a RateLimitResult instead.
+ */
+export function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
+  return {
+    'X-RateLimit-Limit': result.limit.toString(),
+    'X-RateLimit-Remaining': result.remaining.toString(),
+    'X-RateLimit-Reset': result.resetAt.toISOString(),
+  };
 }

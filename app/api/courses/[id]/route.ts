@@ -3,6 +3,7 @@ import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { withTenantAuth } from '@/lib/with-tenant-auth';
 import { courseUpdateSchema, validateBody } from '@/lib/validations';
 import { CACHE_SHORT } from '@/lib/cache-headers';
+import { createLogger } from '@/lib/logger';
 import {
   getCourse,
   updateCourse,
@@ -15,6 +16,7 @@ import {
 // ─── GET — public (respects optional auth) ─────────────────────────────────
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/courses/[id]', request as any);
   let courseId: string | undefined;
   try {
     const { id } = await params;
@@ -28,23 +30,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (error instanceof CourseNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    // Pre-existing "Course GET error:" line was opaque — log the course id,
-    // tenant header, and the error's structured fields so intermittent 500s
-    // surface actionable detail in Vercel logs instead of [object Object].
-    const tenantHeader = request.headers.get('x-tenant-id');
-    const tenantOverride = request.headers.get('x-tenant-override');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const err = error as any;
-    console.error('Course GET error', {
+    log.error('GET handler failed', {
       courseId,
-      tenantId: tenantHeader,
-      tenantOverride: tenantOverride || null,
-      name: err?.name,
-      message: err?.message,
-      code: err?.code,
-      status: err?.status,
-      stack: err?.stack,
-    });
+      tenantOverride: request.headers.get('x-tenant-override') || null,
+    }, error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -52,6 +41,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 // ─── PUT — instructor-or-admin ──────────────────────────────────────────────
 
 export const PUT = withTenantAuth(async ({ user, tq, request }) => {
+  const log = createLogger('api/courses/[id]', request as any);
   try {
     const url = new URL(request.url);
     const id = url.pathname.split('/').filter(Boolean).pop()!;
@@ -73,7 +63,7 @@ export const PUT = withTenantAuth(async ({ user, tq, request }) => {
     if (error instanceof CoursePermissionError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    console.error('Course PUT error:', error);
+    log.error('PUT handler failed', { userId: user.id }, error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 });
@@ -81,6 +71,7 @@ export const PUT = withTenantAuth(async ({ user, tq, request }) => {
 // ─── DELETE — admin-only ────────────────────────────────────────────────────
 
 export const DELETE = withTenantAuth(async ({ user, tq, request }) => {
+  const log = createLogger('api/courses/[id]', request as any);
   try {
     const url = new URL(request.url);
     const id = url.pathname.split('/').filter(Boolean).pop()!;
@@ -99,7 +90,7 @@ export const DELETE = withTenantAuth(async ({ user, tq, request }) => {
     if (error instanceof CourseNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    console.error('Course DELETE error:', error);
+    log.error('DELETE handler failed', { userId: user.id }, error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 });

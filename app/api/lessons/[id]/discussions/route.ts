@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { createLogger } from "@/lib/logger";
 
 // GET /api/lessons/[id]/discussions - Get all discussions for a lesson
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/lessons/[id]/discussions', request as any);
   try {
     const { id: lessonId } = await params;
-    console.log('Fetching discussions for lesson:', lessonId);
 
     const tenantId = getTenantIdFromRequest(request);
     const tq = createTenantQuery(tenantId);
@@ -24,34 +25,31 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching lesson discussions:', error);
+      log.error('Error fetching lesson discussions', { lessonId }, error);
       return NextResponse.json({ error: "Failed to fetch discussions" }, { status: 500 });
     }
 
-    console.log('Lesson discussions fetched successfully:', discussions?.length || 0);
     return NextResponse.json({ discussions: discussions || [] });
 
   } catch (error) {
-    console.error('Lesson discussions API error:', error);
+    log.error('GET handler crashed', undefined, error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 // POST /api/lessons/[id]/discussions - Create a new lesson discussion
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/lessons/[id]/discussions', request as any);
   try {
     const { id: lessonId } = await params;
-    console.log('Creating discussion for lesson:', lessonId);
 
     // Authenticate user
     const authResult = await authenticateUser(request as any);
     if (!authResult.success) {
-      console.log('Authentication failed:', authResult.error);
       return createAuthResponse(authResult.error!, authResult.status!);
     }
 
     const { user } = authResult;
-    console.log('Creating lesson discussion for user:', user.id);
 
     const body = await request.json();
     const { title, content, is_pinned = false, is_locked = false } = body;
@@ -70,12 +68,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .single();
 
     if (lessonError || !lesson) {
-      console.error('Error fetching lesson:', lessonError);
+      log.error('Error fetching lesson', { lessonId }, lessonError);
       return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
     }
 
     if (!lesson.course_id) {
-      console.error('Lesson has no course_id:', lesson);
+      log.warn('Lesson has no course_id', { lessonId });
       return NextResponse.json({ error: "Lesson is not associated with a course" }, { status: 400 });
     }
 
@@ -96,15 +94,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .single();
 
     if (error) {
-      console.error('Error creating lesson discussion:', error);
+      log.error('Error creating lesson discussion', { lessonId, userId: user.id }, error);
       return NextResponse.json({ error: "Failed to create discussion" }, { status: 500 });
     }
 
-    console.log('Lesson discussion created successfully:', discussion.id);
     return NextResponse.json(discussion);
 
   } catch (error) {
-    console.error('Create lesson discussion error:', error);
+    log.error('POST handler crashed', undefined, error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

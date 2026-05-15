@@ -3,6 +3,7 @@ import { createServerSupabaseClient, createServiceSupabaseClient } from "@/lib/s
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { notifyCourseAnnouncement } from "@/lib/notifications";
+import { createLogger } from "@/lib/logger";
 
 /**
  * GET /api/courses/[id]/announcements
@@ -12,6 +13,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/announcements', request);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -59,15 +61,15 @@ export async function GET(
     const { data: announcements, error } = await query;
 
     if (error) {
-      console.error("Error fetching announcements:", error);
+      log.error('Error fetching announcements', { courseId, code: error.code }, error);
       // Check if table doesn't exist
       if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: "Announcements table not found. Please run the database migration first.",
           details: process.env.NODE_ENV === 'development' ? error.message : undefined
         }, { status: 500 });
       }
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Failed to fetch announcements",
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       }, { status: 500 });
@@ -90,22 +92,17 @@ export async function GET(
               }, {
                 onConflict: 'announcement_id,user_id'
               })
-              .then(({ error: viewErr }) => { if (viewErr) console.error(`Failed to mark announcement ${announcement.id} as viewed:`, viewErr); })
+              .then(({ error: viewErr }) => { if (viewErr) log.error('Failed to mark announcement as viewed', { announcementId: announcement.id }, viewErr); })
           )
-        ).catch(err => console.error('Error marking announcements as viewed:', err));
+        ).catch(err => log.error('Error marking announcements as viewed', undefined, err));
       }
     }
 
     return NextResponse.json({ announcements: announcements || [] });
 
   } catch (error: any) {
-    console.error("Announcements GET API error:", error);
-    console.error("Error details:", {
-      message: error?.message,
-      code: error?.code,
-      stack: error?.stack
-    });
-    return NextResponse.json({ 
+    log.error('GET handler crashed', { code: error?.code }, error);
+    return NextResponse.json({
       error: "Internal server error",
       details: process.env.NODE_ENV === 'development' ? error?.message : undefined
     }, { status: 500 });
@@ -120,6 +117,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/announcements', request);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -167,15 +165,15 @@ export async function POST(
       .single();
 
     if (error) {
-      console.error("Error creating announcement:", error);
+      log.error('Error creating announcement', { courseId, code: error.code }, error);
       // Check if table doesn't exist
       if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: "Announcements table not found. Please run the database migration first.",
           details: process.env.NODE_ENV === 'development' ? error.message : undefined
         }, { status: 500 });
       }
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Failed to create announcement",
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       }, { status: 500 });
@@ -229,16 +227,16 @@ export async function POST(
                   successCount++;
                 } else {
                   errorCount++;
-                  console.error(`Failed to notify student ${enrollment.student_id}:`, result.error);
+                  log.error('Failed to notify student', { studentId: enrollment.student_id, reason: result.error });
                 }
               } catch (err: any) {
                 errorCount++;
-                console.error(`Failed to notify student ${enrollment.student_id}:`, err.message || err);
+                log.error('Failed to notify student', { studentId: enrollment.student_id }, err);
               }
             }
-            
-            console.log(`Announcement notifications sent: ${successCount} successful, ${errorCount} failed`);
-          })().catch(err => console.error('Error in announcement notification queue:', err));
+
+            log.info('Announcement notifications sent', { successCount, errorCount });
+          })().catch(err => log.error('Error in announcement notification queue', undefined, err));
         }
       }
     }
@@ -246,13 +244,8 @@ export async function POST(
     return NextResponse.json(announcement);
 
   } catch (error: any) {
-    console.error("Announcements POST API error:", error);
-    console.error("Error details:", {
-      message: error?.message,
-      code: error?.code,
-      stack: error?.stack
-    });
-    return NextResponse.json({ 
+    log.error('POST handler crashed', { code: error?.code }, error);
+    return NextResponse.json({
       error: "Internal server error",
       details: process.env.NODE_ENV === 'development' ? error?.message : undefined
     }, { status: 500 });

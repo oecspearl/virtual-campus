@@ -90,7 +90,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const user = authResult.success ? authResult.userProfile! : null;
     const isStaff = user && hasRole(user.role, INSTRUCTOR_ROLES);
 
-    const { data: lesson, error } = await tq.from('lessons').select('*').eq('id', id).single();
+    // Every visible lesson column except tenant_id (RLS internal — never
+    // expose). The big JSONB columns (content, resources) are the
+    // intended payload of this endpoint, so they stay.
+    const LESSON_COLUMNS =
+      'id, subject_id, course_id, title, description, "order", learning_outcomes, lesson_instructions, content, resources, estimated_time, difficulty, published, content_type, prerequisite_lesson_id, prerequisite_type, prerequisite_min_score, locked, locked_by, locked_at, class_id, section_id, created_at, updated_at';
+    const { data: lesson, error } = await tq.from('lessons').select(LESSON_COLUMNS).eq('id', id).single();
 
     if (error) {
       console.error('Lesson fetch error:', error);

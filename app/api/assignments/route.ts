@@ -12,7 +12,14 @@ export const GET = withTenantAuth(async ({ user, tq, request }) => {
   const courseId = searchParams.get('course_id');
   const published = searchParams.get('published');
 
-  let query = tq.from('assignments').select('*');
+  // Column set sized for the assignments list / course-nav consumers.
+  // Dropping rubric + peer_review_rubric (both JSONB) is the big win —
+  // those are only needed by the edit / grade screens, which use the
+  // single-assignment /api/assignments/[id] route.
+  const ASSIGNMENT_LIST_COLUMNS =
+    'id, lesson_id, course_id, title, description, due_date, points, published, curriculum_order, created_at';
+
+  let query = tq.from('assignments').select(ASSIGNMENT_LIST_COLUMNS);
 
   if (lessonId) query = query.eq('lesson_id', lessonId);
   if (published !== null) query = query.eq('published', published === 'true');
@@ -56,22 +63,7 @@ export const GET = withTenantAuth(async ({ user, tq, request }) => {
     return NextResponse.json({ error: 'Failed to fetch assignments' }, { status: 500 });
   }
 
-  // Parse rubric JSON strings back to arrays.
-  const parsed = (assignments || []).map((assignment: any) => {
-    if (assignment.rubric && typeof assignment.rubric === 'string') {
-      try {
-        assignment.rubric = JSON.parse(assignment.rubric);
-      } catch (parseError) {
-        console.error('Error parsing rubric for assignment:', assignment.id, parseError);
-        assignment.rubric = [];
-      }
-    } else if (!assignment.rubric) {
-      assignment.rubric = [];
-    }
-    return assignment;
-  });
-
-  return NextResponse.json({ assignments: parsed });
+  return NextResponse.json({ assignments: assignments || [] });
 });
 
 export const POST = withTenantAuth(

@@ -12,9 +12,15 @@ export const GET = withTenantAuth(async ({ user, request }) => {
   const limit = parseInt(url.searchParams.get('limit') || '20');
   const unreadOnly = url.searchParams.get('unread_only') === 'true';
 
+  // Only the fields the dropdown / sidebar widgets actually render.
+  // Dropping `metadata` (JSONB) and the internal user_id/tenant_id
+  // shrinks each row meaningfully — this endpoint is polled.
+  const NOTIFICATION_COLUMNS =
+    'id, type, title, message, link_url, is_read, created_at, read_at';
+
   let query = serviceSupabase
     .from('in_app_notifications')
-    .select('*')
+    .select(NOTIFICATION_COLUMNS)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(limit);

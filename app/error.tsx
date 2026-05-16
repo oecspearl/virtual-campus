@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import Link from 'next/link';
 import { Icon } from '@iconify/react';
-import * as Sentry from '@sentry/nextjs';
 
 export default function GlobalError({
   error,
@@ -12,12 +10,6 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    // Sentry.captureException is a no-op when no DSN is configured, so
-    // local/preview deploys without SENTRY_DSN don't trigger network noise.
-    Sentry.captureException(error);
-  }, [error]);
-
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">

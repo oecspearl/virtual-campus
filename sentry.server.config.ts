@@ -1,27 +1,36 @@
+// Sentry initialization for Node.js server routes and server components.
+// Loaded by instrumentation.ts on every Node runtime startup.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
 import * as Sentry from '@sentry/nextjs';
 import { shouldDropEvent, getEnvironmentName } from '@/lib/sentry-shared';
 
 const dsn = process.env.SENTRY_DSN;
 
+// Gated init: no DSN env var = no Sentry init = silent. Set SENTRY_DSN only
+// in Vercel's Production environment so preview/dev stay quiet.
 if (dsn) {
   Sentry.init({
     dsn,
     environment: getEnvironmentName(),
 
-    // Capture every error in production; sample down if quota becomes a concern.
+    // Capture every error in production.
     sampleRate: 1.0,
 
-    // Performance: 10% of transactions get full tracing.
-    // Drop to 0.01 if quota is tight, raise if you need more visibility.
+    // Performance traces: 10% sampled. At 1.0 a single LMS session burns
+    // through the free tier's 10k events/month in hours.
     tracesSampleRate: 0.1,
 
-    // Drop known noise before it hits Sentry.
+    // Drop known-noise events (AbortError, expected 4xx, hydration warnings)
+    // before they hit Sentry. See lib/sentry-shared.ts for the full list.
     beforeSend(event) {
       return shouldDropEvent(event) ? null : event;
     },
 
-    // PII off by default — we don't want emails / names landing in Sentry
-    // unless we explicitly attach them via setUser/setTag.
+    // PII off by default — don't ship student emails / IPs / cookies to
+    // Sentry. Tenants include OECS member states with data-residency
+    // concerns; explicit setUser/setTag calls are still allowed when
+    // we deliberately want a user-tagged event.
     sendDefaultPii: false,
   });
 }

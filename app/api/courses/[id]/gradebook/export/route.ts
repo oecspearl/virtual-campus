@@ -3,6 +3,7 @@ import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { hasRole } from '@/lib/rbac';
 import { recomputeCourseGradeSummariesForCourse } from '@/lib/services/gradebook-summary';
+import { streamCsvResponse } from '@/lib/csv-stream';
 
 const STAFF_ROLES = [
   'admin',
@@ -39,21 +40,6 @@ interface RawSummary {
 }
 
 /**
- * Escape a value for inclusion in a CSV cell.
- * Quotes wrap any value that contains a comma, quote, newline, or
- * leading whitespace; embedded quotes are doubled per RFC 4180.
- */
-function csvCell(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  const s = String(value);
-  if (s === '') return '';
-  if (/[",\r\n]/.test(s) || /^\s/.test(s) || /\s$/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
-
-/**
  * GET /api/courses/[id]/gradebook/export
  *
  * Streams a CSV with one row per enrolled student. Columns:
@@ -62,6 +48,13 @@ function csvCell(value: unknown): string {
  *
  * Triggers a bulk recompute first so the export reflects the latest
  * engine totals + letters. Staff-only.
+ *
+ * Architecture: items / categories / grades / summaries are all
+ * loaded up-front because they're bounded by course (not student) —
+ * a course with 10k students still has tens of items and a few
+ * categories. The student list, which IS the unbounded axis, is
+ * iterated and streamed one row at a time so memory stays at
+ * O(items + categories + grades) instead of O(items × students).
  */
 export async function GET(
   request: Request,
@@ -92,8 +85,9 @@ export async function GET(
       console.error('Pre-export recompute failed:', err);
     }
 
-    // Fetch in parallel: course title (for filename), students, items
-    // (sorted), categories (for breakdown column order), grades, summaries.
+    // Course-bounded data fetched in parallel up front (items, categories,
+    // all grades, all summaries). The student LIST is fetched here for
+    // header derivation but the per-student streaming happens below.
     const [courseRes, studentsRes, itemsRes, catsRes, gradesRes, summariesRes] =
       await Promise.all([
         tq.from('courses').select('title').eq('id', courseId).single(),
@@ -159,7 +153,9 @@ export async function GET(
       .map((row) => row.users)
       .filter((u): u is { id: string; name: string | null; email: string } => !!u);
 
-    // Index grades by (student_id, grade_item_id).
+    // Index grades by (student_id, grade_item_id). For a course with
+    // N students and M items this is O(N×M) keys — but only one
+    // {score, max_score} per entry, so a 10k × 30 course is still <1 MB.
     const gradeIndex = new Map<string, { score: number; max_score: number }>();
     for (const g of (gradesRes.data ?? []) as Array<{
       student_id: string;
@@ -175,14 +171,11 @@ export async function GET(
       summaryByStudent.set(s.student_id, s);
     }
 
-    // Header row.
-    const itemHeaders = items.map(
-      (i) => `${i.title} (max ${i.points})`
-    );
+    // Header derivation
+    const itemHeaders = items.map((i) => `${i.title} (max ${i.points})`);
     // Breakdown columns track the top-level (root.children) category set —
     // these are the entries that appear in summary.breakdown.
     const breakdownCats = cats.filter((c) => {
-      // Find any root category. Top-level breakdown uses children of root.
       const root = cats.find((x) => x.parent_id === null);
       return root && c.parent_id === root.id;
     });
@@ -199,54 +192,6 @@ export async function GET(
       ...breakdownHeaders,
     ];
 
-    const rows: string[][] = [header];
-
-    for (const student of students) {
-      let earned = 0;
-      let max = 0;
-      const itemCells: string[] = [];
-      for (const item of items) {
-        const grade = gradeIndex.get(`${student.id}:${item.id}`);
-        if (grade) {
-          earned += Number(grade.score);
-          max += Number(grade.max_score || item.points);
-          itemCells.push(String(grade.score));
-        } else {
-          max += Number(item.points);
-          itemCells.push('');
-        }
-      }
-
-      const summary = summaryByStudent.get(student.id);
-      const enginePct = summary?.percentage;
-      const fallbackPct = max > 0 ? (earned / max) * 100 : null;
-      const finalPct = enginePct != null ? enginePct : fallbackPct;
-
-      // Map breakdown categories by id for quick lookup.
-      const breakdownByCatId = new Map<string, number | null>();
-      for (const b of summary?.breakdown ?? []) {
-        breakdownByCatId.set(b.category_id, b.percentage);
-      }
-      const breakdownCells = breakdownCats.map((c) => {
-        const v = breakdownByCatId.get(c.id);
-        return v == null ? '' : v.toFixed(2);
-      });
-
-      rows.push([
-        student.name ?? '',
-        student.email,
-        ...itemCells,
-        String(earned),
-        String(max),
-        finalPct != null ? finalPct.toFixed(2) : '',
-        summary?.letter ?? '',
-        ...breakdownCells,
-      ]);
-    }
-
-    const csv =
-      rows.map((row) => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
-
     const courseTitle = (courseRes.data as { title?: string } | null)?.title;
     const safeTitle = (courseTitle ?? 'gradebook')
       .replace(/[^a-zA-Z0-9-_]+/g, '_')
@@ -254,12 +199,55 @@ export async function GET(
       .slice(0, 64) || 'gradebook';
     const stamp = new Date().toISOString().slice(0, 10);
 
-    return new NextResponse(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${safeTitle}_${stamp}.csv"`,
-        'Cache-Control': 'no-store',
+    return streamCsvResponse({
+      filename: `${safeTitle}_${stamp}.csv`,
+      async produce(write) {
+        write(header);
+
+        // Iterate one student at a time — never holds the full row
+        // matrix in memory. For a 10k-student course this keeps the
+        // hot path under a few MB throughout the export.
+        for (const student of students) {
+          let earned = 0;
+          let max = 0;
+          const itemCells: (string | number)[] = [];
+          for (const item of items) {
+            const grade = gradeIndex.get(`${student.id}:${item.id}`);
+            if (grade) {
+              earned += Number(grade.score);
+              max += Number(grade.max_score || item.points);
+              itemCells.push(grade.score);
+            } else {
+              max += Number(item.points);
+              itemCells.push('');
+            }
+          }
+
+          const summary = summaryByStudent.get(student.id);
+          const enginePct = summary?.percentage;
+          const fallbackPct = max > 0 ? (earned / max) * 100 : null;
+          const finalPct = enginePct != null ? enginePct : fallbackPct;
+
+          const breakdownByCatId = new Map<string, number | null>();
+          for (const b of summary?.breakdown ?? []) {
+            breakdownByCatId.set(b.category_id, b.percentage);
+          }
+          const breakdownCells = breakdownCats.map((c) => {
+            const v = breakdownByCatId.get(c.id);
+            return v == null ? '' : v.toFixed(2);
+          });
+
+          write([
+            student.name ?? '',
+            student.email,
+            ...itemCells,
+            earned,
+            max,
+            finalPct != null ? finalPct.toFixed(2) : '',
+            summary?.letter ?? '',
+            ...breakdownCells,
+          ]);
+        }
       },
     });
   } catch (e) {

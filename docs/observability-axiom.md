@@ -1,142 +1,180 @@
-# Observability — Axiom Setup & Alerts
+# Observability — Axiom Setup, Monitors & Known Issues
 
-We collect Vercel function logs in Axiom via the marketplace integration.
-The integration injects `AXIOM_TOKEN` and `AXIOM_DATASET` into the project
-and provisions a log drain — no code changes required.
+Vercel function logs ship to Axiom via the marketplace integration
+(`AXIOM_TOKEN` + `AXIOM_DATASET` are injected by the integration —
+no code changes needed). The integration wraps every log line into a
+single `Event` field with these auto-extracted columns:
 
-All routes that import `@/lib/logger` emit JSON to stdout in production
-(`{ level, message, timestamp, source, requestId, tenantId, userId, ... }`).
-Axiom indexes every key as a queryable column.
+| Column | What it is |
+|---|---|
+| `level` | log level (`info`, `warning`, `error`) |
+| `message` | raw log text. For our structured logger calls, this is JSON-stringified. For Vercel-generated request summaries, it's `[GET] /api/path status=200` |
+| `request.path` | route path |
+| `request.statusCode` | HTTP status |
+| `request.method` | HTTP method |
+| `request.host`, `request.ip`, `request.userAgent` | request metadata |
+| `report.durationMs`, `report.maxMemoryUsedMb` | function execution report |
+| `vercel.deploymentId`, `vercel.region`, `vercel.source` (= `edge` / `lambda` / `lambda-log`), `vercel.route` | Vercel platform metadata |
+
+**Important:** alerts should query the integration's columns
+(`['request.statusCode']`, `['request.path']`) — not the fields inside
+our app logger. Our logger output appears inside `message` as a JSON
+string when `vercel.source == "lambda-log"`; useful for forensics, not
+for monitor thresholds.
 
 ---
 
-## 1. Verify ingestion
-
-After your next production deploy, hit any API route, then in Axiom run:
+## 1. Quick verify (60s)
 
 ```apl
-['vercel']
-| where source != ""
-| limit 50
+vercel
+| where _time > ago(1h)
+| count
 ```
 
-You should see structured rows with `source`, `requestId`, `tenantId`, `userId`
-as first-class columns. If `source` is empty, the route hasn't been migrated
-to the structured logger yet (legacy `console.*` strings still flow through
-as the raw `message` field, just without the structured columns).
+Returns thousands → drain is healthy. If 0, the integration isn't
+shipping function logs — check **Vercel → Integrations → Axiom → Log
+drain** is enabled.
+
+```apl
+vercel
+| where _time > ago(15m)
+| limit 5
+```
+
+Confirms what columns the integration is populating right now.
 
 ---
 
-## 2. Alert rules
+## 2. Monitors
 
-Configure each in **Axiom UI → Monitors → New monitor**. Pipe notifications
-to Slack (`#alerts-prod`) or PagerDuty as your team prefers.
+All three fire on Vercel's auto-summary lines, which are already
+flowing — they don't depend on our app logger.
+
+Set each up in **Axiom → Monitors → New monitor**, route notifications
+to Slack (`#alerts-prod`) or PagerDuty.
 
 ### 2.1 — 5xx spike
 
 ```apl
-['vercel']
-| where statusCode >= 500
-| summarize count() by bin(_time, 5m)
+vercel
+| where _time > ago(10m)
+| where ['request.statusCode'] >= 500
+| summarize count() by bin(_time, 5m), ['request.path']
 ```
 
-- **Type:** Threshold
-- **Trigger:** `count > 10` in any 5-minute window
-- **Cooldown:** 15 min
+- Threshold: **count > 5 in any 5-minute window**
+- Cooldown: 15 min
 
-### 2.2 — Auth / tenant errors
+### 2.2 — Auth bombardment (likely brute force or token expiry storm)
 
 ```apl
-['vercel']
-| where source startswith "lib/api-auth" or source startswith "api/auth"
-| where level == "error"
-| summarize count() by bin(_time, 5m), source
+vercel
+| where _time > ago(10m)
+| where ['request.statusCode'] == 401
+| where ['request.path'] startswith "/api/auth"
+| summarize count() by bin(_time, 5m), ['request.ip']
 ```
 
-- **Type:** Threshold
-- **Trigger:** `count > 5` in any 5-minute window per `source`
-- **Cooldown:** 15 min
+- Threshold: **count > 20 from any one IP in 5m**
+- Cooldown: 15 min
 
-### 2.3 — Per-tenant error rate (optional)
+### 2.3 — Function memory pressure
 
-Catches a single tenant misbehaving without tripping the global 5xx alert.
+Catches the OOM pattern that pushed the team off Sentry. Function
+limit is 1024MB; alerting at 900MB gives headroom to investigate
+before the function actually crashes.
 
 ```apl
-['vercel']
-| where level == "error" and tenantId != ""
-| summarize errors = count() by bin(_time, 10m), tenantId
-| where errors > 20
+vercel
+| where _time > ago(15m)
+| where ['report.maxMemoryUsedMb'] > 900
+| summarize max(['report.maxMemoryUsedMb']) by bin(_time, 5m), ['request.path']
 ```
 
-- **Type:** Threshold
-- **Trigger:** any row returned
-- **Cooldown:** 30 min
-
-### 2.4 — Quiz attempt failures (LMS-specific)
-
-Quiz attempts are the highest-stakes student action; failures hurt trust fast.
-
-```apl
-['vercel']
-| where source startswith "api/quizzes" and level == "error"
-| summarize count() by bin(_time, 5m), source
-```
-
-- **Type:** Threshold
-- **Trigger:** `count > 3` in any 5-minute window
-- **Cooldown:** 10 min
+- Threshold: **any row returned**
+- Cooldown: 30 min
 
 ---
 
-## 3. Useful saved queries
+## 3. Useful forensic queries
 
-### "What broke for tenant X in the last hour?"
+### "What broke for this route in the last hour?"
 
 ```apl
-['vercel']
-| where tenantId == "00000000-0000-0000-0000-000000000001"
+vercel
 | where _time > ago(1h)
-| where level in ("error", "warn")
-| project _time, source, level, message, requestId, userId, error
+| where ['request.path'] == "/api/courses"
+| where ['request.statusCode'] >= 400
+| project _time, ['request.method'], ['request.statusCode'], message, ['request.ip']
 | order by _time desc
 ```
 
-### "Trace a single request by ID"
+### "Trace a single request by Vercel ID"
 
 ```apl
-['vercel']
-| where requestId == "<paste-from-support-ticket>"
+vercel
+| where ['request.id'] == "<paste-x-vercel-id-from-response-headers>"
 | order by _time asc
 ```
+
+The full request lifecycle is usually 3 rows: edge summary,
+lambda-log lines (any `console.*` your code emitted), and the lambda
+execution report.
+
+### "Pull our structured logger fields out of a lambda-log row"
+
+When investigating an error from a route covered by the sweep, our
+logger emitted `JSON.stringify({level, source, requestId, tenantId, message, error, ...})`.
+The `message` field IS that JSON string:
+
+```apl
+vercel
+| where _time > ago(1h)
+| where ['vercel.source'] == "lambda-log"
+| where message startswith "{"
+| extend parsed = parse_json(message)
+| extend app_source = tostring(parsed.source),
+         app_level = tostring(parsed.level),
+         tenant_id = tostring(parsed.tenantId),
+         user_id = tostring(parsed.userId)
+| where app_level == "error"
+| project _time, app_source, tostring(parsed.message), tenant_id, user_id, parsed.error
+| order by _time desc
+```
+
+Save this as a view ("App Logger Errors") so on-call doesn't have to
+rebuild the parse each time.
 
 ### Slow routes (p95)
 
 ```apl
-['vercel']
-| where durationMs > 0
-| summarize p95 = percentile(durationMs, 95) by source
+vercel
+| where _time > ago(1h)
+| where ['report.durationMs'] > 0
+| summarize p95 = percentile(['report.durationMs'], 95) by ['request.path']
 | order by p95 desc
 | limit 20
 ```
 
 ---
 
-## 4. Coverage notes
+## 4. Logger sweep coverage
 
-As of the structured-logger sweep, these route groups emit fully indexed
-logs (with `source`, `tenantId`, `userId`, `requestId`):
+Routes that emit JSON-structured rows (with `source`/`requestId`/
+`tenantId`/`userId` inside `message`) when they error:
 
 - `app/api/auth/**` — all 7 files
 - `app/api/quizzes/**` — all 12 files
-- `app/api/courses/import/moodle`, `restore`, `route.ts`,
-  `[id]/participants/[participantId]`, `[id]/groups`, `[id]/discussions`,
-  `[id]/gradebook/quiz-sync` — the highest-traffic courses routes
+- `app/api/courses/**` — `import/moodle`, `restore`, `route.ts`,
+  `[id]/participants/[participantId]`, `[id]/groups`,
+  `[id]/discussions`, `[id]/gradebook/quiz-sync`
 
-The remaining `app/api/courses/**` routes (and other folders) still log
-through `console.*`. Axiom captures these too, but without indexed columns
-— queries against them will need string matching on `message`.
+The remaining ~280 routes still log through raw `console.*`. Axiom
+captures these too; you just lose the indexed app columns and need
+string matching on `message`.
 
-When migrating a new route, copy the pattern from any of the swept files:
+To migrate a new route, copy the pattern:
 
 ```ts
 import { createLogger } from '@/lib/logger';
@@ -151,3 +189,38 @@ export async function GET(request: Request) {
   }
 }
 ```
+
+---
+
+## 5. Known issues
+
+### 5.1 — Some nested `/api/*` routes return 404 in production
+
+Affected (pre-existing, **not** caused by the logger sweep):
+
+- `/api/auth/oauth/providers`, `/api/auth/oauth/authorize`, `/api/auth/oauth/callback`
+- `/api/auth/google-meet/authorize`, `/api/auth/google-meet/callback`
+- `/api/admin/tenants`
+
+Working siblings: `/api/auth/profile`, `/api/auth/change-password`,
+`/api/admin/users`, `/api/courses`.
+
+**Ruled out:** middleware (debug-block, csrf-check, auth-check all
+pass), env-var-at-import (`lib/oauth/state` reads env inside
+functions only), missing build artifacts (all routes present in
+`.next/standalone`).
+
+**Worth checking:**
+
+1. Vercel build log for the latest deploy — search for warnings about
+   skipped routes.
+2. The identity rewrite in [vercel.json](../vercel.json)
+   `"source": "/api/(.*)" → "destination": "/api/$1"` — known to
+   interfere with Vercel's file-based routing in some cases. Try
+   removing it.
+3. Function bundling: the failing routes share heavier transitive
+   imports (`googleapis`, `lib/oauth/*`). Possible the bundler
+   produces oversized output that Vercel silently drops.
+
+Not a launch blocker if OAuth and Google Meet aren't required for the
+first launch cohort.

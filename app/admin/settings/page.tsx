@@ -297,30 +297,6 @@ export default function AdminSettingsPage() {
               </div>
             </Link>
 
-            {/* Test Email Card */}
-            <Link 
-              href="/admin/test-email"
-              className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center group- transition-transform duration-200">
-                  <Icon icon="material-symbols:mail" className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-                    Test Email
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Send a test email to verify email notification configuration
-                  </p>
-                  <div className="flex items-center text-blue-600 text-sm font-medium">
-                    <span>Test email</span>
-                    <Icon icon="material-symbols:arrow-forward" className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </div>
-            </Link>
-
             {/* Certificate Templates Card */}
             <Link 
               href="/admin/certificates/templates"

@@ -1,31 +1,49 @@
-// This file configures the initialization of Sentry on the client.
-// The added config here will be used whenever a users loads a page in their browser.
-// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+// Sentry initialization for the browser bundle.
+// Loaded by Next.js (15+) automatically on every client navigation.
+// Replaces the legacy sentry.client.config.ts location for Turbopack
+// compatibility. https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from '@sentry/nextjs';
+import { shouldDropEvent, getEnvironmentName } from '@/lib/sentry-shared';
 
-Sentry.init({
-  dsn: "https://90ca9638c179e07b770d3b4b50e23d66@o4511395862609920.ingest.us.sentry.io/4511395868311552",
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
-  // Add optional integrations for additional features
-  integrations: [Sentry.replayIntegration()],
+// Gated init: no DSN env var = no Sentry init = silent. Set
+// NEXT_PUBLIC_SENTRY_DSN only in Vercel's Production environment so
+// preview/dev stay quiet.
+//
+// Session Replay is intentionally NOT added here. It's the largest
+// single Sentry bundle contributor (~100 KB minified) and a material
+// chunk of build memory cost. Re-add Sentry.replayIntegration() here
+// AND flip the matching `excludeReplay*` flags in next.config.ts back
+// to false if a specific debugging session genuinely needs the
+// seconds-before-error video.
+if (dsn) {
+  Sentry.init({
+    dsn,
+    environment: getEnvironmentName(),
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
+    // Capture every error in production.
+    sampleRate: 1.0,
 
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
+    // Performance traces: 10% sampled. 100% sampling on a 10k-student
+    // LMS burns the free tier's 10k events/month in hours.
+    tracesSampleRate: 0.1,
 
-  // Define how likely Replay events are sampled when an error occurs.
-  replaysOnErrorSampleRate: 1.0,
+    // Drop known-noise events (AbortError, expected 4xx, hydration
+    // warnings, ResizeObserver loops) before they hit Sentry.
+    beforeSend(event) {
+      return shouldDropEvent(event) ? null : event;
+    },
 
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
-});
+    // PII off by default — don't ship student emails / IPs / cookies
+    // to Sentry. OECS tenants include member states with data-residency
+    // posture; explicit Sentry.setUser() calls are still available when
+    // we deliberately want a user-tagged event.
+    sendDefaultPii: false,
+  });
+}
 
+// Captures router transitions for performance traces in the App Router.
+// This export name is part of the Next.js 15 instrumentation contract.
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

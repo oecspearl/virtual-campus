@@ -176,40 +176,15 @@ const config = process.env.SENTRY_DSN
     })
   : composed;
 
-export default withSentryConfig(config, {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
-  org: "oecs",
-
-  project: "virtual-campus",
-
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  tunnelRoute: "/monitoring",
-
-  webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-    // See the following for more information:
-    // https://docs.sentry.io/product/crons/
-    // https://vercel.com/docs/cron-jobs
-    automaticVercelMonitors: true,
-
-    // Tree-shaking options for reducing bundle size
-    treeshake: {
-      // Automatically tree-shake Sentry logger statements to reduce bundle size
-      removeDebugLogging: true,
-    },
-  },
-});
+// NOTE: a wizard re-run had added a second, unconditional withSentryConfig()
+// wrap here with widenClientFileUpload: true. That stacked the Sentry
+// webpack plugin into the build pipeline twice, undid the source-map
+// scope narrowing on the inner wrap, and reintroduced the OOM that
+// commit 2048495 fixed. The single conditional wrap above is sufficient —
+// it already sets org/project/authToken/tunnelRoute/etc and conditionally
+// disables source-map work to fit the 8 GB Vercel build container.
+//
+// If you want the wizard's automaticVercelMonitors instrumentation, add
+// `automaticVercelMonitors: true` to the inner wrap options instead of
+// stacking a second wrap.
+export default config;

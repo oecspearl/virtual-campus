@@ -3,8 +3,10 @@ import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { createLogger, logger } from "@/lib/logger";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]/questions', _request as any);
   try {
     const { id } = await params;
     // Use service client for GET requests to bypass RLS and ensure students can access questions
@@ -18,18 +20,19 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .limit(200);
     
     if (error) {
-      console.error('Questions fetch error:', error);
+      log.error('Questions fetch failed', { quizId: id }, error);
       return NextResponse.json({ error: "Failed to fetch questions" }, { status: 500 });
     }
-    
+
     return NextResponse.json({ questions: questions || [] });
   } catch (e: any) {
-    console.error('Questions GET API error:', e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]/questions', request as any);
   try {
     const { id } = await params;
     const authResult = await authenticateUser(request as any);
@@ -84,13 +87,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       .single();
     
     if (error) {
-      console.error('Question creation error:', error);
+      log.error('Question creation failed', { quizId: id }, error);
       return NextResponse.json({ error: "Failed to create question" }, { status: 500 });
     }
-    
+
     return NextResponse.json({ id: question.id });
   } catch (e: any) {
-    console.error('Question POST API error:', e);
+    log.error('POST handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -105,7 +108,7 @@ async function checkCourseInstructor(supabase: any, userId: string, courseId: st
     .maybeSingle();
   
   if (error) {
-    console.error('Error checking course instructor:', error);
+    logger.error('Course instructor check failed', { source: 'api/quizzes/[id]/questions', courseId, userId }, error);
     return false;
   }
   

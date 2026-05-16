@@ -3,6 +3,7 @@ import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { recomputeCourseGradeSummariesForCourse } from "@/lib/services/gradebook-summary";
+import { createLogger, logger } from "@/lib/logger";
 
 async function calculateQuizTotalPoints(tq: any, quizId: string): Promise<number> {
   const { data: questions, error } = await tq
@@ -11,7 +12,7 @@ async function calculateQuizTotalPoints(tq: any, quizId: string): Promise<number
     .eq("quiz_id", quizId);
 
   if (error || !questions) {
-    console.error('Failed to fetch questions for quiz points calculation:', error);
+    logger.error('Failed to fetch questions for quiz points calculation', { source: 'api/courses/[id]/gradebook/quiz-sync', quizId }, error);
     return 0;
   }
 
@@ -23,6 +24,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/gradebook/quiz-sync', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -56,7 +58,7 @@ export async function POST(
       .eq("type", assessmentType);
 
     if (itemError) {
-      console.error('[Quiz Sync] Error fetching grade items:', itemError);
+      log.error('Grade items fetch failed', { courseId, assessmentId }, itemError);
       // Don't fail - just log and continue
     }
 
@@ -76,7 +78,7 @@ export async function POST(
         }
 
         await recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
-          console.error('Grade summary recompute failed:', err)
+          log.error('Grade summary recompute failed (after delete)', { courseId }, err)
         );
 
         return NextResponse.json({
@@ -113,16 +115,9 @@ export async function POST(
       }
 
       if (assessmentError || !assessment) {
-        console.error('[Quiz Sync] Error fetching assessment:', assessmentError);
+        log.error('Assessment fetch failed', { assessmentId, assessmentType }, assessmentError);
         return NextResponse.json({ error: `${assessmentType} not found` }, { status: 404 });
       }
-
-      console.log('[Quiz Sync] Updating grade items for assessment:', {
-        assessmentId,
-        assessmentType,
-        newTitle: assessment.title,
-        existingGradeItemsCount: gradeItems?.length || 0
-      });
 
       // Update ALL grade items for this assessment (in case there are multiple)
       if (gradeItems && gradeItems.length > 0) {
@@ -148,12 +143,10 @@ export async function POST(
             .eq("id", gradeItem.id);
 
           if (updateError) {
-            console.error('[Quiz Sync] Grade item update error:', updateError);
+            log.error('Grade item update failed', { gradeItemId: gradeItem.id, assessmentId }, updateError);
             // Continue with other items even if one fails
             continue;
           }
-
-          console.log('[Quiz Sync] Successfully updated grade item:', gradeItem.id, 'with title:', assessment.title, 'and points:', pointsToUse);
 
           // Update existing grades with new point values if points changed
           if (currentPoints !== pointsToUse) {
@@ -176,13 +169,12 @@ export async function POST(
                   .eq("id", grade.id);
               }
 
-              console.log(`[Quiz Sync] Updated ${existingGrades.length} existing grades with new max_score ${pointsToUse}`);
             }
           }
         }
 
         await recomputeCourseGradeSummariesForCourse(tq, courseId).catch((err) =>
-          console.error('Grade summary recompute failed:', err)
+          log.error('Grade summary recompute failed (after update)', { courseId }, err)
         );
 
         return NextResponse.json({
@@ -201,7 +193,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 
   } catch (e: any) {
-    console.error('Quiz sync API error:', e);
+    log.error('POST handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

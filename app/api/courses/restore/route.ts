@@ -4,6 +4,7 @@ import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import JSZip from "jszip";
 import { createHash } from "crypto";
+import { createLogger } from "@/lib/logger";
 
 export const maxDuration = 300; // 5 minutes for Vercel Pro
 
@@ -83,6 +84,7 @@ function updateFileReferences(items: any[], fileMapping: Record<string, string>)
 }
 
 export async function POST(request: Request) {
+  const log = createLogger('api/courses/restore', request as any);
   // Track created resources for rollback on failure
   let createdCourseId: string | null = null;
   let uploadedStorageFiles: string[] = [];
@@ -237,7 +239,7 @@ export async function POST(request: Request) {
       .single();
 
     if (courseError || !newCourse) {
-      console.error('Course creation error:', courseError);
+      log.error('Course creation failed during restore', { tenantId }, courseError);
       return NextResponse.json({ error: `Failed to create course: ${courseError?.message}` }, { status: 500 });
     }
 
@@ -257,7 +259,7 @@ export async function POST(request: Request) {
             try {
               const zipFile = filesFolder.file(fileInfo.name);
               if (!zipFile) {
-                console.warn(`File ${fileInfo.name} not found in ZIP`);
+                log.warn('File missing from ZIP during restore', { fileName: fileInfo.name });
                 return null;
               }
 
@@ -272,7 +274,7 @@ export async function POST(request: Request) {
 
               // Check if file hash matches (security check)
               if (fileInfo.hash && hash !== fileInfo.hash) {
-                console.warn(`File hash mismatch for ${fileInfo.name}`);
+                log.warn('File hash mismatch during restore', { fileName: fileInfo.name });
               }
 
               // Generate unique filename
@@ -290,7 +292,7 @@ export async function POST(request: Request) {
                 });
 
               if (uploadError) {
-                console.error(`Failed to upload file ${fileInfo.name}:`, uploadError);
+                log.error('Storage upload failed during restore', { fileName: fileInfo.name }, uploadError);
                 return null;
               }
 
@@ -317,7 +319,7 @@ export async function POST(request: Request) {
                 .single();
 
               if (fileRecordError || !fileRecord) {
-                console.error(`Failed to create file record for ${fileInfo.name}:`, fileRecordError);
+                log.error('File record insert failed during restore', { fileName: fileInfo.name }, fileRecordError);
                 await serviceSupabase.storage.from('course-materials').remove([fileName]);
                 uploadedStorageFiles = uploadedStorageFiles.filter(f => f !== fileName);
                 return null;
@@ -327,7 +329,7 @@ export async function POST(request: Request) {
               return { oldFileId, newFileId: fileRecord.id };
             } catch (error: any) {
               if (error.message?.includes('ZIP bomb')) throw error;
-              console.error(`Error processing file ${fileInfo.name}:`, error);
+              log.error('File processing failed during restore', { fileName: fileInfo.name }, error);
               return null;
             }
           })
@@ -373,7 +375,7 @@ export async function POST(request: Request) {
           .single();
 
         if (lessonError || !newLesson) {
-          console.error('Lesson creation error:', lessonError);
+          log.error('Lesson creation failed during restore', { title: lesson.title }, lessonError);
           continue;
         }
 
@@ -385,7 +387,7 @@ export async function POST(request: Request) {
           lessonIdMapping[origId] = newLesson.id;
         }
       } catch (error) {
-        console.error(`Error creating lesson ${lesson.title}:`, error);
+        log.error('Lesson restore crashed', { title: lesson.title }, error);
       }
     }
 
@@ -430,7 +432,7 @@ export async function POST(request: Request) {
           .single();
 
         if (quizError || !newQuiz) {
-          console.error(`Quiz creation error for "${quiz.title}":`, quizError);
+          log.error('Quiz creation failed during restore', { title: quiz.title }, quizError);
           continue;
         }
 
@@ -439,7 +441,7 @@ export async function POST(request: Request) {
         }
         quizzesRestored++;
       } catch (error) {
-        console.error(`Error restoring quiz "${quiz.title}":`, error);
+        log.error('Quiz restore crashed', { title: quiz.title }, error);
       }
     }
 
@@ -462,12 +464,12 @@ export async function POST(request: Request) {
           .insert([questionData]);
 
         if (qError) {
-          console.error(`Question creation error:`, qError);
+          log.error('Question creation failed during restore', { quizId: newQuizId }, qError);
           continue;
         }
         questionsRestored++;
       } catch (error) {
-        console.error('Error restoring question:', error);
+        log.error('Question restore crashed', undefined, error);
       }
     }
 
@@ -491,12 +493,12 @@ export async function POST(request: Request) {
           .insert([assignmentData]);
 
         if (aError) {
-          console.error(`Assignment creation error for "${assignment.title}":`, aError);
+          log.error('Assignment creation failed during restore', { title: assignment.title }, aError);
           continue;
         }
         assignmentsRestored++;
       } catch (error) {
-        console.error(`Error restoring assignment "${assignment.title}":`, error);
+        log.error('Assignment restore crashed', { title: assignment.title }, error);
       }
     }
 
@@ -517,12 +519,12 @@ export async function POST(request: Request) {
           .insert([discussionData]);
 
         if (dError) {
-          console.error(`Discussion creation error:`, dError);
+          log.error('Discussion creation failed during restore', undefined, dError);
           continue;
         }
         discussionsRestored++;
       } catch (error) {
-        console.error('Error restoring discussion:', error);
+        log.error('Discussion restore crashed', undefined, error);
       }
     }
 
@@ -744,7 +746,7 @@ export async function POST(request: Request) {
 
         userDataRestored = true;
       } catch (error) {
-        console.error('Error restoring user data:', error);
+        log.error('User data restore failed', { courseId: createdCourseId }, error);
         // Continue even if user data restoration fails — course structure is intact
       }
     }
@@ -764,7 +766,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('Restore error:', error);
+    log.error('Restore failed — initiating rollback', { courseId: createdCourseId }, error);
 
     // Rollback: clean up partially created resources
     if (serviceSupabase) {
@@ -784,7 +786,7 @@ export async function POST(request: Request) {
           await serviceSupabase.from('courses').delete().eq('id', createdCourseId);
         }
       } catch (cleanupError) {
-        console.error('Rollback cleanup error:', cleanupError);
+        log.error('Rollback cleanup failed', { courseId: createdCourseId }, cleanupError);
       }
     }
 

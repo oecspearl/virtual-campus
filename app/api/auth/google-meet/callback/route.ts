@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
+import { createLogger } from '@/lib/logger';
 
 /**
  * Handles the Google OAuth2 callback after user consents.
@@ -8,6 +9,7 @@ import { createServiceSupabaseClient } from '@/lib/supabase-server';
  * in site_settings so it can be reused for creating Meet links.
  */
 export async function GET(request: NextRequest) {
+  const log = createLogger('api/auth/google-meet/callback', request);
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
 
     if (error) {
-      console.error('Google OAuth error:', error);
+      log.warn('IdP returned error param', { error });
       return NextResponse.redirect(`${appUrl}/admin/settings?google_meet=error&reason=${error}`);
     }
 
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
     const { tokens } = await oauth2Client.getToken(code);
 
     if (!tokens.refresh_token) {
-      console.error('No refresh token received. User may have already authorized before.');
+      log.warn('No refresh token returned (likely already authorized)', { userId });
       return NextResponse.redirect(`${appUrl}/admin/settings?google_meet=error&reason=no_refresh_token`);
     }
 
@@ -92,10 +94,10 @@ export async function GET(request: NextRequest) {
         });
     }
 
-    console.log('[Google Meet] OAuth tokens saved successfully for user:', userId);
+    log.info('Google Meet OAuth tokens saved', { userId });
     return NextResponse.redirect(`${appUrl}/admin/settings?google_meet=success`);
   } catch (error: any) {
-    console.error('Error in Google OAuth callback:', error?.message || error);
+    log.error('Token exchange failed', undefined, error);
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     return NextResponse.redirect(`${appUrl}/admin/settings?google_meet=error&reason=token_exchange_failed`);
   }

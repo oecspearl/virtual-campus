@@ -4,8 +4,10 @@ import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extensions";
 import { checkStudentEnrollment } from "@/lib/enrollment-check";
+import { createLogger } from "@/lib/logger";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]/attempts', request as any);
   try {
     const { id } = await params;
     const authResult = await authenticateUser(request as any);
@@ -55,18 +57,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { data: attempts, error } = await query;
     
     if (error) {
-      console.error('Quiz attempts fetch error:', error);
+      log.error('Quiz attempts fetch failed', { quizId: id }, error);
       return NextResponse.json({ error: "Failed to fetch attempts" }, { status: 500 });
     }
-    
+
     return NextResponse.json({ attempts: attempts || [] });
   } catch (e: any) {
-    console.error('Quiz attempts GET API error:', e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]/attempts', _request as any);
   try {
     const { id } = await params;
     const authResult = await authenticateUser(_request as any);
@@ -89,39 +92,26 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       .single();
     
     if (quizError || !quiz) {
-      console.error('Quiz fetch error:', quizError);
-      console.error('Quiz ID:', id);
-      console.error('Quiz data:', quiz);
+      log.warn('Quiz not found on attempt start', { quizId: id });
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
     // Get course_id from various sources
     let courseId = null;
-    
-    console.log('Quiz data:', {
-      id: quiz.id,
-      title: quiz.title,
-      lesson_id: quiz.lesson_id,
-      course_id: quiz.course_id,
-      lesson: quiz.lesson
-    });
-    
+
     // First try direct course_id on quiz (if column exists)
     if (quiz.course_id) {
       courseId = quiz.course_id;
-      console.log('Using direct course_id:', courseId);
     }
     // Then try through lesson -> course
     else if (quiz.lesson?.course_id) {
       courseId = quiz.lesson.course_id;
-      console.log('Using lesson course_id:', courseId);
     }
-    
+
     if (!courseId) {
-      console.error('Quiz not associated with a course. Quiz ID:', id, 'Lesson ID:', quiz.lesson_id);
-      console.error('Quiz data:', quiz);
-      return NextResponse.json({ 
-        error: "Quiz not associated with a course. Please ensure the quiz is linked to a lesson that belongs to a course." 
+      log.warn('Quiz not associated with a course', { quizId: id, lessonId: quiz.lesson_id });
+      return NextResponse.json({
+        error: "Quiz not associated with a course. Please ensure the quiz is linked to a lesson that belongs to a course."
       }, { status: 400 });
     }
 
@@ -160,7 +150,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       .eq("student_id", user.id);
 
     if (attemptsError) {
-      console.error('Existing attempts fetch error:', attemptsError);
+      log.error('Existing attempts fetch failed', { quizId: id, studentId: user.id }, attemptsError);
       return NextResponse.json({ error: "Failed to check existing attempts" }, { status: 500 });
     }
 
@@ -203,14 +193,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       .single();
     
     if (createError) {
-      console.error('Quiz attempt creation error:', createError);
-      console.error('Payload that failed:', payload);
+      log.error('Quiz attempt creation failed', { quizId: id, studentId: user.id }, createError);
       return NextResponse.json({ error: "Failed to create quiz attempt" }, { status: 500 });
     }
-    
+
     return NextResponse.json({ id: attempt.id });
   } catch (e: any) {
-    console.error('Quiz attempt POST API error:', e);
+    log.error('POST handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

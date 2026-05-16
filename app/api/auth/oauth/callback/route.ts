@@ -4,6 +4,7 @@ import { validateState } from '@/lib/oauth/state';
 import { exchangeCodeForTokens, getUserInfo, validateEmailDomain } from '@/lib/oauth/provider';
 import { createOAuthSession } from '@/lib/oauth/session';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { createLogger } from '@/lib/logger';
 import type { OAuthProviderConfig } from '@/lib/oauth/types';
 
 /**
@@ -12,6 +13,7 @@ import type { OAuthProviderConfig } from '@/lib/oauth/types';
  * JIT provisions the user, and redirects to the dashboard with a session.
  */
 export async function GET(request: NextRequest) {
+  const log = createLogger('api/auth/oauth/callback', request);
   const signinUrl = new URL('/auth/signin', request.url);
 
   try {
@@ -109,7 +111,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (linkError || !linkData?.properties?.hashed_token) {
-      console.error('OAuth: Failed to generate magic link', linkError);
+      log.error('Failed to generate magic link', { email: sessionResult.email }, linkError);
       signinUrl.searchParams.set('error', 'session_failed');
       return NextResponse.redirect(signinUrl);
     }
@@ -128,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('OAuth callback error:', error);
+    log.error('OAuth callback crashed', undefined, error);
     signinUrl.searchParams.set('error', 'oauth_callback_failed');
     return NextResponse.redirect(signinUrl);
   }

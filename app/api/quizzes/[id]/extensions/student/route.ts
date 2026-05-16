@@ -3,11 +3,13 @@ import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
 import { getStudentExtension, resolveEffectiveSettings } from "@/lib/quiz-extensions";
+import { createLogger } from "@/lib/logger";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/quizzes/[id]/extensions/student', request as any);
   try {
     const { id: quizId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -48,7 +50,7 @@ export async function GET(
 
     return NextResponse.json({ effective });
   } catch (e: any) {
-    console.error("Quiz extension student GET error:", e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger } from "@/lib/logger";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
+  const log = createLogger('api/quizzes/[id]/attempts/[attemptId]/results', _request as any);
   try {
     const { id, attemptId } = await params;
     const authResult = await authenticateUser(_request as any);
@@ -21,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .single();
     
     if (attemptError || !attempt) {
-      console.error('Quiz attempt fetch error:', attemptError);
+      log.warn('Quiz attempt not found for results', { attemptId });
       return NextResponse.json({ error: "Quiz attempt not found" }, { status: 404 });
     }
     
@@ -39,13 +41,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .single();
     
     if (quizError) {
-      console.error('Quiz fetch error:', quizError);
+      log.warn('Quiz fetch failed (returning null)', { quizId: id }, );
       // Don't fail if quiz not found, just return null
     }
 
     return NextResponse.json({ attempt, quiz: quiz || null });
   } catch (e: any) {
-    console.error('Quiz results GET API error:', e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

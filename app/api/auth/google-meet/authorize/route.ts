@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/api-auth';
 import { google } from 'googleapis';
+import { createLogger } from '@/lib/logger';
 
 /**
  * Initiates Google OAuth2 flow for Meet/Calendar access.
@@ -8,6 +9,7 @@ import { google } from 'googleapis';
  * Google redirects back to /api/auth/google-meet/callback with auth code.
  */
 export async function GET(request: NextRequest) {
+  const log = createLogger('api/auth/google-meet/authorize', request);
   try {
     const authResult = await authenticateUser(request);
     if (!authResult.success) {
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    console.error('Error initiating Google OAuth:', error);
+    log.error('Failed to initiate Google OAuth', undefined, error);
     return NextResponse.json({ error: 'Failed to initiate Google authorization' }, { status: 500 });
   }
 }

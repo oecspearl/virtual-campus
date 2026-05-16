@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger } from "@/lib/logger";
 
 export async function GET(request: Request) {
+  const log = createLogger('api/courses', request as any);
   const { searchParams } = new URL(request.url);
   const difficulty = searchParams.get("difficulty");
   const subject_area = searchParams.get("subject_area");
@@ -113,28 +115,20 @@ export async function GET(request: Request) {
     const { data: courses, error } = await query.limit(100);
 
     if (error) {
-      // The original `console.error('Courses fetch error:', error)` printed
-      // [object Object] in many runtimes — surface the actual fields so 500s
-      // are diagnosable in Vercel logs without a repro.
-      const tenantHeader = (request as unknown as { headers: Headers }).headers.get('x-tenant-id');
       const tenantOverride = (request as unknown as { headers: Headers }).headers.get('x-tenant-override');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const err = error as any;
-      console.error('Courses fetch error', {
+      log.error('Courses fetch failed', {
         userRole,
-        tenantId: tenantHeader,
         tenantOverride: tenantOverride || null,
         difficulty,
         subject_area,
         instructorId,
         categoryId,
         schoolId,
-        name: err?.name,
-        message: err?.message,
         code: err?.code,
-        details: err?.details,
         hint: err?.hint,
-      });
+      }, error);
       return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
     }
 
@@ -159,46 +153,35 @@ export async function GET(request: Request) {
     response.headers.set('Cache-Control', 'private, max-age=60, stale-while-revalidate=300');
     return response;
   } catch (e: unknown) {
-    const tenantHeader = (request as unknown as { headers: Headers }).headers.get('x-tenant-id');
     const tenantOverride = (request as unknown as { headers: Headers }).headers.get('x-tenant-override');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const err = e as any;
-    console.error('Courses API error', {
-      tenantId: tenantHeader,
+    log.error('GET handler crashed', {
       tenantOverride: tenantOverride || null,
       difficulty,
       subject_area,
       instructorId,
       categoryId,
       schoolId,
-      name: err?.name,
-      message: err?.message,
-      code: err?.code,
-      stack: err?.stack,
-    });
+    }, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
+  const log = createLogger('api/courses', request as any);
   try {
     // Use the new authentication system
     const authResult = await authenticateUser(request as any);
     if (!authResult.success) {
-      console.log('Course creation authentication failed:', authResult.error);
       return createAuthResponse(authResult.error!, authResult.status!);
     }
 
     const { user, userProfile } = authResult;
-    console.log('Creating course for user:', { id: user.id, role: userProfile.role });
 
     if (!hasRole(userProfile.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      console.log('User role not authorized for course creation:', userProfile.role);
       return NextResponse.json({ error: `Insufficient permissions. Required roles: instructor, curriculum_designer, admin, super_admin. Your role: ${userProfile.role}` }, { status: 403 });
     }
 
     const body = await request.json();
-    console.log('Course creation request body:', body);
 
     const tenantId = getTenantIdFromRequest(request as any);
     const tq = createTenantQuery(tenantId);
@@ -217,18 +200,14 @@ export async function POST(request: Request) {
       featured: Boolean(body.featured ?? false),
     };
 
-    console.log('Course data to insert:', courseData);
-
     const { data: course, error } = await tq
       .from('courses')
       .insert([courseData])
       .select()
       .single();
 
-    console.log('Course creation result:', { course, error });
-
     if (error) {
-      console.error('Supabase error:', error);
+      log.error('Course insert failed', { userId: user.id }, error);
       return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
     }
 
@@ -244,7 +223,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(course);
   } catch (e: any) {
-    console.error('Course creation error:', e);
+    log.error('POST handler crashed', undefined, e);
     return NextResponse.json({ error: `Internal server error: ${e.message}` }, { status: 500 });
   }
 }

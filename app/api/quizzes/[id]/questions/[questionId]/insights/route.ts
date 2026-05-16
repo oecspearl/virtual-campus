@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { authenticateUser, createAuthResponse } from '@/lib/api-auth';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
+import { createLogger } from '@/lib/logger';
 
 // Initialize OpenAI client only if API key is available
 function getOpenAIClient() {
@@ -16,6 +17,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; questionId: string }> }
 ) {
+  const log = createLogger('api/quizzes/[id]/questions/[questionId]/insights', request);
   try {
     // Await params first
     const { id: quizId, questionId } = await params;
@@ -61,20 +63,20 @@ export async function POST(
         supabase.from('questions').select('*').eq('id', questionId).single()
       ]);
     } catch (dbError) {
-      console.error('[Quiz Insights] Database query error:', dbError);
-      return NextResponse.json({ 
+      log.error('Database query failed', { quizId, questionId }, dbError);
+      return NextResponse.json({
         error: 'Failed to fetch quiz or question data',
         details: dbError instanceof Error ? dbError.message : 'Unknown database error'
       }, { status: 500 });
     }
 
     if (quizResult.error) {
-      console.error('[Quiz Insights] Quiz fetch error:', quizResult.error);
+      log.warn('Quiz fetch failed for insights', { quizId }, );
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
     }
 
     if (questionResult.error) {
-      console.error('[Quiz Insights] Question fetch error:', questionResult.error);
+      log.warn('Question fetch failed for insights', { questionId });
       return NextResponse.json({ error: 'Question not found' }, { status: 404 });
     }
 
@@ -158,8 +160,8 @@ ${questionDetails}`;
         max_tokens: 500,
       });
     } catch (openaiError) {
-      console.error('[Quiz Insights] OpenAI API error:', openaiError);
-      return NextResponse.json({ 
+      log.error('OpenAI API call failed', { quizId, questionId }, openaiError);
+      return NextResponse.json({
         error: 'Failed to generate insights from AI service.',
         details: openaiError instanceof Error ? openaiError.message : 'Unknown OpenAI error'
       }, { status: 500 });
@@ -185,7 +187,7 @@ ${questionDetails}`;
           created_at: new Date().toISOString()
         });
     } catch (error) {
-      console.error('Error tracking AI usage:', error);
+      log.warn('AI usage tracking failed', { userId: user.id }, );
       // Don't fail if usage tracking fails
     }
 
@@ -196,25 +198,17 @@ ${questionDetails}`;
     });
 
   } catch (error) {
-    console.error('[Quiz Insights] Unexpected error:', error);
-    
-    // Ensure we always return JSON, never HTML
+    log.error('POST handler crashed', undefined, error);
+
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    console.error('[Quiz Insights] Error details:', {
-      message: errorMessage,
-      stack: errorStack,
-      error
-    });
-    
+
     if (error instanceof Error && error.message.includes('API key')) {
-      return NextResponse.json({ 
-        error: 'AI insights are not available. OpenAI API key is not configured.' 
+      return NextResponse.json({
+        error: 'AI insights are not available. OpenAI API key is not configured.'
       }, { status: 503 });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to generate insights. Please try again later.',
       details: errorMessage
     }, { status: 500 });

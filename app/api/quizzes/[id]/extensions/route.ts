@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger } from "@/lib/logger";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/quizzes/[id]/extensions', request as any);
   try {
     const { id: quizId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -28,7 +30,7 @@ export async function GET(
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching quiz extensions:", error);
+      log.error('Failed to fetch quiz extensions', { quizId }, error);
       return NextResponse.json({ error: "Failed to fetch extensions" }, { status: 500 });
     }
 
@@ -55,7 +57,7 @@ export async function GET(
 
     return NextResponse.json({ extensions: enriched });
   } catch (e: any) {
-    console.error("Quiz extensions GET error:", e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -64,6 +66,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/quizzes/[id]/extensions', request as any);
   try {
     const { id: quizId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -129,13 +132,13 @@ export async function POST(
       .single();
 
     if (upsertError) {
-      console.error("Error upserting quiz extension:", upsertError);
+      log.error('Failed to upsert quiz extension', { quizId, studentId: student_id }, upsertError);
       return NextResponse.json({ error: "Failed to save extension" }, { status: 500 });
     }
 
     return NextResponse.json({ extension });
   } catch (e: any) {
-    console.error("Quiz extensions POST error:", e);
+    log.error('POST handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

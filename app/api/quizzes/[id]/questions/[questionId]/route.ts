@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger, logger } from "@/lib/logger";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string; questionId: string }> }) {
+  const log = createLogger('api/quizzes/[id]/questions/[questionId]', request as any);
   try {
     const { id, questionId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -64,13 +66,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .single();
     
     if (error) {
-      console.error('Question update error:', error);
+      log.error('Question update failed', { quizId: id, questionId }, error);
       return NextResponse.json({ error: "Failed to update question" }, { status: 500 });
     }
-    
+
     return NextResponse.json(question);
   } catch (e: any) {
-    console.error('Question PUT API error:', e);
+    log.error('PUT handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -85,7 +87,7 @@ async function checkCourseInstructor(supabase: any, userId: string, courseId: st
     .maybeSingle();
   
   if (error) {
-    console.error('Error checking course instructor:', error);
+    logger.error('Course instructor check failed', { source: 'api/quizzes/[id]/questions/[questionId]', courseId, userId }, error);
     return false;
   }
   
@@ -93,6 +95,7 @@ async function checkCourseInstructor(supabase: any, userId: string, courseId: st
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; questionId: string }> }) {
+  const log = createLogger('api/quizzes/[id]/questions/[questionId]', _request as any);
   try {
     const { id, questionId } = await params;
     const authResult = await authenticateUser(_request as any);
@@ -130,13 +133,13 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       .eq("id", questionId);
     
     if (error) {
-      console.error('Question delete error:', error);
+      log.error('Question delete failed', { quizId: id, questionId }, error);
       return NextResponse.json({ error: "Failed to delete question" }, { status: 500 });
     }
-    
+
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    console.error('Question DELETE API error:', e);
+    log.error('DELETE handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

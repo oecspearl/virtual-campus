@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger } from "@/lib/logger";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
+  const log = createLogger('api/quizzes/[id]/attempts/[attemptId]', _request as any);
   try {
     const { id, attemptId } = await params;
     const authResult = await authenticateUser(_request as any);
@@ -24,24 +26,25 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .single();
     
     if (error || !attempt) {
-      console.error('Quiz attempt fetch error:', error);
+      log.warn('Quiz attempt not found', { attemptId });
       return NextResponse.json({ error: "Quiz attempt not found" }, { status: 404 });
     }
-    
+
     // Check if user can view this attempt (student or grader)
     const isGrader = hasRole(user.role, ["instructor", "curriculum_designer", "admin", "super_admin"]);
     if (attempt.student_id !== user.id && !isGrader) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    
+
     return NextResponse.json(attempt);
   } catch (e: any) {
-    console.error('Quiz attempt GET API error:', e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string; attemptId: string }> }) {
+  const log = createLogger('api/quizzes/[id]/attempts/[attemptId]', request as any);
   try {
     const { id, attemptId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -59,7 +62,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .single();
     
     if (fetchError || !currentAttempt) {
-      console.error('Quiz attempt fetch error:', fetchError);
+      log.warn('Quiz attempt not found for update', { attemptId });
       return NextResponse.json({ error: "Quiz attempt not found" }, { status: 404 });
     }
     
@@ -92,13 +95,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .single();
     
     if (updateError) {
-      console.error('Quiz attempt update error:', updateError);
+      log.error('Quiz attempt update failed', { attemptId }, updateError);
       return NextResponse.json({ error: "Failed to update quiz attempt" }, { status: 500 });
     }
-    
+
     return NextResponse.json(attempt);
   } catch (e: any) {
-    console.error('Quiz attempt PUT API error:', e);
+    log.error('PUT handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

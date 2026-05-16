@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { ViolationType } from '@/types/proctor';
 import { createTenantQuery, getTenantIdFromRequest } from '@/lib/tenant-query';
+import { createLogger } from '@/lib/logger';
 
 interface ProctorLogRequest {
   quiz_id: string;
@@ -13,6 +14,7 @@ interface ProctorLogRequest {
 }
 
 export async function POST(request: NextRequest) {
+  const log = createLogger('api/quizzes/proctor-log', request);
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (attemptError || !attempt) {
-      console.error('[ProctorLog] Quiz attempt not found:', attemptError);
+      log.warn('Quiz attempt not found', { quizAttemptId: quiz_attempt_id });
       return NextResponse.json({ error: 'Quiz attempt not found' }, { status: 404 });
     }
 
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert proctor log
-    const { data: log, error: insertError } = await tq
+    const { data: logRow, error: insertError } = await tq
       .from('quiz_proctor_logs')
       .insert({
         quiz_attempt_id,
@@ -93,29 +95,30 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('[ProctorLog] Failed to insert log:', insertError);
+      log.error('Failed to insert proctor log', { quizAttemptId: quiz_attempt_id, violationType: violation_type }, insertError);
       return NextResponse.json(
         { error: 'Failed to log violation' },
         { status: 500 }
       );
     }
 
-    console.log(`[ProctorLog] Logged ${violation_type} for attempt ${quiz_attempt_id} (count: ${violation_count})`);
+    log.info('Proctor violation logged', { violationType: violation_type, quizAttemptId: quiz_attempt_id, violationCount: violation_count });
 
     return NextResponse.json({
       success: true,
-      log_id: log.id,
+      log_id: logRow.id,
       violation_count,
       auto_submitted,
     });
   } catch (error) {
-    console.error('[ProctorLog] Error:', error);
+    log.error('POST handler crashed', undefined, error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 // GET endpoint for instructors to view proctor logs for an attempt
 export async function GET(request: NextRequest) {
+  const log = createLogger('api/quizzes/proctor-log', request);
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -151,13 +154,13 @@ export async function GET(request: NextRequest) {
     const { data: logs, error } = await query;
 
     if (error) {
-      console.error('[ProctorLog] Failed to fetch logs:', error);
+      log.error('Failed to fetch proctor logs', undefined, error);
       return NextResponse.json({ error: 'Failed to fetch proctor logs' }, { status: 500 });
     }
 
     return NextResponse.json({ logs });
   } catch (error) {
-    console.error('[ProctorLog] Error:', error);
+    log.error('GET handler crashed', undefined, error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

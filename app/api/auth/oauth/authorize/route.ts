@@ -4,6 +4,7 @@ import { getTenantIdFromRequest } from '@/lib/tenant-query';
 import { generateState, generatePKCE } from '@/lib/oauth/state';
 import { buildAuthorizationUrl } from '@/lib/oauth/provider';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { createLogger } from '@/lib/logger';
 import type { OAuthProviderConfig } from '@/lib/oauth/types';
 
 /**
@@ -14,6 +15,7 @@ import type { OAuthProviderConfig } from '@/lib/oauth/types';
  * Usage: GET /api/auth/oauth/authorize?provider=azure_ad
  */
 export async function GET(request: NextRequest) {
+  const log = createLogger('api/auth/oauth/authorize', request);
   try {
     // Rate limit: 10 attempts per minute per IP
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
@@ -67,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('OAuth authorize error:', error);
+    log.error('OAuth authorize crashed', undefined, error);
     return NextResponse.redirect(new URL('/auth/signin?error=oauth_error', request.url));
   }
 }

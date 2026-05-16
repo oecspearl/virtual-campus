@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
+import { createLogger } from "@/lib/logger";
 
 // Maximum file size for profile pictures (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -15,6 +16,7 @@ const ALLOWED_MIME_TYPES = [
 ];
 
 export async function POST(request: Request) {
+  const log = createLogger('api/auth/profile/upload-avatar', request as any);
   try {
     // Authenticate user
     const authResult = await authenticateUser(request as any);
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
-      console.error('Supabase upload error:', uploadError);
+      log.error('Storage upload failed', { userId: user.id, fileName }, uploadError);
       return NextResponse.json(
         { error: "File upload failed" },
         { status: 500 }
@@ -76,7 +78,7 @@ export async function POST(request: Request) {
       .getPublicUrl(fileName);
 
     if (!urlData || !urlData.publicUrl) {
-      console.error("Failed to get public URL for uploaded file");
+      log.error('Failed to get public URL', { userId: user.id, fileName });
       // Try to clean up uploaded file
       await serviceSupabase.storage.from('course-materials').remove([fileName]);
       return NextResponse.json(
@@ -102,25 +104,25 @@ export async function POST(request: Request) {
     const profileError = serviceResult.error;
 
     if (profileError) {
-      console.error("Profile update error:", profileError);
-      console.error("Error code:", profileError.code);
-      console.error("Error message:", profileError.message);
-      console.error("Error hint:", profileError.hint);
-      console.error("Error details:", JSON.stringify(profileError, null, 2));
-      
+      log.error('Profile update failed', {
+        userId: user.id,
+        code: profileError.code,
+        hint: profileError.hint,
+      }, profileError);
+
       // Try to clean up uploaded file
       try {
         await serviceSupabase.storage.from('course-materials').remove([fileName]);
       } catch (cleanupError) {
-        console.error("Failed to cleanup uploaded file:", cleanupError);
+        log.error('Failed to cleanup uploaded file after profile error', { fileName }, cleanupError);
       }
-      
+
       // Provide helpful error message
       let errorMessage = "Failed to update profile with new avatar";
       if (profileError.message?.includes('row-level security')) {
         errorMessage += ". Please ensure RLS policies are configured. Run the SQL file: database/fix-user-profiles-rls-policies.sql";
       }
-      
+
       return NextResponse.json(
         {
           error: errorMessage
@@ -139,7 +141,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error("Avatar upload error:", error);
+    log.error('POST handler crashed', undefined, error);
     return NextResponse.json(
       {
         error: "Internal server error"

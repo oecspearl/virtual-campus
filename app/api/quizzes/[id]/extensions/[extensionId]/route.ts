@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger } from "@/lib/logger";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string; extensionId: string }> }
 ) {
+  const log = createLogger('api/quizzes/[id]/extensions/[extensionId]', request as any);
   try {
     const { extensionId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -39,13 +41,13 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error("Error updating quiz extension:", error);
+      log.error('Failed to update quiz extension', { extensionId }, error);
       return NextResponse.json({ error: "Failed to update extension" }, { status: 500 });
     }
 
     return NextResponse.json({ extension });
   } catch (e: any) {
-    console.error("Quiz extension PUT error:", e);
+    log.error('PUT handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -54,6 +56,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string; extensionId: string }> }
 ) {
+  const log = createLogger('api/quizzes/[id]/extensions/[extensionId]', request as any);
   try {
     const { extensionId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -73,13 +76,13 @@ export async function DELETE(
       .eq("id", extensionId);
 
     if (error) {
-      console.error("Error deleting quiz extension:", error);
+      log.error('Failed to delete quiz extension', { extensionId }, error);
       return NextResponse.json({ error: "Failed to delete extension" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    console.error("Quiz extension DELETE error:", e);
+    log.error('DELETE handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

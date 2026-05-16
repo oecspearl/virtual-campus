@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse, checkRateLimitWithMeta, getRateLimitHeaders } from "@/lib/api-auth";
 import { addSecurityHeaders, sanitizeInput, createSecureResponse } from "@/lib/security";
+import { createLogger } from "@/lib/logger";
 
 export async function POST(request: Request) {
+  const log = createLogger('api/auth/change-password', request as any);
   try {
     // Rate limiting for password changes (stricter)
     const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
     try {
       body = await request.json();
     } catch (parseError) {
-      console.error('Password change: Invalid JSON', parseError);
+      log.error('Invalid JSON body', undefined, parseError);
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
     });
 
     if (signInError) {
-      console.error('Current password verification failed:', signInError);
+      log.warn('Current password verification failed', { userId: user.id });
       return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
     }
 
@@ -88,19 +90,18 @@ export async function POST(request: Request) {
     });
 
     if (updateError) {
-      console.error('Password update error:', updateError);
+      log.error('Password update failed', { userId: user.id }, updateError);
       return NextResponse.json({ error: "Failed to update password. Please try again." }, { status: 500 });
     }
 
-    // Log successful password change for security audit
-    console.log(`Password changed successfully for user: ${user.email} (${user.id})`);
+    log.info('Password changed', { userId: user.id });
 
-    return createSecureResponse({ 
-      message: "Password updated successfully" 
+    return createSecureResponse({
+      message: "Password updated successfully"
     });
 
   } catch (error) {
-    console.error('Password change API error:', error);
+    log.error('POST handler crashed', undefined, error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

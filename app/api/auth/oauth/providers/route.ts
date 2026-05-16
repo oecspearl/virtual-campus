@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase-server';
 import { getTenantIdFromRequest } from '@/lib/tenant-query';
+import { createLogger } from '@/lib/logger';
 
 /**
  * Public endpoint: returns enabled OAuth providers for the current tenant.
@@ -8,6 +9,7 @@ import { getTenantIdFromRequest } from '@/lib/tenant-query';
  * No authentication required. No secrets exposed.
  */
 export async function GET(request: NextRequest) {
+  const log = createLogger('api/auth/oauth/providers', request);
   try {
     const tenantId = getTenantIdFromRequest(request);
     const supabase = createServiceSupabaseClient();
@@ -20,13 +22,13 @@ export async function GET(request: NextRequest) {
       .order('sort_order', { ascending: true });
 
     if (error) {
-      console.error('Error fetching public OAuth providers:', error);
+      log.error('Failed to fetch OAuth providers', undefined, error);
       return NextResponse.json([]);
     }
 
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('OAuth providers public GET error:', error);
+    log.error('GET handler crashed', undefined, error);
     return NextResponse.json([]);
   }
 }

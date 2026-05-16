@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger } from "@/lib/logger";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const log = createLogger('api/quizzes/[id]/questions/reorder', request as any);
   try {
     const { id } = await params;
     const authResult = await authenticateUser(request as any);
@@ -31,13 +33,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     // Check for any errors
     const errors = results.filter(result => result.error);
     if (errors.length > 0) {
-      console.error('Question reorder errors:', errors);
+      log.error('Question reorder had errors', { quizId: id, failed: errors.length });
       return NextResponse.json({ error: "Failed to reorder questions" }, { status: 500 });
     }
-    
+
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    console.error('Question reorder API error:', e);
+    log.error('PUT handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

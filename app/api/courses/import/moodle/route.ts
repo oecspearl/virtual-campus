@@ -7,6 +7,7 @@ import { gunzipSync } from "zlib";
 import { detectArchiveFormat, parseTarArchive } from "@/lib/moodle/archive";
 import { getZipFile } from "@/lib/moodle/parser";
 import { handleMoodleXmlImport, handlePlatformBackupRestore, handleAIMoodleImport } from "@/lib/moodle/importer";
+import { createLogger } from "@/lib/logger";
 
 export const maxDuration = 300; // 5 minutes
 
@@ -14,22 +15,20 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const MAX_UNCOMPRESSED_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
 export async function POST(request: NextRequest) {
+  const log = createLogger('api/courses/import/moodle', request);
   try {
-    console.log('[Moodle Import] Starting import request...');
+    log.info('Moodle import started');
 
     // Authenticate user
     const authResult = await authenticateUser(request);
     if (!authResult.success) {
-      console.error('[Moodle Import] Authentication failed:', authResult.error);
       return createAuthResponse(authResult.error!, authResult.status!);
     }
 
     const { userProfile } = authResult;
-    console.log('[Moodle Import] User authenticated:', userProfile.id, userProfile.role);
 
     // Check permissions
     if (!hasRole(userProfile.role, ["instructor", "curriculum_designer", "admin", "super_admin"])) {
-      console.error('[Moodle Import] Insufficient permissions:', userProfile.role);
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
@@ -53,15 +52,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "No storagePath provided" }, { status: 400 });
       }
 
-      console.log('[Moodle Import] Storage path mode:', { storagePath, fileName, courseName });
-
       // Download file from Supabase Storage
       const { data: fileData, error: downloadError } = await serviceSupabase.storage
         .from('course-materials')
         .download(storagePath);
 
       if (downloadError || !fileData) {
-        console.error('[Moodle Import] Failed to download from storage:', downloadError);
+        log.error('Failed to download backup from storage', { storagePath }, downloadError);
         return NextResponse.json({
           error: "Failed to download uploaded file from storage",
           details: downloadError?.message || "File not found in storage"
@@ -71,9 +68,6 @@ export async function POST(request: NextRequest) {
       // Convert Blob to Buffer
       const arrayBuffer = await fileData.arrayBuffer();
       buffer = Buffer.from(arrayBuffer);
-      console.log('[Moodle Import] Downloaded from storage, size:', buffer.length,
-        'firstBytes:', buffer.slice(0, 4).toString('hex'),
-        'ascii:', buffer.slice(0, 20).toString('ascii').replace(/[^\x20-\x7E]/g, '.'));
 
       // Clean up temp file from storage (fire and forget)
       serviceSupabase.storage.from('course-materials').remove([storagePath]).catch(() => {});
@@ -82,9 +76,8 @@ export async function POST(request: NextRequest) {
       let formData: FormData;
       try {
         formData = await request.formData();
-        console.log('[Moodle Import] Form data received');
       } catch (error) {
-        console.error('[Moodle Import] Failed to parse form data:', error);
+        log.error('Failed to parse form data', undefined, error);
         return NextResponse.json({
           error: "Failed to parse form data",
           details: error instanceof Error ? error.message : "Could not read request body"
@@ -102,7 +95,6 @@ export async function POST(request: NextRequest) {
       }
 
       fileName = file.name;
-      console.log('[Moodle Import] File info:', { fileName: file.name, fileSize: file.size, fileType: file.type });
 
       if (file.size > MAX_FILE_SIZE) {
         return NextResponse.json({
@@ -138,11 +130,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file data available" }, { status: 400 });
     }
 
-    console.log('[Moodle Import] Buffer ready, length:', buffer.length);
-
     // Validate file is not empty
     if (buffer.length === 0) {
-      console.error('[Moodle Import] File is empty');
+      log.warn('Backup file is empty', { fileName });
       return NextResponse.json({
         error: "The uploaded file is empty",
         details: "The file appears to have no content. Please check your Moodle backup file and try again."
@@ -151,19 +141,14 @@ export async function POST(request: NextRequest) {
 
     // Detect archive format
     let archiveFormat = await detectArchiveFormat(buffer);
-    console.log('[Moodle Import] Detected archive format:', archiveFormat);
 
     // Handle gzip: decompress first, then re-detect inner format
     if (archiveFormat === 'gzip') {
       try {
-        console.log('[Moodle Import] Decompressing gzip...');
         buffer = gunzipSync(buffer);
-        console.log('[Moodle Import] Decompressed size:', buffer.length,
-          'firstBytes:', buffer.slice(0, 4).toString('hex'));
         archiveFormat = await detectArchiveFormat(buffer);
-        console.log('[Moodle Import] Inner format:', archiveFormat);
       } catch (error) {
-        console.error('[Moodle Import] Gzip decompression failed:', error);
+        log.error('Gzip decompression failed', { fileName }, error);
         return NextResponse.json({
           error: "Failed to decompress gzip file",
           details: "The .mbz file appears to be gzip-compressed but could not be decompressed. The file may be corrupted.",
@@ -180,20 +165,15 @@ export async function POST(request: NextRequest) {
 
     if (archiveFormat === 'tar') {
       try {
-        console.log('[Moodle Import] Parsing TAR archive...');
         const tarFiles = parseTarArchive(buffer);
-        console.log('[Moodle Import] TAR contains', tarFiles.size, 'files');
 
         // Populate a JSZip instance with TAR contents so downstream code works unchanged
         zip = new JSZip();
         for (const [path, data] of tarFiles) {
           zip.file(path, data);
         }
-
-        const tarFileNames = Array.from(tarFiles.keys()).slice(0, 20);
-        console.log('[Moodle Import] TAR file list (first 20):', tarFileNames);
       } catch (error) {
-        console.error('[Moodle Import] TAR parsing failed:', error);
+        log.error('TAR parsing failed', { fileName }, error);
         return NextResponse.json({
           error: "Failed to parse TAR archive",
           details: "The Moodle backup TAR archive could not be read. The file may be corrupted.",
@@ -204,9 +184,6 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
     } else if (archiveFormat === 'zip') {
-      // Log file info for debugging
-      console.log('[Moodle Import] Loading ZIP archive, size:', buffer.length);
-
       try {
         zip = await JSZip.loadAsync(buffer, {
           checkCRC32: false,
@@ -252,27 +229,24 @@ export async function POST(request: NextRequest) {
       path.endsWith('.zip') && !path.endsWith('.mbz.zip')
     );
 
-    console.log(`ZIP loaded successfully. Contains ${fileCount} files/entries:`);
-    console.log(`  - ${xmlFiles.length} XML files`);
-    console.log(`  - ${binaryFiles.length} binary files in files/ directory`);
-    console.log(`  - ${mbzFiles.length} .mbz files (nested)`);
-    console.log(`  - ${nestedZipFiles.length} .zip files (nested)`);
-    console.log(`  - Required file 'moodle_backup.xml': ${getZipFile(zip, 'moodle_backup.xml') ? 'found' : 'missing'}`);
-    console.log(`  - All files in ZIP:`, Object.keys(zip.files).slice(0, 20));
+    log.info('ZIP loaded', {
+      fileCount,
+      xmlFiles: xmlFiles.length,
+      binaryFiles: binaryFiles.length,
+      mbzNested: mbzFiles.length,
+      zipNested: nestedZipFiles.length,
+      hasMoodleBackupXml: !!getZipFile(zip, 'moodle_backup.xml'),
+    });
 
     // Check if this is a nested ZIP (ZIP containing a .mbz file)
     if ((mbzFiles.length > 0 || nestedZipFiles.length > 0) && !getZipFile(zip, 'moodle_backup.xml')) {
-      console.log('[Moodle Import] Detected nested ZIP/MBZ file. Attempting to extract...');
-
       // Try to extract the nested .mbz or .zip file
       const nestedFile = mbzFiles[0] || nestedZipFiles[0];
       if (nestedFile) {
         try {
           const nestedFileEntry = getZipFile(zip, nestedFile);
           if (nestedFileEntry) {
-            console.log(`[Moodle Import] Extracting nested file: ${nestedFile}`);
             const nestedBuffer = await nestedFileEntry.async('nodebuffer');
-            console.log(`[Moodle Import] Nested file extracted, size: ${nestedBuffer.length}`);
 
             // Load the nested ZIP
             try {
@@ -280,14 +254,8 @@ export async function POST(request: NextRequest) {
                 checkCRC32: false,
                 createFolders: true
               });
-
-              const nestedFileCount = Object.keys(zip.files).length;
-              const nestedXmlFiles = Object.keys(zip.files).filter(path => path.endsWith('.xml'));
-              console.log(`[Moodle Import] Nested ZIP loaded successfully. Contains ${nestedFileCount} files:`);
-              console.log(`  - ${nestedXmlFiles.length} XML files`);
-              console.log(`  - All files in nested ZIP:`, Object.keys(zip.files).slice(0, 20));
             } catch (nestedError) {
-              console.error('[Moodle Import] Failed to load nested ZIP:', nestedError);
+              log.error('Nested ZIP load failed', { nestedFile }, nestedError);
               return NextResponse.json({
                 error: "Failed to extract nested Moodle backup",
                 details: "The file contains a nested ZIP/MBZ file, but it could not be extracted. The nested file may be corrupted.",
@@ -300,7 +268,7 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (extractError) {
-          console.error('[Moodle Import] Failed to extract nested file:', extractError);
+          log.error('Nested file extraction failed', { nestedFile }, extractError);
           return NextResponse.json({
             error: "Failed to extract nested Moodle backup",
             details: "The file appears to contain a nested ZIP/MBZ file, but extraction failed.",
@@ -317,7 +285,6 @@ export async function POST(request: NextRequest) {
     // Detect platform backup format (manifest.json instead of moodle_backup.xml)
     const manifestJsonFile = zip.file('manifest.json');
     if (manifestJsonFile && !getZipFile(zip, 'moodle_backup.xml')) {
-      console.log('[Moodle Import] Detected platform backup format (manifest.json). Routing to platform restore...');
       return await handlePlatformBackupRestore(zip, authResult);
     }
 
@@ -326,7 +293,7 @@ export async function POST(request: NextRequest) {
     const missingFiles = requiredFiles.filter(file => !getZipFile(zip, file));
 
     if (missingFiles.length > 0) {
-      console.warn(`Missing required files in ZIP: ${missingFiles.join(', ')}`);
+      log.warn('Missing required files in ZIP', { missing: missingFiles });
       // Don't fail immediately - might be in a subdirectory
     }
 
@@ -334,17 +301,8 @@ export async function POST(request: NextRequest) {
     return await handleAIMoodleImport(zip, courseName, authResult, serviceSupabase);
 
   } catch (error) {
-    console.error('[Moodle Import] Unexpected error:', error);
+    log.error('POST handler crashed', undefined, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-
-    // Log full error details
-    console.error('[Moodle Import] Error details:', {
-      message: errorMessage,
-      stack: errorStack,
-      name: error instanceof Error ? error.name : 'Unknown',
-      cause: error instanceof Error ? error.cause : undefined
-    });
 
     // Determine if this is a client error (400) or server error (500)
     const isClientError = errorMessage.includes('validation') ||

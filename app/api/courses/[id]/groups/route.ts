@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTenantQuery, getTenantIdFromRequest } from "@/lib/tenant-query";
 import { authenticateUser, createAuthResponse } from "@/lib/api-auth";
 import { hasRole } from "@/lib/rbac";
+import { createLogger } from "@/lib/logger";
 
 /**
  * GET /api/courses/[id]/groups
@@ -11,6 +12,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/groups', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -52,7 +54,7 @@ export async function GET(
       .order("name", { ascending: true });
 
     if (error) {
-      console.error("Error fetching groups:", error);
+      log.error('Failed to fetch course groups', { courseId }, error);
       return NextResponse.json({ error: "Failed to fetch groups" }, { status: 500 });
     }
 
@@ -81,7 +83,7 @@ export async function GET(
     });
 
   } catch (e: any) {
-    console.error("Course groups GET error:", e);
+    log.error('GET handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -94,6 +96,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/groups', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -163,7 +166,7 @@ export async function POST(
         .single();
 
       if (error) {
-        console.error("Error joining group:", error);
+        log.error('Failed to join group', { groupId: group_id, studentId: user.id }, error);
         return NextResponse.json({ error: "Failed to join group" }, { status: 500 });
       }
 
@@ -180,7 +183,7 @@ export async function POST(
         .eq("student_id", user.id);
 
       if (error) {
-        console.error("Error leaving group:", error);
+        log.error('Failed to leave group', { groupId: group_id, studentId: user.id }, error);
         return NextResponse.json({ error: "Failed to leave group" }, { status: 500 });
       }
 
@@ -206,7 +209,7 @@ export async function POST(
         .single();
 
       if (error) {
-        console.error("Error adding member:", error);
+        log.error('Failed to add member to group', { groupId: group_id, studentId: student_id }, error);
         return NextResponse.json({ error: "Failed to add member" }, { status: 500 });
       }
 
@@ -227,7 +230,7 @@ export async function POST(
         .eq("student_id", student_id);
 
       if (error) {
-        console.error("Error removing member:", error);
+        log.error('Failed to remove member from group', { groupId: group_id, studentId: student_id }, error);
         return NextResponse.json({ error: "Failed to remove member" }, { status: 500 });
       }
 
@@ -294,7 +297,7 @@ export async function POST(
           .single();
 
         if (groupError) {
-          console.error("Error creating group:", groupError);
+          log.error('Failed to create group during auto-assign', { courseId, groupIndex: i }, groupError);
           continue;
         }
 
@@ -357,7 +360,7 @@ export async function POST(
         .single();
 
       if (error) {
-        console.error("Error creating group:", error);
+        log.error('Failed to create group', { courseId }, error);
         return NextResponse.json({ error: "Failed to create group" }, { status: 500 });
       }
 
@@ -365,7 +368,7 @@ export async function POST(
     }
 
   } catch (e: any) {
-    console.error("Course groups POST error:", e);
+    log.error('POST handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -378,6 +381,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/groups', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -415,14 +419,14 @@ export async function PUT(
       .single();
 
     if (error) {
-      console.error("Error updating group:", error);
+      log.error('Failed to update group', { groupId: group_id, courseId }, error);
       return NextResponse.json({ error: "Failed to update group" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, group });
 
   } catch (e: any) {
-    console.error("Course groups PUT error:", e);
+    log.error('PUT handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -435,6 +439,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const log = createLogger('api/courses/[id]/groups', request as any);
   try {
     const { id: courseId } = await params;
     const authResult = await authenticateUser(request as any);
@@ -461,14 +466,14 @@ export async function DELETE(
       .eq("course_id", courseId);
 
     if (error) {
-      console.error("Error deleting group:", error);
+      log.error('Failed to delete group', { groupId, courseId }, error);
       return NextResponse.json({ error: "Failed to delete group" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
 
   } catch (e: any) {
-    console.error("Course groups DELETE error:", e);
+    log.error('DELETE handler crashed', undefined, e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
